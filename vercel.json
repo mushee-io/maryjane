@@ -6,9 +6,16 @@
     },
     "api/marketlint-analyze.ts": {
       "maxDuration": 10
+    },
+    "api/prepare-create.ts": {
+      "maxDuration": 60
     }
   },
   "routes": [
+    {
+      "src": "/api/prepare-create",
+      "dest": "/api/prepare-create"
+    },
     {
       "src": "/api/marketlint-analyze",
       "dest": "/api/marketlint-analyze"

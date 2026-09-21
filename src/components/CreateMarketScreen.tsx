@@ -111,7 +111,7 @@ export function CreateMarketScreen() {
 
     setBusy("create"); setError(""); setNotice("");
     try {
-      const response = await fetch("/api/v1/markets/prepare-create", {
+      const response = await fetch("/api/prepare-create", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({wallet,input:input()}),

@@ -13,7 +13,8 @@
     "test:indexer": "tsx src/lib/marketIndexer.spec.ts",
     "test:marketlint": "tsx src/lib/marketLint.spec.ts",
     "test:external-feed": "tsx scripts/external-feed-smoke.ts",
-    "test:marketlint-function": "tsx scripts/marketlint-function-smoke.ts"
+    "test:marketlint-function": "tsx scripts/marketlint-function-smoke.ts",
+    "test:prepare-create-function": "tsx scripts/prepare-create-function-smoke.ts"
   },
   "dependencies": {
     "@solana/spl-token": "^0.4.14",

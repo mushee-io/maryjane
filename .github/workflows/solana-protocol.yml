@@ -72,6 +72,10 @@ jobs:
         working-directory: .
         run: npm run test:marketlint-function
 
+      - name: Prepare-create function smoke
+        working-directory: .
+        run: npm run test:prepare-create-function
+
       - name: Security invariant fuzz
         run: npm run security:fuzz
 
