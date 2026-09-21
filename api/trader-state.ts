@@ -47,10 +47,11 @@ export default async function handler(req:any,res:any){
     const noInfo=await connection.getAccountInfo(market.noMint,"confirmed");
     if(!collateralInfo||!yesInfo||!noInfo)throw new Error("Market token mint unavailable");
 
-    const [usd,yes,no]=await Promise.all([
+    const [usd,yes,no,solLamports]=await Promise.all([
       tokenBalance(connection,market.collateralMint,wallet,collateralInfo.owner),
       tokenBalance(connection,market.yesMint,wallet,yesInfo.owner),
       tokenBalance(connection,market.noMint,wallet,noInfo.owner),
+      connection.getBalance(wallet,"confirmed"),
     ]);
 
     return res.status(200).json({
@@ -59,6 +60,7 @@ export default async function handler(req:any,res:any){
       collateral:{symbol:"USDG",mint:market.collateralMint.toBase58(),...usd},
       yes:{symbol:"YES",mint:market.yesMint.toBase58(),...yes},
       no:{symbol:"NO",mint:market.noMint.toBase58(),...no},
+      sol:{lamports:solLamports,uiAmount:solLamports/1e9},
       updatedAt:Date.now(),
     });
   }catch(error:any){

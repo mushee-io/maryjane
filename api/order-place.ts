@@ -103,6 +103,41 @@ export default async function handler(req:any,res:any){
     const tx=new Transaction({feePayer:wallet,recentBlockhash:latest.blockhash})
       .add(createAssociatedTokenAccountIdempotentInstruction(wallet,makerSource,wallet,escrowMint,tokenProgram))
       .add(ix);
-    return res.status(200).json({transactionBase64:tx.serialize({requireAllSignatures:false,verifySignatures:false}).toString("base64"),lastValidBlockHeight:latest.lastValidBlockHeight,order:order.toBase58()});
+
+    const serialized=tx.serialize({requireAllSignatures:false,verifySignatures:false});
+    try{
+      const simulation:any=await (connection as any)._rpcRequest("simulateTransaction",[
+        serialized.toString("base64"),
+        {encoding:"base64",commitment:"confirmed",sigVerify:false,replaceRecentBlockhash:false}
+      ]);
+      const value=simulation?.result?.value;
+      if(value?.err){
+        const logs=Array.isArray(value.logs)?value.logs:[];
+        const useful=logs.filter((line:string)=>/error|failed|insufficient|rent|funds|custom program error/i.test(line)).slice(-6);
+        const raw=JSON.stringify(value.err);
+        let friendly="Transaction simulation failed.";
+        const joined=logs.join(" ").toLowerCase();
+        if(/insufficient.*funds|insufficient lamports|rent/.test(joined)||/insufficientfundsforfee/.test(raw.toLowerCase())){
+          friendly="Insufficient Devnet SOL for transaction fees or account rent.";
+        }else if(/accountnotfound/.test(raw.toLowerCase())){
+          friendly="A required Solana account is missing.";
+        }
+        return res.status(400).json({
+          error: useful.length ? `${friendly} ${useful.join(" · ")}` : `${friendly} ${raw}`,
+          code:"SIMULATION_FAILED",
+          simulationError:value.err,
+          logs,
+          stage:"order-simulation",
+        });
+      }
+    }catch(simError:any){
+      return res.status(400).json({
+        error:`Unable to simulate order: ${simError?.message||String(simError)}`,
+        code:"SIMULATION_UNAVAILABLE",
+        stage:"order-simulation",
+      });
+    }
+
+    return res.status(200).json({transactionBase64:serialized.toString("base64"),lastValidBlockHeight:latest.lastValidBlockHeight,order:order.toBase58()});
   }catch(e:any){return res.status(400).json({error:e?.message||String(e),stage:"place-order"});}
 }

@@ -38,6 +38,7 @@ type TraderState = {
   collateral: { symbol: "USDG"; mint: string; amount: string; decimals: number; uiAmount: number; ata: string };
   yes: { symbol: "YES"; mint: string; amount: string; decimals: number; uiAmount: number; ata: string };
   no: { symbol: "NO"; mint: string; amount: string; decimals: number; uiAmount: number; ata: string };
+  sol: { lamports: number; uiAmount: number };
 };
 
 type NativeState = {
@@ -282,7 +283,8 @@ export default function NativeMarketTerminal({
       setNotice(`Confirmed on Solana · ${short(signature)}`);
       await Promise.all([load(), loadTrader()]);
     } catch (err: any) {
-      setNotice(err?.message || "Unable to place order");
+      const message = err?.message || String(err || "");
+      setNotice(message === "Unexpected error" ? "Wallet rejected the transaction. Check Devnet SOL balance and retry." : message || "Unable to place order");
     } finally {
       setBusy(false);
     }
@@ -492,11 +494,17 @@ export default function NativeMarketTerminal({
             <div className="mt-4 space-y-2 rounded-xl bg-white/[.025] p-3 text-xs">
               <div className="flex justify-between text-white/35"><span>{kind === "BUY" ? "Max cost" : "Order value"}</span><span className="text-white/70">${estimatedCost.toFixed(2)}</span></div>
               <div className="flex justify-between text-white/35"><span>Potential payout</span><span className="text-white/70">${(Number(shares) || 0).toFixed(2)}</span></div>
+              <div className="flex justify-between text-white/35"><span>Devnet SOL</span><span className="text-white/70">{wallet ? traderState ? traderState.sol.uiAmount.toFixed(4) : "Loading…" : "—"}</span></div>
               <div className="flex justify-between text-white/35"><span>USDG balance</span><span className="text-white/70">{wallet ? traderState ? traderState.collateral.uiAmount.toFixed(2) : "Loading…" : "—"}</span></div>
               <div className="flex justify-between text-white/35"><span>{side} balance</span><span className="text-white/70">{wallet ? traderState ? (side === "YES" ? traderState.yes.uiAmount : traderState.no.uiAmount).toFixed(2) : "Loading…" : "—"}</span></div>
               <div className="flex justify-between text-white/35"><span>Network</span><span className="text-white/70">Solana Devnet</span></div>
             </div>
 
+            {wallet && traderState && traderState.sol.uiAmount < 0.01 && (
+              <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/[.07] p-3 text-xs leading-5 text-amber-200">
+                Low Devnet SOL. Your first order creates onchain accounts and needs SOL for fees + rent. Fund this wallet with Devnet SOL, then retry.
+              </div>
+            )}
             {insufficientBalance && (
               <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/[.07] p-3 text-xs leading-5 text-amber-200">
                 Insufficient {kind === "BUY" ? "Devnet USDG" : `${side} shares`}. Need {requiredForOrder.toFixed(2)}, have {(availableForOrder ?? 0).toFixed(2)}.
