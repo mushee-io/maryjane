@@ -100,7 +100,7 @@ export function MarketHomeScreen() {
 
   const load = async () => {
     try {
-      const response = await fetch("/api/v1/discovery?limit=180");
+      const response = await fetch("/api/discovery-feed?limit=180");
       const data = await jsonOrThrow(response);
       const hydrated = (data.items || []).map((market: Market) => {
         if (market.source !== "maryjane" || !market.nativeAddress) return market;

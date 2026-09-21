@@ -9,9 +9,16 @@
     },
     "api/prepare-create.ts": {
       "maxDuration": 60
+    },
+    "api/discovery-feed.ts": {
+      "maxDuration": 60
     }
   },
   "routes": [
+    {
+      "src": "/api/discovery-feed",
+      "dest": "/api/discovery-feed"
+    },
     {
       "src": "/api/prepare-create",
       "dest": "/api/prepare-create"

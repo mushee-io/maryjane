@@ -74,6 +74,10 @@ jobs:
         working-directory: .
         run: npm run test:external-feed
 
+      - name: Discovery function smoke
+        working-directory: .
+        run: npm run test:discovery-function
+
       - name: MarketLint function smoke
         working-directory: .
         run: npm run test:marketlint-function
