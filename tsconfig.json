@@ -27,7 +27,8 @@
     "src",
     "tests",
     "server.ts",
-    "vite.config.ts"
+    "vite.config.ts",
+    "api"
   ],
   "exclude": [
     "node_modules",
