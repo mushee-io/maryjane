@@ -3,9 +3,11 @@ members = ["programs/*"]
 resolver = "2"
 
 [profile.release]
+opt-level = "z"
 overflow-checks = true
 lto = "fat"
 codegen-units = 1
+strip = "symbols"
 
 [profile.release.build-override]
 opt-level = 3
