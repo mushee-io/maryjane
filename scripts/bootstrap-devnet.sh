@@ -71,13 +71,13 @@ echo "Approximate rent for this binary:"
 solana rent "$PROGRAM_SIZE" --url devnet || true
 
 BALANCE_LAMPORTS="$(solana balance --lamports | awk '{print $1}')"
-MIN_DEPLOY_LAMPORTS=5000000000
+MIN_DEPLOY_LAMPORTS=4800000000
 
 if [ "$BALANCE_LAMPORTS" -lt "$MIN_DEPLOY_LAMPORTS" ]; then
   echo
   echo "STOP: Mary Jane deployment/upgrade needs a temporary program buffer."
   echo "Your wallet has: $(solana balance)"
-  echo "Required safe balance: at least 5 DEVNET SOL"
+  echo "Required safe balance: at least 4.8 DEVNET SOL"
   echo "The last deployment attempt reported an exact requirement of 4.753239160 SOL."
   echo
   echo "Fund this DEVNET address only:"
@@ -86,7 +86,7 @@ if [ "$BALANCE_LAMPORTS" -lt "$MIN_DEPLOY_LAMPORTS" ]; then
   echo "Official faucet: https://faucet.solana.com/"
   echo "Sign in with GitHub there if you need the higher faucet limit."
   echo
-  echo "After the balance is >= 5 SOL, rerun this same script."
+  echo "After the balance is >= 4.8 SOL, rerun this same script."
   exit 1
 fi
 
