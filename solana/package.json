@@ -1,5 +1,5 @@
 {
-  "name": "@33milady/solana",
+  "name": "@mary-jane/solana",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -15,7 +15,8 @@
     "marketlint:init": "tsx scripts/marketlint-init.ts",
     "security:fuzz": "tsx tests/security-fuzz.spec.ts",
     "launch:readiness": "tsx scripts/launch-readiness.ts",
-    "e2e:devnet": "tsx scripts/devnet-e2e.ts"
+    "e2e:devnet": "tsx scripts/devnet-e2e.ts",
+    "init:devnet": "tsx scripts/init-devnet.ts"
   },
   "dependencies": {
     "@anchor-lang/core": "1.2.0",
