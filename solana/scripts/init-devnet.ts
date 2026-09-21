@@ -69,7 +69,7 @@ async function maybeFund(
   connection: Connection,
   payer: Keypair,
   recipient: PublicKey,
-  targetSol = 0.08,
+  targetSol = 0.01,
 ) {
   const balance = await connection.getBalance(recipient, "confirmed");
   const target = Math.floor(targetSol * LAMPORTS_PER_SOL);
