@@ -1,0 +1,71 @@
+name: Solana Prediction Protocol
+
+on:
+  pull_request:
+    paths:
+      - "solana/**"
+      - "src/**"
+      - "server.ts"
+      - "package.json"
+      - ".github/workflows/solana-protocol.yml"
+  push:
+    branches:
+      - "build/prediction-m1-m3"
+    paths:
+      - "solana/**"
+      - "src/**"
+      - "server.ts"
+      - "package.json"
+      - ".github/workflows/solana-protocol.yml"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: solana
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install JS dependencies
+        run: npm install
+
+      - name: TypeScript check
+        run: npm run lint
+
+      - name: Quote and PDA tests
+        run: npm test
+
+      - name: Install web dependencies
+        working-directory: .
+        run: npm install
+
+      - name: Web + server TypeScript check
+        working-directory: .
+        run: npm run lint
+
+      - name: Market indexer tests
+        working-directory: .
+        run: npm run test:indexer
+
+      - name: MarketLint compiler tests
+        working-directory: .
+        run: npm run test:marketlint
+
+      - name: Security invariant fuzz
+        run: npm run security:fuzz
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust property tests
+        run: cargo test -p milady_market --lib
+
+      - name: Cargo check
+        run: cargo check --workspace

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%" fill="none">
+  <!-- Hand-drawn charcoal line art mascot -->
+  <g stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Floating antenna curl and thoughts/dots -->
+    <path d="M 96 40 C 90 28, 82 24, 86 16 C 90 10, 98 12, 98 18 C 98 22, 94 26, 90 30" />
+    <circle cx="124" cy="24" r="3" fill="currentColor" />
+    <circle cx="118" cy="32" r="2" fill="currentColor" />
+
+    <!-- Head & Hair -->
+    <path d="M 88 50 C 88 42, 96 38, 106 38 C 116 38, 122 44, 122 52 C 122 62, 114 66, 104 66 C 94 66, 88 60, 88 50 Z" />
+    <!-- Hair fringe/cap -->
+    <path d="M 90 44 C 98 40, 112 40, 120 45 C 118 49, 112 48, 106 50 C 98 50, 94 48, 90 44 Z" fill="currentColor" />
+    <!-- Face: eyes and smile -->
+    <circle cx="98" cy="53" r="1.8" fill="currentColor" />
+    <circle cx="110" cy="53" r="1.8" fill="currentColor" />
+    <path d="M 101 58 Q 104 61 108 58" />
+
+    <!-- Left Arm & Hand (reaching left/forward) -->
+    <path d="M 90 68 C 76 70, 64 76, 62 88 C 60 98, 70 98, 78 92" />
+    <path d="M 64 74 L 56 68 C 54 66, 52 70, 56 74 L 62 82" />
+    <path d="M 56 68 C 58 62, 64 62, 66 66" />
+    <path d="M 64 88 C 72 88, 80 84, 88 80" />
+
+    <!-- Right Arm & Hand (reaching up/right) -->
+    <path d="M 118 68 C 132 72, 144 80, 142 94 C 140 102, 132 102, 126 96" />
+    <path d="M 138 76 L 148 70 C 152 68, 156 72, 152 78 L 142 86" />
+    <path d="M 148 70 C 152 74, 156 78, 158 84 C 158 88, 152 88, 146 86" />
+    <path d="M 140 94 C 134 94, 126 90, 120 84" />
+
+    <!-- Cozy Oversized Sweater / Smock Body -->
+    <path d="M 88 66 Q 104 72 120 66" />
+    <path d="M 82 86 C 84 98, 86 106, 92 114 C 98 122, 118 126, 134 116 C 138 108, 134 94, 126 86" />
+    <path d="M 92 114 C 86 112, 82 106, 80 98" />
+
+    <!-- Left Leg & Pointed Chunky Boot (Forward Stride) -->
+    <path d="M 94 118 L 88 142" />
+    <path d="M 104 122 L 98 144" />
+    <!-- Left Boot -->
+    <path d="M 84 140 L 98 146 L 90 172 L 64 162 L 80 144 Z" />
+
+    <!-- Right Leg & Bent Boot (Kicking Back) -->
+    <path d="M 112 120 L 126 138" />
+    <path d="M 122 116 L 134 134" />
+    <!-- Right Boot -->
+    <path d="M 124 136 L 138 132 L 152 160 C 146 166, 136 164, 128 152 L 122 140 Z" />
+  </g>
+</svg>

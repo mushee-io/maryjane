@@ -1,0 +1,16 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+*.keystore
+*.jks
+key.properties
+local.properties
+.gradle/
+build/
+app/build/
+dist/

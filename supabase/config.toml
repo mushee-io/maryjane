@@ -1,0 +1,16 @@
+project_id = "mitrmbmvenjcwlwvysel"
+
+[functions.initiate-checkin]
+verify_jwt = true
+
+[functions.claim-checkin]
+verify_jwt = true
+
+[functions.user-profile]
+verify_jwt = true
+
+[functions.admin-adjust]
+verify_jwt = true
+
+[functions.admob-ssv]
+verify_jwt = false

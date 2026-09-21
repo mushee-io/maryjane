@@ -1,0 +1,1674 @@
+{
+  "profiles": {
+    "usr_google_joycejumbo": {
+      "id": "usr_google_joycejumbo",
+      "email": "joycejumbo12@gmail.com",
+      "display_name": "Joyce",
+      "avatar_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+      "points_balance": 25.5,
+      "current_streak": 1,
+      "longest_streak": 12,
+      "last_checkin_at": 1787245508912,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "created_at": 1784633006315,
+      "updated_at": 1787259394096
+    },
+    "usr_313d9c47b817": {
+      "id": "usr_313d9c47b817",
+      "email": "qa_test_1787228821485@milady.app",
+      "display_name": "QA Milady Tester",
+      "avatar_url": "https://api.dicebear.com/7.x/notionists/svg?seed=qa_test_1787228821485@milady.app",
+      "points_balance": 0.5,
+      "current_streak": 1,
+      "longest_streak": 1,
+      "last_checkin_at": 1787228821518,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "created_at": 1787228821500,
+      "updated_at": 1787228821518
+    },
+    "usr_a092c5f589a07c70": {
+      "id": "usr_a092c5f589a07c70",
+      "email": "qa_test_1787228848014@milady.app",
+      "display_name": "QA Milady Tester",
+      "avatar_url": "https://api.dicebear.com/7.x/notionists/svg?seed=qa_test_1787228848014@milady.app",
+      "points_balance": 2.5,
+      "current_streak": 1,
+      "longest_streak": 1,
+      "last_checkin_at": 1787228848058,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787228848046,
+      "updated_at": 1787228848107
+    },
+    "usr_1dffb39c5cee4a88": {
+      "id": "usr_1dffb39c5cee4a88",
+      "email": "qa_test_1787244636185@milady.app",
+      "display_name": "QA Milady Tester",
+      "avatar_url": "https://api.dicebear.com/7.x/notionists/svg?seed=qa_test_1787244636185@milady.app",
+      "points_balance": 2.5,
+      "current_streak": 1,
+      "longest_streak": 1,
+      "last_checkin_at": 1787244636207,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787244636193,
+      "updated_at": 1787244636251
+    },
+    "usr_423bd4709450ade0": {
+      "id": "usr_423bd4709450ade0",
+      "email": "qa_test_1787246022287@milady.app",
+      "display_name": "QA Milady Tester",
+      "avatar_url": "https://api.dicebear.com/7.x/notionists/svg?seed=qa_test_1787246022287@milady.app",
+      "points_balance": 2.5,
+      "current_streak": 1,
+      "longest_streak": 1,
+      "last_checkin_at": 1787246022322,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787246022298,
+      "updated_at": 1787246022381
+    },
+    "usr_92c3c8f0569faecb": {
+      "id": "usr_92c3c8f0569faecb",
+      "email": "qa_test_1787246952864@milady.app",
+      "display_name": "QA Milady Tester",
+      "avatar_url": "https://api.dicebear.com/7.x/notionists/svg?seed=qa_test_1787246952864@milady.app",
+      "points_balance": 2,
+      "current_streak": 0,
+      "longest_streak": 0,
+      "last_checkin_at": null,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787246952875,
+      "updated_at": 1787246952927
+    },
+    "usr_4dce48307f3c8cbf": {
+      "id": "usr_4dce48307f3c8cbf",
+      "email": "tester_1787246965953@milady.app",
+      "display_name": "Milady Member",
+      "avatar_url": "https://api.dicebear.com/7.x/notionists/svg?seed=tester_1787246965953@milady.app",
+      "points_balance": 2,
+      "current_streak": 0,
+      "longest_streak": 0,
+      "last_checkin_at": null,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787246965961,
+      "updated_at": 1787246966056
+    },
+    "usr_2c23ce1d41b68f23": {
+      "id": "usr_2c23ce1d41b68f23",
+      "email": "attacker_1787246966006@milady.app",
+      "display_name": "Milady Member",
+      "avatar_url": "https://api.dicebear.com/7.x/notionists/svg?seed=attacker_1787246966006@milady.app",
+      "points_balance": 0,
+      "current_streak": 0,
+      "longest_streak": 0,
+      "last_checkin_at": null,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787246966009,
+      "updated_at": 1787246966009
+    },
+    "usr_f754a710390b17aa": {
+      "id": "usr_f754a710390b17aa",
+      "email": "tester_1787246981742@milady.app",
+      "display_name": "Tester Milady",
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=tester",
+      "points_balance": 2.5,
+      "current_streak": 1,
+      "longest_streak": 1,
+      "last_checkin_at": 1787246981795,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787246981750,
+      "updated_at": 1787246981837
+    },
+    "usr_3b3283f8d16abfbf": {
+      "id": "usr_3b3283f8d16abfbf",
+      "email": "attacker_1787246981779@milady.app",
+      "display_name": "Attacker",
+      "avatar_url": "https://api.dicebear.com/7.x/notionists/svg?seed=attacker_1787246981779@milady.app",
+      "points_balance": 0,
+      "current_streak": 0,
+      "longest_streak": 0,
+      "last_checkin_at": null,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787246981783,
+      "updated_at": 1787246981783
+    },
+    "usr_94015f3823bed90c": {
+      "id": "usr_94015f3823bed90c",
+      "email": "tester_1787247342188@milady.app",
+      "display_name": "Tester Milady",
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=tester",
+      "points_balance": 2.5,
+      "current_streak": 1,
+      "longest_streak": 1,
+      "last_checkin_at": 1787247342252,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787247342196,
+      "updated_at": 1787247342316
+    },
+    "usr_72caf3b27ec97484": {
+      "id": "usr_72caf3b27ec97484",
+      "email": "attacker_1787247342235@milady.app",
+      "display_name": "Attacker",
+      "avatar_url": "https://api.dicebear.com/7.x/notionists/svg?seed=attacker_1787247342235@milady.app",
+      "points_balance": 0,
+      "current_streak": 0,
+      "longest_streak": 0,
+      "last_checkin_at": null,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787247342239,
+      "updated_at": 1787247342239
+    },
+    "usr_c10c4733319012bc": {
+      "id": "usr_c10c4733319012bc",
+      "email": "tester_1787258107495@milady.app",
+      "display_name": "Tester Milady",
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=tester",
+      "points_balance": 2.5,
+      "current_streak": 1,
+      "longest_streak": 1,
+      "last_checkin_at": 1787258107548,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787258107502,
+      "updated_at": 1787258107576
+    },
+    "usr_31451596805803cd": {
+      "id": "usr_31451596805803cd",
+      "email": "attacker_1787258107532@milady.app",
+      "display_name": "Attacker",
+      "avatar_url": "https://api.dicebear.com/7.x/notionists/svg?seed=attacker_1787258107532@milady.app",
+      "points_balance": 0,
+      "current_streak": 0,
+      "longest_streak": 0,
+      "last_checkin_at": null,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787258107537,
+      "updated_at": 1787258107537
+    },
+    "usr_a743990c12b8587e": {
+      "id": "usr_a743990c12b8587e",
+      "email": "tester_1787258116146@milady.app",
+      "display_name": "Tester Milady",
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=tester",
+      "points_balance": 2.5,
+      "current_streak": 1,
+      "longest_streak": 1,
+      "last_checkin_at": 1787258116224,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787258116166,
+      "updated_at": 1787258116261
+    },
+    "usr_da65f15f531caaa9": {
+      "id": "usr_da65f15f531caaa9",
+      "email": "attacker_1787258116206@milady.app",
+      "display_name": "Attacker",
+      "avatar_url": "https://api.dicebear.com/7.x/notionists/svg?seed=attacker_1787258116206@milady.app",
+      "points_balance": 0,
+      "current_streak": 0,
+      "longest_streak": 0,
+      "last_checkin_at": null,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787258116211,
+      "updated_at": 1787258116211
+    },
+    "usr_8512ab1656f6993c": {
+      "id": "usr_8512ab1656f6993c",
+      "email": "tester_1787259394015@milady.app",
+      "display_name": "Tester Milady",
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=tester",
+      "points_balance": 2.5,
+      "current_streak": 1,
+      "longest_streak": 1,
+      "last_checkin_at": 1787259394069,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787259394022,
+      "updated_at": 1787259394099
+    },
+    "usr_2fa68bfb380bdf70": {
+      "id": "usr_2fa68bfb380bdf70",
+      "email": "attacker_1787259394054@milady.app",
+      "display_name": "Attacker",
+      "avatar_url": "https://api.dicebear.com/7.x/notionists/svg?seed=attacker_1787259394054@milady.app",
+      "points_balance": 0,
+      "current_streak": 0,
+      "longest_streak": 0,
+      "last_checkin_at": null,
+      "onboarding_completed": true,
+      "reminder_enabled": true,
+      "reminder_time": "09:00",
+      "account_status": "active",
+      "is_admin": false,
+      "created_at": 1787259394058,
+      "updated_at": 1787259394058
+    }
+  },
+  "daily_checkins": [
+    {
+      "id": "chk_1787259394070_6fe6cf41",
+      "user_id": "usr_8512ab1656f6993c",
+      "checkin_date": "2026-08-20",
+      "reward_amount": 0.5,
+      "reward_status": "completed",
+      "ad_reward_verified": true,
+      "ad_session_id": "ads_138cccce8f626e0cb0d7750b",
+      "checked_in_at": 1787259394069,
+      "streak_count": 1,
+      "created_at": 1787259394069
+    },
+    {
+      "id": "chk_1787258116224_7541419d",
+      "user_id": "usr_a743990c12b8587e",
+      "checkin_date": "2026-08-20",
+      "reward_amount": 0.5,
+      "reward_status": "completed",
+      "ad_reward_verified": true,
+      "ad_session_id": "ads_8875d06699f43358e9c4a637",
+      "checked_in_at": 1787258116224,
+      "streak_count": 1,
+      "created_at": 1787258116224
+    },
+    {
+      "id": "chk_1787258107548_5945acbe",
+      "user_id": "usr_c10c4733319012bc",
+      "checkin_date": "2026-08-20",
+      "reward_amount": 0.5,
+      "reward_status": "completed",
+      "ad_reward_verified": true,
+      "ad_session_id": "ads_498bccd969658029be6ccbcb",
+      "checked_in_at": 1787258107548,
+      "streak_count": 1,
+      "created_at": 1787258107548
+    },
+    {
+      "id": "chk_1787247342252_9910290a",
+      "user_id": "usr_94015f3823bed90c",
+      "checkin_date": "2026-08-20",
+      "reward_amount": 0.5,
+      "reward_status": "completed",
+      "ad_reward_verified": true,
+      "ad_session_id": "ads_3d1cec8e49963adfeef907af",
+      "checked_in_at": 1787247342252,
+      "streak_count": 1,
+      "created_at": 1787247342252
+    },
+    {
+      "id": "chk_1787246981796_f903d592",
+      "user_id": "usr_f754a710390b17aa",
+      "checkin_date": "2026-08-20",
+      "reward_amount": 0.5,
+      "reward_status": "completed",
+      "ad_reward_verified": true,
+      "ad_session_id": "ads_b75ca6b0a1afa076764bd130",
+      "checked_in_at": 1787246981795,
+      "streak_count": 1,
+      "created_at": 1787246981795
+    },
+    {
+      "id": "chk_1787246022322_0f9d0834",
+      "user_id": "usr_423bd4709450ade0",
+      "checkin_date": "2026-08-20",
+      "reward_amount": 0.5,
+      "reward_status": "completed",
+      "ad_reward_verified": true,
+      "ad_session_id": "ads_0c6e19df76520027d3bc9350",
+      "checked_in_at": 1787246022322,
+      "streak_count": 1,
+      "created_at": 1787246022322
+    },
+    {
+      "id": "chk_1787245508913_0f04a53a",
+      "user_id": "usr_google_joycejumbo",
+      "checkin_date": "2026-08-20",
+      "reward_amount": 0.5,
+      "reward_status": "completed",
+      "ad_reward_verified": true,
+      "ad_session_id": "ads_3b662a40e7df5b059da4b2a3",
+      "checked_in_at": 1787245508912,
+      "streak_count": 1,
+      "created_at": 1787245508912
+    },
+    {
+      "id": "chk_1787244636207_6d1cb5d5",
+      "user_id": "usr_1dffb39c5cee4a88",
+      "checkin_date": "2026-08-20",
+      "reward_amount": 0.5,
+      "reward_status": "completed",
+      "ad_reward_verified": true,
+      "ad_session_id": "ads_31c304d44b0024e38273171c",
+      "checked_in_at": 1787244636207,
+      "streak_count": 1,
+      "created_at": 1787244636207
+    },
+    {
+      "id": "chk_1787228848058_9166cb11",
+      "user_id": "usr_a092c5f589a07c70",
+      "checkin_date": "2026-08-20",
+      "reward_amount": 0.5,
+      "reward_status": "completed",
+      "ad_reward_verified": true,
+      "ad_session_id": "ads_fbcb9cd1407098ede0d38c2d",
+      "checked_in_at": 1787228848058,
+      "streak_count": 1,
+      "created_at": 1787228848058
+    },
+    {
+      "id": "chk_1787228821519_7f157226",
+      "user_id": "usr_313d9c47b817",
+      "reward_amount": 0.5,
+      "ad_reward_verified": true,
+      "ad_session_id": "ads_c2c877c2b1c0cbc24831a0b7",
+      "checked_in_at": 1787228821518,
+      "streak_count": 1
+    },
+    {
+      "id": "chk_1787225402651_092fb987",
+      "user_id": "usr_google_joycejumbo",
+      "reward_amount": 0.5,
+      "ad_reward_verified": true,
+      "ad_session_id": "ads_af249edfdab5819f5a706eda",
+      "checked_in_at": 1787225402650,
+      "streak_count": 8
+    },
+    {
+      "id": "chk_1787225006315_0",
+      "user_id": "usr_google_joycejumbo",
+      "reward_amount": 0.5,
+      "ad_reward_verified": true,
+      "ad_session_id": "ad_session_seed_0",
+      "checked_in_at": 1787138606315,
+      "streak_count": 7
+    },
+    {
+      "id": "chk_1787225005315_1",
+      "user_id": "usr_google_joycejumbo",
+      "reward_amount": 0.5,
+      "ad_reward_verified": true,
+      "ad_session_id": "ad_session_seed_1",
+      "checked_in_at": 1787052206315,
+      "streak_count": 6
+    },
+    {
+      "id": "chk_1787225004315_2",
+      "user_id": "usr_google_joycejumbo",
+      "reward_amount": 0.5,
+      "ad_reward_verified": true,
+      "ad_session_id": "ad_session_seed_2",
+      "checked_in_at": 1786965806315,
+      "streak_count": 5
+    },
+    {
+      "id": "chk_1787225003315_3",
+      "user_id": "usr_google_joycejumbo",
+      "reward_amount": 0.5,
+      "ad_reward_verified": true,
+      "ad_session_id": "ad_session_seed_3",
+      "checked_in_at": 1786879406315,
+      "streak_count": 4
+    },
+    {
+      "id": "chk_1787225002315_4",
+      "user_id": "usr_google_joycejumbo",
+      "reward_amount": 0.5,
+      "ad_reward_verified": true,
+      "ad_session_id": "ad_session_seed_4",
+      "checked_in_at": 1786793006315,
+      "streak_count": 3
+    }
+  ],
+  "reward_transactions": [
+    {
+      "id": "tx_adj_1787259394099_dec0da",
+      "user_id": "usr_8512ab1656f6993c",
+      "reward_type": "admin_adjustment",
+      "type": "admin_adjustment",
+      "amount": 2,
+      "status": "completed",
+      "idempotency_key": "tx_adj_1787259394099_dec0da",
+      "created_at": 1787259394099,
+      "completed_at": 1787259394099,
+      "metadata": {
+        "admin_email": "joycejumbo12@gmail.com",
+        "reason": "Automated test suite compensation verification",
+        "previous_balance": 0.5
+      }
+    },
+    {
+      "id": "tx_1787259394070_dedf6597",
+      "user_id": "usr_8512ab1656f6993c",
+      "reward_type": "daily_checkin",
+      "type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "idempotency_key": "idem_usr_8512ab1656f6993c_1787259394034_4dbf97f3",
+      "related_checkin_id": "chk_1787259394070_6fe6cf41",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1787259394069,
+      "completed_at": 1787259394069,
+      "metadata": {
+        "ad_session_id": "ads_138cccce8f626e0cb0d7750b",
+        "admob_transaction_id": "admob_tx_1787259394046_vst58q",
+        "streak": 1
+      }
+    },
+    {
+      "id": "tx_adj_1787258116261_9b3351",
+      "user_id": "usr_a743990c12b8587e",
+      "reward_type": "admin_adjustment",
+      "type": "admin_adjustment",
+      "amount": 2,
+      "status": "completed",
+      "idempotency_key": "tx_adj_1787258116261_9b3351",
+      "created_at": 1787258116261,
+      "completed_at": 1787258116261,
+      "metadata": {
+        "admin_email": "joycejumbo12@gmail.com",
+        "reason": "Automated test suite compensation verification",
+        "previous_balance": 0.5
+      }
+    },
+    {
+      "id": "tx_1787258116224_536fb2f6",
+      "user_id": "usr_a743990c12b8587e",
+      "reward_type": "daily_checkin",
+      "type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "idempotency_key": "idem_usr_a743990c12b8587e_1787258116179_51b94b98",
+      "related_checkin_id": "chk_1787258116224_7541419d",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1787258116224,
+      "completed_at": 1787258116224,
+      "metadata": {
+        "ad_session_id": "ads_8875d06699f43358e9c4a637",
+        "admob_transaction_id": "admob_tx_1787258116196_ajh5vb",
+        "streak": 1
+      }
+    },
+    {
+      "id": "tx_adj_1787258107576_a03628",
+      "user_id": "usr_c10c4733319012bc",
+      "reward_type": "admin_adjustment",
+      "type": "admin_adjustment",
+      "amount": 2,
+      "status": "completed",
+      "idempotency_key": "tx_adj_1787258107576_a03628",
+      "created_at": 1787258107576,
+      "completed_at": 1787258107576,
+      "metadata": {
+        "admin_email": "joycejumbo12@gmail.com",
+        "reason": "Automated test suite compensation verification",
+        "previous_balance": 0.5
+      }
+    },
+    {
+      "id": "tx_1787258107548_f4cc7818",
+      "user_id": "usr_c10c4733319012bc",
+      "reward_type": "daily_checkin",
+      "type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "idempotency_key": "idem_usr_c10c4733319012bc_1787258107513_536955aa",
+      "related_checkin_id": "chk_1787258107548_5945acbe",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1787258107548,
+      "completed_at": 1787258107548,
+      "metadata": {
+        "ad_session_id": "ads_498bccd969658029be6ccbcb",
+        "admob_transaction_id": "admob_tx_1787258107524_8jn4zz",
+        "streak": 1
+      }
+    },
+    {
+      "id": "tx_adj_1787247342316_8b0a9e",
+      "user_id": "usr_94015f3823bed90c",
+      "reward_type": "admin_adjustment",
+      "type": "admin_adjustment",
+      "amount": 2,
+      "status": "completed",
+      "idempotency_key": "tx_adj_1787247342316_8b0a9e",
+      "created_at": 1787247342316,
+      "completed_at": 1787247342316,
+      "metadata": {
+        "admin_email": "joycejumbo12@gmail.com",
+        "reason": "Automated test suite compensation verification",
+        "previous_balance": 0.5
+      }
+    },
+    {
+      "id": "tx_1787247342252_e9f1d286",
+      "user_id": "usr_94015f3823bed90c",
+      "reward_type": "daily_checkin",
+      "type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "idempotency_key": "idem_usr_94015f3823bed90c_1787247342211_8df1be75",
+      "related_checkin_id": "chk_1787247342252_9910290a",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1787247342252,
+      "completed_at": 1787247342252,
+      "metadata": {
+        "ad_session_id": "ads_3d1cec8e49963adfeef907af",
+        "admob_transaction_id": "admob_tx_1787247342219_kw2dxt",
+        "streak": 1
+      }
+    },
+    {
+      "id": "tx_adj_1787246981837_cdb8df",
+      "user_id": "usr_f754a710390b17aa",
+      "reward_type": "admin_adjustment",
+      "type": "admin_adjustment",
+      "amount": 2,
+      "status": "completed",
+      "idempotency_key": "tx_adj_1787246981837_cdb8df",
+      "created_at": 1787246981837,
+      "completed_at": 1787246981837,
+      "metadata": {
+        "admin_email": "joycejumbo12@gmail.com",
+        "reason": "Automated test suite compensation verification",
+        "previous_balance": 0.5
+      }
+    },
+    {
+      "id": "tx_1787246981795_5d0cce94",
+      "user_id": "usr_f754a710390b17aa",
+      "reward_type": "daily_checkin",
+      "type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "idempotency_key": "idem_usr_f754a710390b17aa_1787246981764_67c0a130",
+      "related_checkin_id": "chk_1787246981796_f903d592",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1787246981795,
+      "completed_at": 1787246981795,
+      "metadata": {
+        "ad_session_id": "ads_b75ca6b0a1afa076764bd130",
+        "admob_transaction_id": "admob_tx_1787246981770_flfex8",
+        "streak": 1
+      }
+    },
+    {
+      "id": "tx_adj_1787246966056_6039fd",
+      "user_id": "usr_4dce48307f3c8cbf",
+      "reward_type": "admin_adjustment",
+      "type": "admin_adjustment",
+      "amount": 2,
+      "status": "completed",
+      "idempotency_key": "tx_adj_1787246966056_6039fd",
+      "created_at": 1787246966056,
+      "completed_at": 1787246966056,
+      "metadata": {
+        "admin_email": "joycejumbo12@gmail.com",
+        "reason": "Automated test suite compensation verification",
+        "previous_balance": 0
+      }
+    },
+    {
+      "id": "tx_adj_1787246952927_b3852a",
+      "user_id": "usr_92c3c8f0569faecb",
+      "reward_type": "admin_adjustment",
+      "type": "admin_adjustment",
+      "amount": 2,
+      "status": "completed",
+      "idempotency_key": "tx_adj_1787246952927_b3852a",
+      "created_at": 1787246952927,
+      "completed_at": 1787246952927,
+      "metadata": {
+        "admin_email": "qa_test_1787246952864@milady.app",
+        "reason": "Automated test suite compensation verification",
+        "previous_balance": 0
+      }
+    },
+    {
+      "id": "tx_adj_1787246022381_1191e6",
+      "user_id": "usr_423bd4709450ade0",
+      "reward_type": "admin_adjustment",
+      "type": "admin_adjustment",
+      "amount": 2,
+      "status": "completed",
+      "idempotency_key": "tx_adj_1787246022381_1191e6",
+      "created_at": 1787246022381,
+      "completed_at": 1787246022381,
+      "metadata": {
+        "admin_email": "qa_test_1787246022287@milady.app",
+        "reason": "Automated test suite compensation verification",
+        "previous_balance": 0.5
+      }
+    },
+    {
+      "id": "tx_1787246022322_c5341118",
+      "user_id": "usr_423bd4709450ade0",
+      "reward_type": "daily_checkin",
+      "type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "idempotency_key": "idem_usr_423bd4709450ade0_1787246022315_79f46c5d",
+      "related_checkin_id": "chk_1787246022322_0f9d0834",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1787246022322,
+      "completed_at": 1787246022322,
+      "metadata": {
+        "ad_session_id": "ads_0c6e19df76520027d3bc9350",
+        "streak": 1
+      }
+    },
+    {
+      "id": "tx_1787245508912_7ceb12dc",
+      "user_id": "usr_google_joycejumbo",
+      "reward_type": "daily_checkin",
+      "type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "idempotency_key": "idem_usr_google_joycejumbo_1787245462565_9536697f",
+      "related_checkin_id": "chk_1787245508913_0f04a53a",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1787245508912,
+      "completed_at": 1787245508912,
+      "metadata": {
+        "ad_session_id": "ads_3b662a40e7df5b059da4b2a3",
+        "streak": 1
+      }
+    },
+    {
+      "id": "tx_adj_1787244636251_19130a",
+      "user_id": "usr_1dffb39c5cee4a88",
+      "reward_type": "admin_adjustment",
+      "type": "admin_adjustment",
+      "amount": 2,
+      "status": "completed",
+      "idempotency_key": "tx_adj_1787244636251_19130a",
+      "created_at": 1787244636251,
+      "completed_at": 1787244636251,
+      "metadata": {
+        "admin_email": "qa_test_1787244636185@milady.app",
+        "reason": "Automated test suite compensation verification",
+        "previous_balance": 0.5
+      }
+    },
+    {
+      "id": "tx_1787244636207_02a172cb",
+      "user_id": "usr_1dffb39c5cee4a88",
+      "reward_type": "daily_checkin",
+      "type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "idempotency_key": "idem_usr_1dffb39c5cee4a88_1787244636201_90210636",
+      "related_checkin_id": "chk_1787244636207_6d1cb5d5",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1787244636207,
+      "completed_at": 1787244636207,
+      "metadata": {
+        "ad_session_id": "ads_31c304d44b0024e38273171c",
+        "streak": 1
+      }
+    },
+    {
+      "id": "tx_adj_1787228848107_ae8716",
+      "user_id": "usr_a092c5f589a07c70",
+      "reward_type": "admin_adjustment",
+      "type": "admin_adjustment",
+      "amount": 2,
+      "status": "completed",
+      "idempotency_key": "tx_adj_1787228848107_ae8716",
+      "created_at": 1787228848107,
+      "completed_at": 1787228848107,
+      "metadata": {
+        "admin_email": "qa_test_1787228848014@milady.app",
+        "reason": "Automated test suite compensation verification",
+        "previous_balance": 0.5
+      }
+    },
+    {
+      "id": "tx_1787228848058_97f14f0e",
+      "user_id": "usr_a092c5f589a07c70",
+      "reward_type": "daily_checkin",
+      "type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "idempotency_key": "idem_usr_a092c5f589a07c70_1787228848052_aebff9b8",
+      "related_checkin_id": "chk_1787228848058_9166cb11",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1787228848058,
+      "completed_at": 1787228848058,
+      "metadata": {
+        "ad_session_id": "ads_fbcb9cd1407098ede0d38c2d",
+        "streak": 1
+      }
+    },
+    {
+      "id": "tx_1787228821518_2ec0b8c6",
+      "user_id": "usr_313d9c47b817",
+      "reward_type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1787228821518
+    },
+    {
+      "id": "tx_1787225402650_e24acadf",
+      "user_id": "usr_google_joycejumbo",
+      "reward_type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1787225402650
+    },
+    {
+      "id": "tx_1787225006315_0",
+      "user_id": "usr_google_joycejumbo",
+      "reward_type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1787138606315
+    },
+    {
+      "id": "tx_1787225005315_1",
+      "user_id": "usr_google_joycejumbo",
+      "reward_type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1787052206315
+    },
+    {
+      "id": "tx_1787225004315_2",
+      "user_id": "usr_google_joycejumbo",
+      "reward_type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1786965806315
+    },
+    {
+      "id": "tx_1787225003315_3",
+      "user_id": "usr_google_joycejumbo",
+      "reward_type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1786879406315
+    },
+    {
+      "id": "tx_1787225002315_4",
+      "user_id": "usr_google_joycejumbo",
+      "reward_type": "daily_checkin",
+      "amount": 0.5,
+      "status": "completed",
+      "ad_unit_id": "ca-app-pub-3940256099942544/5224354917",
+      "created_at": 1786793006315
+    }
+  ],
+  "app_config": {
+    "daily_reward_points": 0.5,
+    "daily_reward_amount": 0.5,
+    "checkin_interval_hours": 24,
+    "test_cooldown_mode": false,
+    "checkin_enabled": true,
+    "maintenance_mode": false,
+    "minimum_app_version": "1.0.0",
+    "notification_message": "Your Milady check-in is ready ✨",
+    "admob_test_mode": true,
+    "admob_rewarded_unit_id": "ca-app-pub-3940256099942544/5224354917",
+    "require_ad_completion": true,
+    "updated_at": 1787228845412
+  },
+  "admin_audit_logs": [
+    {
+      "id": "audit_1787259394100",
+      "admin_id": "usr_google_joycejumbo",
+      "target_user_id": "usr_8512ab1656f6993c",
+      "action": "POINTS_ADJUSTMENT",
+      "reason": "Automated test suite compensation verification",
+      "previous_state": {
+        "points_balance": 0.5
+      },
+      "new_state": {
+        "points_balance": 2.5,
+        "adjustment": 2
+      },
+      "created_at": 1787259394099
+    },
+    {
+      "id": "audit_1787258116261",
+      "admin_id": "usr_google_joycejumbo",
+      "target_user_id": "usr_a743990c12b8587e",
+      "action": "POINTS_ADJUSTMENT",
+      "reason": "Automated test suite compensation verification",
+      "previous_state": {
+        "points_balance": 0.5
+      },
+      "new_state": {
+        "points_balance": 2.5,
+        "adjustment": 2
+      },
+      "created_at": 1787258116261
+    },
+    {
+      "id": "audit_1787258107576",
+      "admin_id": "usr_google_joycejumbo",
+      "target_user_id": "usr_c10c4733319012bc",
+      "action": "POINTS_ADJUSTMENT",
+      "reason": "Automated test suite compensation verification",
+      "previous_state": {
+        "points_balance": 0.5
+      },
+      "new_state": {
+        "points_balance": 2.5,
+        "adjustment": 2
+      },
+      "created_at": 1787258107576
+    },
+    {
+      "id": "audit_1787247342316",
+      "admin_id": "usr_google_joycejumbo",
+      "target_user_id": "usr_94015f3823bed90c",
+      "action": "POINTS_ADJUSTMENT",
+      "reason": "Automated test suite compensation verification",
+      "previous_state": {
+        "points_balance": 0.5
+      },
+      "new_state": {
+        "points_balance": 2.5,
+        "adjustment": 2
+      },
+      "created_at": 1787247342316
+    },
+    {
+      "id": "audit_1787246981837",
+      "admin_id": "usr_google_joycejumbo",
+      "target_user_id": "usr_f754a710390b17aa",
+      "action": "POINTS_ADJUSTMENT",
+      "reason": "Automated test suite compensation verification",
+      "previous_state": {
+        "points_balance": 0.5
+      },
+      "new_state": {
+        "points_balance": 2.5,
+        "adjustment": 2
+      },
+      "created_at": 1787246981837
+    },
+    {
+      "id": "audit_1787246966056",
+      "admin_id": "usr_google_joycejumbo",
+      "target_user_id": "usr_4dce48307f3c8cbf",
+      "action": "POINTS_ADJUSTMENT",
+      "reason": "Automated test suite compensation verification",
+      "previous_state": {
+        "points_balance": 0
+      },
+      "new_state": {
+        "points_balance": 2,
+        "adjustment": 2
+      },
+      "created_at": 1787246966056
+    },
+    {
+      "id": "audit_1787246952927",
+      "admin_id": "usr_92c3c8f0569faecb",
+      "target_user_id": "usr_92c3c8f0569faecb",
+      "action": "POINTS_ADJUSTMENT",
+      "reason": "Automated test suite compensation verification",
+      "previous_state": {
+        "points_balance": 0
+      },
+      "new_state": {
+        "points_balance": 2,
+        "adjustment": 2
+      },
+      "created_at": 1787246952927
+    },
+    {
+      "id": "audit_1787246022381",
+      "admin_id": "usr_423bd4709450ade0",
+      "target_user_id": "usr_423bd4709450ade0",
+      "action": "POINTS_ADJUSTMENT",
+      "reason": "Automated test suite compensation verification",
+      "previous_state": {
+        "points_balance": 0.5
+      },
+      "new_state": {
+        "points_balance": 2.5,
+        "adjustment": 2
+      },
+      "created_at": 1787246022381
+    },
+    {
+      "id": "audit_1787244636251",
+      "admin_id": "usr_1dffb39c5cee4a88",
+      "target_user_id": "usr_1dffb39c5cee4a88",
+      "action": "POINTS_ADJUSTMENT",
+      "reason": "Automated test suite compensation verification",
+      "previous_state": {
+        "points_balance": 0.5
+      },
+      "new_state": {
+        "points_balance": 2.5,
+        "adjustment": 2
+      },
+      "created_at": 1787244636251
+    },
+    {
+      "id": "audit_1787228848107",
+      "admin_id": "usr_a092c5f589a07c70",
+      "target_user_id": "usr_a092c5f589a07c70",
+      "action": "POINTS_ADJUSTMENT",
+      "reason": "Automated test suite compensation verification",
+      "previous_state": {
+        "points_balance": 0.5
+      },
+      "new_state": {
+        "points_balance": 2.5,
+        "adjustment": 2
+      },
+      "created_at": 1787228848107
+    }
+  ],
+  "analytics_events": [
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787244483515,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787244483519,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "home_loaded",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787244483562,
+      "properties": {
+        "points_balance": 25,
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787244483590,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "home_loaded",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787244483605,
+      "properties": {
+        "points_balance": 25,
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787244483627,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787244675171,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787244675173,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "home_loaded",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787244675495,
+      "properties": {
+        "points_balance": 25,
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787244675513,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "home_loaded",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787244675538,
+      "properties": {
+        "points_balance": 25,
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787244675549,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787245457866,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 782,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "checkin_clicked",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787245462967,
+      "properties": {
+        "current_streak": 8,
+        "session_duration_sec": 787,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "rewarded_ad_requested",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787245462967,
+      "properties": {
+        "session_duration_sec": 787,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "rewarded_ad_started",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787245463035,
+      "properties": {
+        "ad_unit": "ca-app-pub-3940256099942544/5224354917",
+        "session_duration_sec": 787,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "rewarded_ad_completed",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787245509325,
+      "properties": {
+        "duration": 15,
+        "session_duration_sec": 834,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "reward_claim_started",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787245509325,
+      "properties": {
+        "session_duration_sec": 834,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787246538257,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787246538267,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "home_loaded",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787246538431,
+      "properties": {
+        "points_balance": 25.5,
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787246538462,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "home_loaded",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787246538481,
+      "properties": {
+        "points_balance": 25.5,
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787246538505,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787247013349,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787247013354,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "home_loaded",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787247013529,
+      "properties": {
+        "points_balance": 25.5,
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787258059721,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787258059728,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "home_loaded",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787258060138,
+      "properties": {
+        "points_balance": 25.5,
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787258060168,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "home_loaded",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787258060187,
+      "properties": {
+        "points_balance": 25.5,
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787258060203,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787258153021,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787258153029,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "home_loaded",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787258153397,
+      "properties": {
+        "points_balance": 25.5,
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787258153427,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "home_loaded",
+      "userId": "usr_google_joycejumbo",
+      "timestamp": 1787258153445,
+      "properties": {
+        "points_balance": 25.5,
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    },
+    {
+      "eventName": "app_opened",
+      "timestamp": 1787258153462,
+      "properties": {
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+        "session_duration_sec": 0,
+        "platform": "android",
+        "app_version": "1.0.0"
+      }
+    }
+  ],
+  "ad_reward_events": [
+    {
+      "id": "ad_evt_1787259394049_6c503e02",
+      "user_id": "usr_8512ab1656f6993c",
+      "checkin_session_id": "ads_138cccce8f626e0cb0d7750b",
+      "admob_transaction_id": "admob_tx_1787259394046_vst58q",
+      "reward_type": "Milady Point",
+      "reward_amount": 0.5,
+      "custom_data": "ads_138cccce8f626e0cb0d7750b",
+      "verified": true,
+      "consumed": true,
+      "received_at": 1787259394049,
+      "verified_at": 1787259394049,
+      "raw_event_metadata": {
+        "ad_network": "5450213213286189855",
+        "ad_unit": "ca-app-pub-3940256099942544/5224354917",
+        "key_id": "999999",
+        "timestamp": "1787259394046",
+        "signature_verified": true
+      },
+      "consumed_at": 1787259394069
+    },
+    {
+      "id": "ad_evt_1787258116200_249e8295",
+      "user_id": "usr_a743990c12b8587e",
+      "checkin_session_id": "ads_8875d06699f43358e9c4a637",
+      "admob_transaction_id": "admob_tx_1787258116196_ajh5vb",
+      "reward_type": "Milady Point",
+      "reward_amount": 0.5,
+      "custom_data": "ads_8875d06699f43358e9c4a637",
+      "verified": true,
+      "consumed": true,
+      "received_at": 1787258116200,
+      "verified_at": 1787258116200,
+      "raw_event_metadata": {
+        "ad_network": "5450213213286189855",
+        "ad_unit": "ca-app-pub-3940256099942544/5224354917",
+        "key_id": "999999",
+        "timestamp": "1787258116196",
+        "signature_verified": true
+      },
+      "consumed_at": 1787258116224
+    },
+    {
+      "id": "ad_evt_1787258107527_3b4bfa0c",
+      "user_id": "usr_c10c4733319012bc",
+      "checkin_session_id": "ads_498bccd969658029be6ccbcb",
+      "admob_transaction_id": "admob_tx_1787258107524_8jn4zz",
+      "reward_type": "Milady Point",
+      "reward_amount": 0.5,
+      "custom_data": "ads_498bccd969658029be6ccbcb",
+      "verified": true,
+      "consumed": true,
+      "received_at": 1787258107527,
+      "verified_at": 1787258107527,
+      "raw_event_metadata": {
+        "ad_network": "5450213213286189855",
+        "ad_unit": "ca-app-pub-3940256099942544/5224354917",
+        "key_id": "999999",
+        "timestamp": "1787258107524",
+        "signature_verified": true
+      },
+      "consumed_at": 1787258107548
+    },
+    {
+      "id": "ad_evt_1787247342225_7496f399",
+      "user_id": "usr_94015f3823bed90c",
+      "checkin_session_id": "ads_3d1cec8e49963adfeef907af",
+      "admob_transaction_id": "admob_tx_1787247342219_kw2dxt",
+      "reward_type": "Milady Point",
+      "reward_amount": 0.5,
+      "custom_data": "ads_3d1cec8e49963adfeef907af",
+      "verified": true,
+      "consumed": true,
+      "received_at": 1787247342225,
+      "verified_at": 1787247342225,
+      "raw_event_metadata": {
+        "ad_network": "5450213213286189855",
+        "ad_unit": "ca-app-pub-3940256099942544/5224354917",
+        "key_id": "999999",
+        "timestamp": "1787247342219",
+        "signature_verified": true
+      },
+      "consumed_at": 1787247342252
+    },
+    {
+      "id": "ad_evt_1787246981771_aeff4723",
+      "user_id": "usr_f754a710390b17aa",
+      "checkin_session_id": "ads_b75ca6b0a1afa076764bd130",
+      "admob_transaction_id": "admob_tx_1787246981770_flfex8",
+      "reward_type": "Milady Point",
+      "reward_amount": 0.5,
+      "custom_data": "ads_b75ca6b0a1afa076764bd130",
+      "verified": true,
+      "consumed": true,
+      "received_at": 1787246981771,
+      "verified_at": 1787246981771,
+      "raw_event_metadata": {
+        "ad_network": "5450213213286189855",
+        "ad_unit": "ca-app-pub-3940256099942544/5224354917",
+        "key_id": "999999",
+        "timestamp": "1787246981770",
+        "signature_verified": true
+      },
+      "consumed_at": 1787246981795
+    },
+    {
+      "id": "ad_evt_1787246965995_7c0bf7fd",
+      "user_id": "usr_4dce48307f3c8cbf",
+      "checkin_session_id": "undefined",
+      "admob_transaction_id": "admob_tx_1787246965990_p3msc4",
+      "reward_type": "Milady Point",
+      "reward_amount": 0.5,
+      "custom_data": "undefined",
+      "verified": true,
+      "consumed": false,
+      "received_at": 1787246965995,
+      "verified_at": 1787246965995,
+      "raw_event_metadata": {
+        "ad_network": "5450213213286189855",
+        "ad_unit": "ca-app-pub-3940256099942544/5224354917",
+        "key_id": "999999",
+        "timestamp": "1787246965990",
+        "signature_verified": true
+      }
+    }
+  ],
+  "processedIdempotencyKeys": {
+    "idem_usr_a092c5f589a07c70_1787228848052_aebff9b8": {
+      "success": true,
+      "rewardAmount": 0.5,
+      "newBalance": 0.5,
+      "newStreak": 1,
+      "longestStreak": 1,
+      "transactionId": "tx_1787228848058_97f14f0e",
+      "checkinId": "chk_1787228848058_9166cb11",
+      "checkedInAt": 1787228848058,
+      "nextEligibleAt": 1787315248058,
+      "message": "Check-in complete"
+    },
+    "idem_usr_1dffb39c5cee4a88_1787244636201_90210636": {
+      "success": true,
+      "rewardAmount": 0.5,
+      "newBalance": 0.5,
+      "newStreak": 1,
+      "longestStreak": 1,
+      "transactionId": "tx_1787244636207_02a172cb",
+      "checkinId": "chk_1787244636207_6d1cb5d5",
+      "checkedInAt": 1787244636207,
+      "nextEligibleAt": 1787331036207,
+      "message": "Check-in complete"
+    },
+    "idem_usr_google_joycejumbo_1787245462565_9536697f": {
+      "success": true,
+      "rewardAmount": 0.5,
+      "newBalance": 25.5,
+      "newStreak": 1,
+      "longestStreak": 12,
+      "transactionId": "tx_1787245508912_7ceb12dc",
+      "checkinId": "chk_1787245508913_0f04a53a",
+      "checkedInAt": 1787245508912,
+      "nextEligibleAt": 1787331908912,
+      "message": "Check-in complete"
+    },
+    "idem_usr_423bd4709450ade0_1787246022315_79f46c5d": {
+      "success": true,
+      "rewardAmount": 0.5,
+      "newBalance": 0.5,
+      "newStreak": 1,
+      "longestStreak": 1,
+      "transactionId": "tx_1787246022322_c5341118",
+      "checkinId": "chk_1787246022322_0f9d0834",
+      "checkedInAt": 1787246022322,
+      "nextEligibleAt": 1787332422322,
+      "message": "Check-in complete"
+    },
+    "idem_usr_f754a710390b17aa_1787246981764_67c0a130": {
+      "success": true,
+      "rewardAmount": 0.5,
+      "newBalance": 0.5,
+      "newStreak": 1,
+      "longestStreak": 1,
+      "transactionId": "tx_1787246981795_5d0cce94",
+      "checkinId": "chk_1787246981796_f903d592",
+      "admobTransactionId": "admob_tx_1787246981770_flfex8",
+      "checkedInAt": 1787246981795,
+      "nextEligibleAt": 1787333381795,
+      "message": "Check-in complete"
+    },
+    "idem_usr_94015f3823bed90c_1787247342211_8df1be75": {
+      "success": true,
+      "rewardAmount": 0.5,
+      "newBalance": 0.5,
+      "newStreak": 1,
+      "longestStreak": 1,
+      "transactionId": "tx_1787247342252_e9f1d286",
+      "checkinId": "chk_1787247342252_9910290a",
+      "admobTransactionId": "admob_tx_1787247342219_kw2dxt",
+      "checkedInAt": 1787247342252,
+      "nextEligibleAt": 1787333742252,
+      "message": "Check-in complete"
+    },
+    "idem_usr_c10c4733319012bc_1787258107513_536955aa": {
+      "success": true,
+      "rewardAmount": 0.5,
+      "newBalance": 0.5,
+      "newStreak": 1,
+      "longestStreak": 1,
+      "transactionId": "tx_1787258107548_f4cc7818",
+      "checkinId": "chk_1787258107548_5945acbe",
+      "admobTransactionId": "admob_tx_1787258107524_8jn4zz",
+      "checkedInAt": 1787258107548,
+      "nextEligibleAt": 1787344507548,
+      "message": "Check-in complete"
+    },
+    "idem_usr_a743990c12b8587e_1787258116179_51b94b98": {
+      "success": true,
+      "rewardAmount": 0.5,
+      "newBalance": 0.5,
+      "newStreak": 1,
+      "longestStreak": 1,
+      "transactionId": "tx_1787258116224_536fb2f6",
+      "checkinId": "chk_1787258116224_7541419d",
+      "admobTransactionId": "admob_tx_1787258116196_ajh5vb",
+      "checkedInAt": 1787258116224,
+      "nextEligibleAt": 1787344516224,
+      "message": "Check-in complete"
+    },
+    "idem_usr_8512ab1656f6993c_1787259394034_4dbf97f3": {
+      "success": true,
+      "rewardAmount": 0.5,
+      "newBalance": 0.5,
+      "newStreak": 1,
+      "longestStreak": 1,
+      "transactionId": "tx_1787259394070_dedf6597",
+      "checkinId": "chk_1787259394070_6fe6cf41",
+      "admobTransactionId": "admob_tx_1787259394046_vst58q",
+      "checkedInAt": 1787259394069,
+      "nextEligibleAt": 1787345794069,
+      "message": "Check-in complete"
+    }
+  }
+}

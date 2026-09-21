@@ -1,0 +1,31 @@
+{
+  "name": "@33milady/solana",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build:program": "anchor build",
+    "test": "tsx tests/math.spec.ts && tsx tests/data-client.spec.ts && tsx tests/transactions.spec.ts",
+    "lint": "tsc --noEmit",
+    "keys:sync": "anchor keys sync",
+    "deploy:devnet": "anchor deploy --provider.cluster devnet",
+    "beta:keeper": "tsx scripts/beta-keeper.ts",
+    "beta:init": "tsx scripts/beta-keeper.ts init",
+    "beta:tick": "tsx scripts/beta-keeper.ts tick",
+    "marketlint:init": "tsx scripts/marketlint-init.ts",
+    "security:fuzz": "tsx tests/security-fuzz.spec.ts",
+    "launch:readiness": "tsx scripts/launch-readiness.ts",
+    "e2e:devnet": "tsx scripts/devnet-e2e.ts"
+  },
+  "dependencies": {
+    "@anchor-lang/core": "1.2.0",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
+    "@pythnetwork/hermes-client": "3.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2"
+  }
+}
