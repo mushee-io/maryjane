@@ -68,6 +68,10 @@ jobs:
         working-directory: .
         run: npm run test:external-feed
 
+      - name: MarketLint function smoke
+        working-directory: .
+        run: npm run test:marketlint-function
+
       - name: Security invariant fuzz
         run: npm run security:fuzz
 

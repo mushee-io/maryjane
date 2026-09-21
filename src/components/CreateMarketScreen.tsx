@@ -94,7 +94,7 @@ export function CreateMarketScreen() {
 
     setBusy("analyze"); setError(""); setNotice("");
     try {
-      const response = await fetch("/api/v1/marketlint/analyze", {
+      const response = await fetch("/api/marketlint-analyze", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify(input()),

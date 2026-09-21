@@ -10,10 +10,6 @@
   },
   "routes": [
     {
-      "src": "/api/v1/marketlint/analyze",
-      "dest": "/api/marketlint-analyze"
-    },
-    {
       "src": "/api/(?<path>.*)",
       "dest": "/api/index?path=$path"
     },
