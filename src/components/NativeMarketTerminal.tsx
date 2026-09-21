@@ -220,6 +220,27 @@ export default function NativeMarketTerminal({
     }
   };
 
+  const cancelOrder = async (order: BookOrder) => {
+    if (!wallet) { await onConnect(); return; }
+    setBusy(true);
+    setNotice("");
+    try {
+      const response = await fetch("/api/order-cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet, order: order.order }),
+      });
+      const data = await jsonOrThrow(response);
+      const signature = await signBuiltTransaction(data.transactionBase64);
+      setNotice(`Cancelled · ${short(signature)}`);
+      window.setTimeout(() => void load(), 1400);
+    } catch (err: any) {
+      setNotice(err?.message || "Unable to cancel order");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const takeOrder = async (order: BookOrder) => {
     if (!wallet) { await onConnect(); return; }
     setBusy(true);
@@ -309,9 +330,9 @@ export default function NativeMarketTerminal({
                 <div>
                   <div className="mb-2 flex justify-between text-[10px] uppercase tracking-wider text-white/25"><span>Bids</span><span>Shares</span></div>
                   {(book?.bids || []).slice(0, 10).map((order) => (
-                    <button key={order.order} onClick={() => void takeOrder(order)} className="mb-1 flex w-full justify-between rounded-lg bg-emerald-400/[.06] px-3 py-2 text-xs hover:bg-emerald-400/[.12]">
+                    <button key={order.order} onClick={() => void (wallet && order.maker === wallet ? cancelOrder(order) : takeOrder(order))} className="mb-1 flex w-full justify-between rounded-lg bg-emerald-400/[.06] px-3 py-2 text-xs hover:bg-emerald-400/[.12]">
                       <span className="text-emerald-300">{(order.priceBps / 100).toFixed(2)}¢</span>
-                      <span className="text-white/38">{(Number(order.remainingShares) / 1e6).toFixed(2)}</span>
+                      <span className="flex items-center gap-2 text-white/38"><span>{(Number(order.remainingShares) / 1e6).toFixed(2)}</span>{wallet && order.maker === wallet && <span className="rounded bg-white/[.08] px-1.5 py-0.5 text-[9px] text-white/55">CANCEL</span>}</span>
                     </button>
                   ))}
                   {!book?.bids.length && <div className="py-8 text-center text-xs text-white/22">No bids</div>}
@@ -319,9 +340,9 @@ export default function NativeMarketTerminal({
                 <div>
                   <div className="mb-2 flex justify-between text-[10px] uppercase tracking-wider text-white/25"><span>Asks</span><span>Shares</span></div>
                   {(book?.asks || []).slice(0, 10).map((order) => (
-                    <button key={order.order} onClick={() => void takeOrder(order)} className="mb-1 flex w-full justify-between rounded-lg bg-rose-400/[.06] px-3 py-2 text-xs hover:bg-rose-400/[.12]">
+                    <button key={order.order} onClick={() => void (wallet && order.maker === wallet ? cancelOrder(order) : takeOrder(order))} className="mb-1 flex w-full justify-between rounded-lg bg-rose-400/[.06] px-3 py-2 text-xs hover:bg-rose-400/[.12]">
                       <span className="text-rose-300">{(order.priceBps / 100).toFixed(2)}¢</span>
-                      <span className="text-white/38">{(Number(order.remainingShares) / 1e6).toFixed(2)}</span>
+                      <span className="flex items-center gap-2 text-white/38"><span>{(Number(order.remainingShares) / 1e6).toFixed(2)}</span>{wallet && order.maker === wallet && <span className="rounded bg-white/[.08] px-1.5 py-0.5 text-[9px] text-white/55">CANCEL</span>}</span>
                     </button>
                   ))}
                   {!book?.asks.length && <div className="py-8 text-center text-xs text-white/22">No asks</div>}

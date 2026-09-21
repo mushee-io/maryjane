@@ -27,9 +27,16 @@
     },
     "api/market-book.ts": {
       "maxDuration": 30
+    },
+    "api/order-cancel.ts": {
+      "maxDuration": 30
     }
   },
   "routes": [
+    {
+      "src": "/api/order-cancel",
+      "dest": "/api/order-cancel"
+    },
     {
       "src": "/api/native-market-state",
       "dest": "/api/native-market-state"
