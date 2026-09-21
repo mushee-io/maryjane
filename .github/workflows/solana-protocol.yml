@@ -1,4 +1,4 @@
-name: Solana Prediction Protocol
+name: Mary Jane Solana Protocol
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ on:
       - ".github/workflows/solana-protocol.yml"
   push:
     branches:
-      - "build/prediction-m1-m3"
+      - "main"
     paths:
       - "solana/**"
       - "src/**"
