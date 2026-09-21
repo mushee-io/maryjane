@@ -528,12 +528,12 @@ pub struct ProposeResolution<'info> {
     #[account(mut)]
     pub proposer: Signer<'info>,
     #[account(seeds = [b"config"], bump = protocol_config.bump)]
-    pub protocol_config: Account<'info, ProtocolConfig>,
+    pub protocol_config: Box<Account<'info, ProtocolConfig>>,
     #[account(
         seeds = [b"resolution-config"],
         bump = resolution_config.bump
     )]
-    pub resolution_config: Account<'info, ResolutionConfig>,
+    pub resolution_config: Box<Account<'info, ResolutionConfig>>,
     #[account(
         mut,
         seeds = [
@@ -544,15 +544,15 @@ pub struct ProposeResolution<'info> {
         bump = market.bump,
         has_one = collateral_mint
     )]
-    pub market: Account<'info, Market>,
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
+    pub market: Box<Account<'info, Market>>,
+    pub collateral_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         token::mint = collateral_mint,
         token::authority = proposer,
         token::token_program = token_program
     )]
-    pub proposer_collateral: InterfaceAccount<'info, TokenAccount>,
+    pub proposer_collateral: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         init,
         payer = proposer,
@@ -560,7 +560,7 @@ pub struct ProposeResolution<'info> {
         seeds = [b"resolution", market.key().as_ref()],
         bump
     )]
-    pub resolution_state: Account<'info, ResolutionState>,
+    pub resolution_state: Box<Account<'info, ResolutionState>>,
     #[account(
         init,
         payer = proposer,
@@ -570,7 +570,7 @@ pub struct ProposeResolution<'info> {
         seeds = [b"resolution-bond", market.key().as_ref()],
         bump
     )]
-    pub bond_vault: InterfaceAccount<'info, TokenAccount>,
+    pub bond_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
@@ -580,12 +580,12 @@ pub struct DisputeResolution<'info> {
     #[account(mut)]
     pub challenger: Signer<'info>,
     #[account(seeds = [b"config"], bump = protocol_config.bump)]
-    pub protocol_config: Account<'info, ProtocolConfig>,
+    pub protocol_config: Box<Account<'info, ProtocolConfig>>,
     #[account(
         seeds = [b"resolution-config"],
         bump = resolution_config.bump
     )]
-    pub resolution_config: Account<'info, ResolutionConfig>,
+    pub resolution_config: Box<Account<'info, ResolutionConfig>>,
     #[account(
         mut,
         seeds = [
@@ -596,7 +596,7 @@ pub struct DisputeResolution<'info> {
         bump = market.bump,
         has_one = collateral_mint
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
     #[account(
         mut,
         seeds = [b"resolution", market.key().as_ref()],
@@ -604,15 +604,15 @@ pub struct DisputeResolution<'info> {
         has_one = market,
         has_one = bond_vault
     )]
-    pub resolution_state: Account<'info, ResolutionState>,
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
+    pub resolution_state: Box<Account<'info, ResolutionState>>,
+    pub collateral_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         token::mint = collateral_mint,
         token::authority = challenger,
         token::token_program = token_program
     )]
-    pub challenger_collateral: InterfaceAccount<'info, TokenAccount>,
+    pub challenger_collateral: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         address = resolution_state.bond_vault,
@@ -620,7 +620,7 @@ pub struct DisputeResolution<'info> {
         token::authority = resolution_state,
         token::token_program = token_program
     )]
-    pub bond_vault: InterfaceAccount<'info, TokenAccount>,
+    pub bond_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     pub token_program: Interface<'info, TokenInterface>,
 }
 
@@ -628,7 +628,7 @@ pub struct DisputeResolution<'info> {
 pub struct FinalizeUncontested<'info> {
     pub caller: Signer<'info>,
     #[account(seeds = [b"config"], bump = protocol_config.bump)]
-    pub protocol_config: Account<'info, ProtocolConfig>,
+    pub protocol_config: Box<Account<'info, ProtocolConfig>>,
     #[account(
         mut,
         seeds = [
@@ -639,7 +639,7 @@ pub struct FinalizeUncontested<'info> {
         bump = market.bump,
         has_one = collateral_mint
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
     #[account(
         mut,
         seeds = [b"resolution", market.key().as_ref()],
@@ -647,18 +647,18 @@ pub struct FinalizeUncontested<'info> {
         has_one = market,
         has_one = bond_vault
     )]
-    pub resolution_state: Account<'info, ResolutionState>,
+    pub resolution_state: Box<Account<'info, ResolutionState>>,
     /// CHECK: constrained to proposer stored in state.
     #[account(address = resolution_state.proposer)]
     pub proposer: UncheckedAccount<'info>,
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
+    pub collateral_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         token::mint = collateral_mint,
         token::authority = proposer,
         token::token_program = token_program
     )]
-    pub proposer_collateral: InterfaceAccount<'info, TokenAccount>,
+    pub proposer_collateral: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         address = resolution_state.bond_vault,
@@ -666,7 +666,7 @@ pub struct FinalizeUncontested<'info> {
         token::authority = resolution_state,
         token::token_program = token_program
     )]
-    pub bond_vault: InterfaceAccount<'info, TokenAccount>,
+    pub bond_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     pub token_program: Interface<'info, TokenInterface>,
 }
 
@@ -674,7 +674,7 @@ pub struct FinalizeUncontested<'info> {
 pub struct CancelStalledDispute<'info> {
     pub caller: Signer<'info>,
     #[account(seeds = [b"config"], bump = protocol_config.bump)]
-    pub protocol_config: Account<'info, ProtocolConfig>,
+    pub protocol_config: Box<Account<'info, ProtocolConfig>>,
     #[account(
         mut,
         seeds = [
@@ -685,7 +685,7 @@ pub struct CancelStalledDispute<'info> {
         bump = market.bump,
         has_one = collateral_mint
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
     #[account(
         mut,
         seeds = [b"resolution", market.key().as_ref()],
@@ -693,28 +693,28 @@ pub struct CancelStalledDispute<'info> {
         has_one = market,
         has_one = bond_vault
     )]
-    pub resolution_state: Account<'info, ResolutionState>,
+    pub resolution_state: Box<Account<'info, ResolutionState>>,
     /// CHECK: constrained to state.
     #[account(address = resolution_state.proposer)]
     pub proposer: UncheckedAccount<'info>,
     /// CHECK: constrained to state.
     #[account(address = resolution_state.challenger)]
     pub challenger: UncheckedAccount<'info>,
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
+    pub collateral_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         token::mint = collateral_mint,
         token::authority = proposer,
         token::token_program = token_program
     )]
-    pub proposer_collateral: InterfaceAccount<'info, TokenAccount>,
+    pub proposer_collateral: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         token::mint = collateral_mint,
         token::authority = challenger,
         token::token_program = token_program
     )]
-    pub challenger_collateral: InterfaceAccount<'info, TokenAccount>,
+    pub challenger_collateral: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         address = resolution_state.bond_vault,
@@ -722,7 +722,7 @@ pub struct CancelStalledDispute<'info> {
         token::authority = resolution_state,
         token::token_program = token_program
     )]
-    pub bond_vault: InterfaceAccount<'info, TokenAccount>,
+    pub bond_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     pub token_program: Interface<'info, TokenInterface>,
 }
 
@@ -734,9 +734,9 @@ pub struct ResolveDispute<'info> {
         bump = resolution_config.bump,
         has_one = authority @ MiladyError::Unauthorized
     )]
-    pub resolution_config: Account<'info, ResolutionConfig>,
+    pub resolution_config: Box<Account<'info, ResolutionConfig>>,
     #[account(seeds = [b"config"], bump = protocol_config.bump)]
-    pub protocol_config: Account<'info, ProtocolConfig>,
+    pub protocol_config: Box<Account<'info, ProtocolConfig>>,
     #[account(
         mut,
         seeds = [
@@ -747,7 +747,7 @@ pub struct ResolveDispute<'info> {
         bump = market.bump,
         has_one = collateral_mint
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
     #[account(
         mut,
         seeds = [b"resolution", market.key().as_ref()],
@@ -755,28 +755,28 @@ pub struct ResolveDispute<'info> {
         has_one = market,
         has_one = bond_vault
     )]
-    pub resolution_state: Account<'info, ResolutionState>,
+    pub resolution_state: Box<Account<'info, ResolutionState>>,
     /// CHECK: constrained to state.
     #[account(address = resolution_state.proposer)]
     pub proposer: UncheckedAccount<'info>,
     /// CHECK: constrained to state.
     #[account(address = resolution_state.challenger)]
     pub challenger: UncheckedAccount<'info>,
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
+    pub collateral_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         token::mint = collateral_mint,
         token::authority = proposer,
         token::token_program = token_program
     )]
-    pub proposer_collateral: InterfaceAccount<'info, TokenAccount>,
+    pub proposer_collateral: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         token::mint = collateral_mint,
         token::authority = challenger,
         token::token_program = token_program
     )]
-    pub challenger_collateral: InterfaceAccount<'info, TokenAccount>,
+    pub challenger_collateral: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         address = resolution_state.bond_vault,
@@ -784,7 +784,7 @@ pub struct ResolveDispute<'info> {
         token::authority = resolution_state,
         token::token_program = token_program
     )]
-    pub bond_vault: InterfaceAccount<'info, TokenAccount>,
+    pub bond_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     pub token_program: Interface<'info, TokenInterface>,
 }
 
