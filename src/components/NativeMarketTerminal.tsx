@@ -187,7 +187,7 @@ export default function NativeMarketTerminal({
   ], [state]);
 
   const placeOrder = async () => {
-    if (!market.nativeMarketSeed) return;
+    if (!market.nativeAddress) return;
     if (!wallet) { await onConnect(); return; }
     const px = Number(price);
     const qty = Number(shares);
@@ -202,7 +202,7 @@ export default function NativeMarketTerminal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           wallet,
-          marketSeed: market.nativeMarketSeed,
+          market: market.nativeAddress,
           side,
           kind,
           priceBps: Math.round(px * 100),
