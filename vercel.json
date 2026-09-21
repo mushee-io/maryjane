@@ -1,11 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "api/[...path].ts": {
+    "api/index.ts": {
       "maxDuration": 60
     }
   },
   "routes": [
+    {
+      "src": "/api/(?<path>.*)",
+      "dest": "/api/index?path=$path"
+    },
     {
       "handle": "filesystem"
     },
