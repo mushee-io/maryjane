@@ -1,212 +1,213 @@
 import { createHash } from "node:crypto";
-import { fetchExternalMarkets, type DiscoveryMarket } from "../src/lib/marketAggregation";
 
-const PROGRAM_ID_STRING = "HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL";
-const RPC_URL = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
-const MARKET_SIZE = 420;
-const KNOWN_MARKETS = ["B76aB9GWZPtFqwuyTPjB33Gys1UgCQXw27mdyPKEMyeF"];
+const PROGRAM_ID="HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL";
+const RPC_URL=process.env.SOLANA_RPC_URL||"https://api.devnet.solana.com";
+const MARKET_SIZE=420;
+const KNOWN=["B76aB9GWZPtFqwuyTPjB33Gys1UgCQXw27mdyPKEMyeF"];
+const DISC=createHash("sha256").update("account:Market").digest().subarray(0,8);
 
-const LEGACY_METADATA: Record<string, {
-  question: string;
-  description?: string;
-  category: "Crypto" | "Sports" | "Tech" | "World" | "Other";
-  source?: string;
-  deadline?: string;
-}> = {
-  "B76aB9GWZPtFqwuyTPjB33Gys1UgCQXw27mdyPKEMyeF": {
-    question: "Will SOL/USD be above $250 at 12:00 UTC on 30 September 2026?",
-    description: "YES if the Pyth SOL/USD price is at or above $250.00 at the stated resolution time. NO if it is below $250.00. Use the published Pyth price observation closest to the resolution time.",
-    category: "Crypto",
-    source: "Pyth Oracle · SOL/USD · target 250",
-    deadline: "30 September 2026, 12:00 UTC",
+const META:Record<string,any>={
+  "B76aB9GWZPtFqwuyTPjB33Gys1UgCQXw27mdyPKEMyeF":{
+    question:"Will SOL/USD be above $250 at 12:00 UTC on 30 September 2026?",
+    description:"YES if the Pyth SOL/USD price is at or above $250.00 at the stated resolution time. NO if it is below $250.00. Use the published Pyth price observation closest to the resolution time.",
+    category:"Crypto",
+    source:"Pyth Oracle · SOL/USD · target 250",
+    createdAt:"2026-09-21T17:09:00.000Z",
   },
 };
 
-function disc(namespace: "account" | "event", name: string) {
-  return createHash("sha256").update(`${namespace}:${name}`).digest().subarray(0,8);
+async function jsonFetch(url:string,init:RequestInit={},timeout=7000){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeout);
+  try{
+    const r=await fetch(url,{...init,signal:controller.signal,cache:"no-store"});
+    if(!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    return await r.json();
+  }finally{clearTimeout(timer);}
 }
-const MARKET_DISC=disc("account","Market");
-const MARKET_CREATED_DISC=disc("event","MarketCreated");
 
-function readPubkey(PublicKey:any, raw:Buffer, offset:number) {
-  return new PublicKey(raw.subarray(offset,offset+32)).toBase58();
+async function rpc(method:string,params:any[]){
+  const body=await jsonFetch(RPC_URL,{
+    method:"POST",
+    headers:{"content-type":"application/json"},
+    body:JSON.stringify({jsonrpc:"2.0",id:1,method,params}),
+  },7000);
+  if(body?.error) throw new Error(body.error.message||JSON.stringify(body.error));
+  return body?.result;
 }
-function readI64(raw:Buffer, offset:number) { return Number(raw.readBigInt64LE(offset)); }
-function readU64(raw:Buffer, offset:number) { return raw.readBigUInt64LE(offset); }
 
-function decodeMarket(PublicKey:any,address:string,data:Buffer) {
-  if(data.length!==MARKET_SIZE || !data.subarray(0,8).equals(MARKET_DISC)) return null;
-  return {
+function dataBuffer(account:any){
+  const value=account?.data;
+  const base64=Array.isArray(value)?value[0]:typeof value==="string"?value:"";
+  return base64?Buffer.from(base64,"base64"):Buffer.alloc(0);
+}
+function i64(raw:Buffer,o:number){return Number(raw.readBigInt64LE(o));}
+function u64(raw:Buffer,o:number){return raw.readBigUInt64LE(o);}
+function statusName(i:number){return["OPEN","CLOSED","RESOLUTION_PENDING","DISPUTED","RESOLVED_YES","RESOLVED_NO","CANCELLED"][i]||"OPEN";}
+
+function decode(address:string,account:any){
+  const raw=dataBuffer(account);
+  if(raw.length!==MARKET_SIZE||!raw.subarray(0,8).equals(DISC)) return null;
+  return{
     address,
-    authority:readPubkey(PublicKey,data,8),
-    marketSeed:data.subarray(104,136).toString("hex"),
-    closeTs:readI64(data,200),
-    resolutionTs:readI64(data,208),
-    statusIndex:data.readUInt8(216),
-    yesReserve:readU64(data,379),
-    noReserve:readU64(data,387),
-    volume:readU64(data,403),
+    marketSeed:raw.subarray(104,136).toString("hex"),
+    closeTs:i64(raw,200),
+    resolutionTs:i64(raw,208),
+    status:statusName(raw.readUInt8(216)),
+    yesReserve:u64(raw,379),
+    noReserve:u64(raw,387),
+    volume:u64(raw,403),
   };
 }
-function statusName(index:number) {
-  return ["OPEN","CLOSED","RESOLUTION_PENDING","DISPUTED","RESOLVED_YES","RESOLVED_NO","CANCELLED"][index] || "OPEN";
-}
-function categoryFromText(value:string) {
-  const t=value.toLowerCase();
-  if(/crypto|bitcoin|btc|ethereum|eth|solana|sol\b|token|defi|blockchain/.test(t)) return "Crypto";
-  if(/sport|football|soccer|nba|nfl|mlb|nhl|tennis|f1|ufc|cricket/.test(t)) return "Sports";
-  if(/tech|ai\b|artificial intelligence|apple|google|microsoft|openai|nvidia|software/.test(t)) return "Tech";
-  if(/world|politic|election|government|war|country|president|minister|geopolit/.test(t)) return "World";
-  return "Other";
-}
-function marketCreatedFromLogs(PublicKey:any,logs:string[]) {
-  const out:string[]=[];
-  for(const line of logs||[]) {
-    const marker="Program data: ";
-    const i=line.indexOf(marker);
-    if(i<0) continue;
-    try {
-      const payload=Buffer.from(line.slice(i+marker.length).trim(),"base64");
-      if(payload.length>=40 && payload.subarray(0,8).equals(MARKET_CREATED_DISC)) {
-        out.push(new PublicKey(payload.subarray(8,40)).toBase58());
-      }
-    } catch {}
-  }
-  return out;
-}
-function metadataMemo(logs:string[],created:string[]) {
-  const out=new Map<string,any>();
-  for(const line of logs||[]) {
-    if(!line.includes("Program log: Memo (len ")) continue;
-    const i=line.indexOf("): ");
-    if(i<0) continue;
-    try {
-      const memoText=JSON.parse(line.slice(i+3).trim());
-      const payload=JSON.parse(memoText);
-      if(payload?.t!=="maryjane-market" || payload?.v!==1) continue;
-      const market=String(payload.m||created[0]||"");
-      if(market) out.set(market,payload);
-    } catch {}
-  }
-  return out;
-}
 
-async function discoverNative(limit:number) {
-  const web3=await import("@solana/web3.js");
-  const {Connection,PublicKey}=web3;
-  const connection=new Connection(RPC_URL,"confirmed");
-  const programId=new PublicKey(PROGRAM_ID_STRING);
-  const addresses=new Set<string>(KNOWN_MARKETS);
+async function nativeMarkets(limit:number){
   const errors:string[]=[];
+  const addresses=new Set<string>(KNOWN);
 
-  // Discover additional markets, but never let a slow RPC block the known
-  // onchain markets from appearing.
-  try {
-    const gpa:any = await Promise.race([
-      connection.getProgramAccounts(programId,{
-        commitment:"confirmed",
-        filters:[{dataSize:MARKET_SIZE}],
-      }),
-      new Promise((_,reject)=>setTimeout(()=>reject(new Error("getProgramAccounts timeout")),5_000)),
-    ]);
-    for(const row of gpa || []) {
-      const raw=Buffer.from(row.account.data);
-      if(raw.subarray(0,8).equals(MARKET_DISC)) addresses.add(row.pubkey.toBase58());
+  try{
+    const rows:any[]=await rpc("getProgramAccounts",[
+      PROGRAM_ID,
+      {commitment:"confirmed",encoding:"base64",filters:[{dataSize:MARKET_SIZE}]},
+    ])||[];
+    for(const row of rows){
+      const raw=dataBuffer(row.account);
+      if(raw.length===MARKET_SIZE&&raw.subarray(0,8).equals(DISC)) addresses.add(String(row.pubkey));
     }
-  } catch(error:any) {
-    errors.push(`getProgramAccounts:${error?.message||String(error)}`);
+  }catch(e:any){errors.push(`getProgramAccounts:${e?.message||e}`);}
+
+  const items:any[]=[];
+  for(const address of [...addresses].slice(0,Math.max(limit,10))){
+    try{
+      const result=await rpc("getAccountInfo",[address,{commitment:"confirmed",encoding:"base64"}]);
+      if(!result?.value) continue;
+      const m=decode(address,result.value);
+      if(!m){errors.push(`decode:${address}`);continue;}
+      const meta=META[address]||{};
+      const total=m.yesReserve+m.noReserve;
+      const yes=total===0n?0.5:Number(m.noReserve*10000n/total)/10000;
+      items.push({
+        id:`maryjane:${address}`,
+        source:"maryjane",
+        sourceMarketId:address,
+        title:meta.question||`Mary Jane market ${address.slice(0,8)}…`,
+        description:meta.description,
+        category:meta.category||"Other",
+        outcomes:[{id:"yes",label:"YES",probability:yes},{id:"no",label:"NO",probability:1-yes}],
+        volume24h:0,
+        volumeTotal:Number(m.volume)/1_000_000,
+        traders:0,
+        tradeCount:0,
+        createdAt:meta.createdAt,
+        closesAt:new Date(m.closeTs*1000).toISOString(),
+        resolved:m.status.startsWith("RESOLVED")||m.status==="CANCELLED",
+        nativeAddress:address,
+        nativeMarketSeed:m.marketSeed,
+        status:m.status,
+        probabilitySource:"pool-reference",
+      });
+    }catch(e:any){errors.push(`account:${address}:${e?.message||e}`);}
   }
-
-  const selected=[...addresses].slice(0,Math.max(limit,10));
-  const infos=await Promise.all(selected.map(async(address)=>{
-    try {
-      const info:any = await Promise.race([
-        connection.getAccountInfo(new PublicKey(address),"confirmed"),
-        new Promise((_,reject)=>setTimeout(()=>reject(new Error("getAccountInfo timeout")),5_000)),
-      ]);
-      return {address,info};
-    } catch(error:any) {
-      errors.push(`account:${address}:${error?.message||String(error)}`);
-      return {address,info:null};
-    }
-  }));
-
-  const items:DiscoveryMarket[]=[];
-  for(const {address,info} of infos) {
-    if(!info) continue;
-    const decoded=decodeMarket(PublicKey,address,Buffer.from(info.data));
-    if(!decoded) {
-      errors.push(`decode:${address}:not-a-Market-account(len=${Buffer.from(info.data).length})`);
-      continue;
-    }
-
-    const legacy=LEGACY_METADATA[address];
-    const title=legacy?.question||`Mary Jane market ${address.slice(0,8)}…`;
-    const category=(legacy?.category||categoryFromText(title)) as any;
-    const total=decoded.yesReserve+decoded.noReserve;
-    const yes=total===0n?0.5:Number(decoded.noReserve*10000n/total)/10000;
-    const status=statusName(decoded.statusIndex);
-
-    items.push({
-      id:`maryjane:${address}`,
-      source:"maryjane",
-      sourceMarketId:address,
-      title,
-      description:legacy?.description,
-      category,
-      outcomes:[
-        {id:"yes",label:"YES",probability:yes},
-        {id:"no",label:"NO",probability:1-yes},
-      ],
-      volume24h:0,
-      volumeTotal:Number(decoded.volume)/1_000_000,
-      traders:0,
-      tradeCount:0,
-      createdAt:address==="B76aB9GWZPtFqwuyTPjB33Gys1UgCQXw27mdyPKEMyeF"
-        ? "2026-09-21T17:09:00.000Z"
-        : undefined,
-      closesAt:new Date(decoded.closeTs*1000).toISOString(),
-      resolved:status.startsWith("RESOLVED")||status==="CANCELLED",
-      nativeAddress:address,
-      nativeMarketSeed:decoded.marketSeed,
-      status,
-      probabilitySource:"pool-reference",
-    });
-  }
-  return {items,errors};
+  return{items,errors};
 }
 
-export default async function handler(req:any,res:any) {
+function prob(v:any){
+  const n=Number(v);
+  if(!Number.isFinite(n)) return undefined;
+  return Math.max(0,Math.min(1,n>1?n/100:n));
+}
+function arr(v:any){
+  if(Array.isArray(v)) return v;
+  if(typeof v!=="string") return[];
+  try{const x=JSON.parse(v);return Array.isArray(x)?x:[];}catch{return[];}
+}
+function category(text:string){
+  const t=text.toLowerCase();
+  if(/crypto|bitcoin|btc|ethereum|eth|solana|\bsol\b|token|defi/.test(t))return"Crypto";
+  if(/sport|football|soccer|nba|nfl|tennis|ufc|cricket/.test(t))return"Sports";
+  if(/tech|\bai\b|openai|nvidia|apple|google|microsoft|software/.test(t))return"Tech";
+  if(/politic|election|government|president|minister|war|geopolit|world/.test(t))return"World";
+  return"Other";
+}
+
+async function externalMarkets(limit:number){
+  const errors:string[]=[];
+  const items:any[]=[];
+
+  try{
+    const events:any=await jsonFetch(
+      `https://gamma-api.polymarket.com/events?active=true&closed=false&order=volume_24hr&ascending=false&limit=${Math.min(50,Math.max(15,limit))}`,
+      {},7000
+    );
+    for(const event of Array.isArray(events)?events:[]){
+      for(const m of Array.isArray(event?.markets)?event.markets:[]){
+        const labels=arr(m.outcomes).map(String);
+        const prices=arr(m.outcomePrices);
+        const yi=labels.findIndex(x=>x.toLowerCase()==="yes");
+        const ni=labels.findIndex(x=>x.toLowerCase()==="no");
+        const yes=prob(prices[yi>=0?yi:0])??0.5;
+        const no=prob(prices[ni>=0?ni:1])??(1-yes);
+        const id=String(m.id||m.conditionId||m.slug||m.question);
+        if(!m.question||m.closed)continue;
+        items.push({
+          id:`polymarket:${id}`,source:"polymarket",sourceMarketId:id,title:String(m.question),
+          description:String(m.description||event.description||"")||undefined,
+          category:category(`${event.title||""} ${m.question}`),
+          outcomes:[{id:"yes",label:"YES",probability:yes},{id:"no",label:"NO",probability:no}],
+          volume24h:Number(m.volume24hr||0),volumeTotal:Number(m.volumeNum||m.volume||0),
+          createdAt:m.createdAt||event.startDate,closesAt:m.endDate,resolved:false,
+          externalUrl:event.slug?`https://polymarket.com/event/${event.slug}`:"https://polymarket.com",
+          probabilitySource:"external",
+        });
+      }
+    }
+  }catch(e:any){errors.push(`polymarket:${e?.message||e}`);}
+
+  try{
+    const rows:any=await jsonFetch(
+      `https://api.manifold.markets/v0/search-markets?term=&sort=24-hour-vol&filter=open&contractType=BINARY&limit=${Math.min(50,Math.max(15,limit))}`,
+      {},7000
+    );
+    for(const m of Array.isArray(rows)?rows:[]){
+      const yes=prob(m.probability);
+      if(!m.question||yes===undefined||m.isResolved)continue;
+      const id=String(m.id||m.slug||m.question);
+      items.push({
+        id:`manifold:${id}`,source:"manifold",sourceMarketId:id,title:String(m.question),
+        description:String(m.textDescription||"")||undefined,category:category(String(m.question)),
+        outcomes:[{id:"yes",label:"YES",probability:yes},{id:"no",label:"NO",probability:1-yes}],
+        volume24h:Number(m.volume24Hours||0),volumeTotal:Number(m.volume||0),
+        traders:Number(m.uniqueBettorCount||0),
+        createdAt:m.createdTime?new Date(Number(m.createdTime)).toISOString():undefined,
+        closesAt:m.closeTime?new Date(Number(m.closeTime)).toISOString():undefined,
+        resolved:false,externalUrl:m.url||"https://manifold.markets",probabilitySource:"external",
+      });
+    }
+  }catch(e:any){errors.push(`manifold:${e?.message||e}`);}
+
+  return{items,errors};
+}
+
+export default async function handler(req:any,res:any){
   res.setHeader("Content-Type","application/json; charset=utf-8");
   res.setHeader("Cache-Control","s-maxage=5, stale-while-revalidate=15");
-  if(req.method!=="GET") return res.status(405).json({error:"Method not allowed"});
-  const limit=Math.min(250,Math.max(1,Number(req.query?.limit||180)));
+  if(req.method!=="GET")return res.status(405).json({error:"Method not allowed"});
 
-  const [nativeResult,externalResult]=await Promise.allSettled([
-    discoverNative(limit),
-    fetchExternalMarkets(limit),
-  ]);
-
-  const native=nativeResult.status==="fulfilled"?nativeResult.value.items:[];
-  const external=externalResult.status==="fulfilled"?externalResult.value.items:[];
-  const errors=[
-    ...(nativeResult.status==="fulfilled"?nativeResult.value.errors:[`native:${nativeResult.reason?.message||"unavailable"}`]),
-    ...(externalResult.status==="fulfilled"?externalResult.value.errors:[`external:${externalResult.reason?.message||"unavailable"}`]),
-  ];
-
-  return res.status(200).json({
-    items:[...native,...external].filter((m)=>!m.resolved).slice(0,limit),
-    errors,
-    sources:{
-      maryjane:native.length,
-      polymarket:external.filter((x)=>x.source==="polymarket").length,
-      manifold:external.filter((x)=>x.source==="manifold").length,
-    },
-    nativeDiagnostics:{
-      discovered:native.length,
-      knownMarkets:KNOWN_MARKETS.length,
-      rpcHost:(()=>{try{return new URL(RPC_URL).host}catch{return "invalid"}})(),
-    },
-    updatedAt:Date.now(),
-  });
+  try{
+    const limit=Math.min(180,Math.max(1,Number(req.query?.limit||120)));
+    const [native,external]=await Promise.all([nativeMarkets(limit),externalMarkets(limit)]);
+    const items=[...native.items,...external.items].filter(x=>!x.resolved).slice(0,limit);
+    return res.status(200).json({
+      items,
+      errors:[...native.errors,...external.errors],
+      sources:{
+        maryjane:native.items.length,
+        polymarket:external.items.filter(x=>x.source==="polymarket").length,
+        manifold:external.items.filter(x=>x.source==="manifold").length,
+      },
+      nativeDiagnostics:{runtime:"pure-json-rpc",known:KNOWN.length,rpcHost:new URL(RPC_URL).host},
+      updatedAt:Date.now(),
+    });
+  }catch(e:any){
+    return res.status(500).json({error:e?.message||String(e),stage:"discovery-handler"});
+  }
 }
