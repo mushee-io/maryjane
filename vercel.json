@@ -31,5 +31,6 @@
       "src": "/.*",
       "dest": "/index.html"
     }
-  ]
+  ],
+  "installCommand": "npm install --include=dev"
 }

@@ -15,7 +15,8 @@
     "test:external-feed": "tsx scripts/external-feed-smoke.ts",
     "test:marketlint-function": "tsx scripts/marketlint-function-smoke.ts",
     "test:prepare-create-function": "tsx scripts/prepare-create-function-smoke.ts",
-    "test:solana-runtime": "node scripts/solana-runtime-smoke.mjs"
+    "test:solana-runtime": "node scripts/solana-runtime-smoke.mjs",
+    "postinstall": "node scripts/verify-solana-deps.mjs"
   },
   "dependencies": {
     "@solana/spl-token": "^0.4.14",
@@ -27,7 +28,9 @@
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "vite": "^6.2.3",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "rpc-websockets": "9.3.2",
+    "uuid": "8.3.2"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
@@ -39,6 +42,21 @@
     "typescript": "~5.8.2"
   },
   "overrides": {
-    "uuid": "9.0.1"
+    "uuid": "8.3.2",
+    "rpc-websockets": "9.3.2"
+  },
+  "packageManager": "npm@10.9.2",
+  "engines": {
+    "node": "22.x"
+  },
+  "resolutions": {
+    "rpc-websockets": "9.3.2",
+    "uuid": "8.3.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "rpc-websockets": "9.3.2",
+      "uuid": "8.3.2"
+    }
   }
 }
