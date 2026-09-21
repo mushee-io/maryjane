@@ -250,7 +250,7 @@ export function MarketsExplorerScreen() {
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#080808]/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between px-5 py-4">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.34em] text-white/35">33milady</div>
+            <div className="text-[10px] uppercase tracking-[0.34em] text-white/35">Mary Jane</div>
             <div className="mt-1 flex items-center gap-3">
               <h1 className="text-xl font-semibold">Market Intelligence</h1>
               <span className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] uppercase tracking-wider ${
@@ -267,7 +267,7 @@ export function MarketsExplorerScreen() {
               href="/33-beta"
               className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 hover:bg-white/[0.05] hover:text-white"
             >
-              33 Beta
+              Mary Jane Beta
             </a>
             <button
               onClick={() => void load()}
@@ -350,7 +350,7 @@ export function MarketsExplorerScreen() {
             <div className="space-y-2">
               {loading && (
                 <div className="rounded-2xl border border-white/10 p-6 text-sm text-white/35">
-                  Reading the 33milady index…
+                  Reading the Mary Jane index…
                 </div>
               )}
 
@@ -486,7 +486,7 @@ export function MarketsExplorerScreen() {
                   <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-5">
                     <div className="mb-4 flex items-center justify-between">
                       <div>
-                        <div className="text-sm font-semibold">33 Beta rounds</div>
+                        <div className="text-sm font-semibold">Mary Jane Beta rounds</div>
                         <div className="mt-1 text-xs text-white/30">Fast-market activity from the same index</div>
                       </div>
                       <Waves className="h-4 w-4 text-white/35" />
