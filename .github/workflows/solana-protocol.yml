@@ -17,6 +17,8 @@ on:
       - "solana/**"
       - "src/**"
       - "server.ts"
+      - "api/**"
+      - "vercel.json"
       - "package.json"
       - ".github/workflows/solana-protocol.yml"
   workflow_dispatch:
@@ -47,6 +49,10 @@ jobs:
       - name: Install web dependencies
         working-directory: .
         run: npm install
+
+      - name: Solana Node runtime import
+        working-directory: .
+        run: npm run test:solana-runtime
 
       - name: Web + server TypeScript check
         working-directory: .
