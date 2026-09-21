@@ -350,7 +350,7 @@ pub struct PlaceOrder<'info> {
     #[account(mut)]
     pub maker: Signer<'info>,
     #[account(seeds = [b"config"], bump = config.bump)]
-    pub config: Account<'info, ProtocolConfig>,
+    pub config: Box<Account<'info, ProtocolConfig>>,
     #[account(
         seeds = [b"market", config.key().as_ref(), market.market_seed.as_ref()],
         bump = market.bump,
@@ -358,12 +358,12 @@ pub struct PlaceOrder<'info> {
         has_one = yes_mint,
         has_one = no_mint
     )]
-    pub market: Account<'info, Market>,
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
+    pub market: Box<Account<'info, Market>>,
+    pub collateral_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(address = market.yes_mint)]
-    pub yes_mint: InterfaceAccount<'info, Mint>,
+    pub yes_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(address = market.no_mint)]
-    pub no_mint: InterfaceAccount<'info, Mint>,
+    pub no_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         constraint =
             (args.kind == OrderKind::Buy && escrow_mint.key() == collateral_mint.key()) ||
@@ -371,14 +371,14 @@ pub struct PlaceOrder<'info> {
             (args.kind == OrderKind::Sell && args.side == Side::No && escrow_mint.key() == no_mint.key())
             @ MiladyError::InvalidOrderMint
     )]
-    pub escrow_mint: InterfaceAccount<'info, Mint>,
+    pub escrow_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         token::mint = escrow_mint,
         token::authority = maker,
         token::token_program = token_program
     )]
-    pub maker_source: InterfaceAccount<'info, TokenAccount>,
+    pub maker_source: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         init,
         payer = maker,
@@ -391,7 +391,7 @@ pub struct PlaceOrder<'info> {
         ],
         bump
     )]
-    pub order: Account<'info, LimitOrder>,
+    pub order: Box<Account<'info, LimitOrder>>,
     #[account(
         init,
         payer = maker,
@@ -401,7 +401,7 @@ pub struct PlaceOrder<'info> {
         seeds = [b"order-vault", order.key().as_ref()],
         bump
     )]
-    pub escrow_vault: InterfaceAccount<'info, TokenAccount>,
+    pub escrow_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
@@ -411,14 +411,14 @@ pub struct FillOrder<'info> {
     #[account(mut)]
     pub taker: Signer<'info>,
     #[account(seeds = [b"config"], bump = config.bump)]
-    pub config: Account<'info, ProtocolConfig>,
+    pub config: Box<Account<'info, ProtocolConfig>>,
     #[account(
         mut,
         seeds = [b"market", config.key().as_ref(), market.market_seed.as_ref()],
         bump = market.bump,
         has_one = collateral_mint
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
     #[account(
         mut,
         seeds = [
@@ -431,18 +431,18 @@ pub struct FillOrder<'info> {
         has_one = market,
         has_one = escrow_vault
     )]
-    pub order: Account<'info, LimitOrder>,
+    pub order: Box<Account<'info, LimitOrder>>,
     /// CHECK: constrained to the maker stored in the order.
     #[account(address = order.maker)]
     pub maker: UncheckedAccount<'info>,
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
+    pub collateral_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         constraint = outcome_mint.key() == expected_outcome_mint(&market, order.side)
             @ MiladyError::InvalidOrderMint
     )]
-    pub outcome_mint: InterfaceAccount<'info, Mint>,
+    pub outcome_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(address = order.escrow_mint)]
-    pub escrow_mint: InterfaceAccount<'info, Mint>,
+    pub escrow_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         address = order.escrow_vault,
@@ -450,35 +450,35 @@ pub struct FillOrder<'info> {
         token::authority = order,
         token::token_program = token_program
     )]
-    pub escrow_vault: InterfaceAccount<'info, TokenAccount>,
+    pub escrow_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         token::mint = collateral_mint,
         token::authority = taker,
         token::token_program = token_program
     )]
-    pub taker_collateral: InterfaceAccount<'info, TokenAccount>,
+    pub taker_collateral: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         token::mint = outcome_mint,
         token::authority = taker,
         token::token_program = token_program
     )]
-    pub taker_outcome: InterfaceAccount<'info, TokenAccount>,
+    pub taker_outcome: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         token::mint = collateral_mint,
         token::authority = maker,
         token::token_program = token_program
     )]
-    pub maker_collateral: InterfaceAccount<'info, TokenAccount>,
+    pub maker_collateral: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         token::mint = outcome_mint,
         token::authority = maker,
         token::token_program = token_program
     )]
-    pub maker_outcome: InterfaceAccount<'info, TokenAccount>,
+    pub maker_outcome: Box<InterfaceAccount<'info, TokenAccount>>,
     pub token_program: Interface<'info, TokenInterface>,
 }
 
