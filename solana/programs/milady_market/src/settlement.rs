@@ -247,7 +247,7 @@ pub struct RedeemWinnings<'info> {
         bump = config.bump,
         has_one = collateral_mint
     )]
-    pub config: Account<'info, ProtocolConfig>,
+    pub config: Box<Account<'info, ProtocolConfig>>,
     #[account(
         mut,
         seeds = [b"market", config.key().as_ref(), market.market_seed.as_ref()],
@@ -255,8 +255,8 @@ pub struct RedeemWinnings<'info> {
         has_one = collateral_mint,
         has_one = collateral_vault
     )]
-    pub market: Account<'info, Market>,
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
+    pub market: Box<Account<'info, Market>>,
+    pub collateral_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         address = market.collateral_vault,
@@ -264,7 +264,7 @@ pub struct RedeemWinnings<'info> {
         token::authority = market,
         token::token_program = token_program
     )]
-    pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         constraint =
@@ -272,21 +272,21 @@ pub struct RedeemWinnings<'info> {
             winning_mint.key() == market.no_mint
             @ MiladyError::InvalidWinningMint
     )]
-    pub winning_mint: InterfaceAccount<'info, Mint>,
+    pub winning_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         token::mint = winning_mint,
         token::authority = owner,
         token::token_program = token_program
     )]
-    pub user_winning: InterfaceAccount<'info, TokenAccount>,
+    pub user_winning: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         token::mint = collateral_mint,
         token::authority = owner,
         token::token_program = token_program
     )]
-    pub user_collateral: InterfaceAccount<'info, TokenAccount>,
+    pub user_collateral: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         init_if_needed,
         payer = owner,
@@ -294,7 +294,7 @@ pub struct RedeemWinnings<'info> {
         seeds = [b"settlement", market.key().as_ref(), owner.key().as_ref()],
         bump
     )]
-    pub receipt: Account<'info, SettlementReceipt>,
+    pub receipt: Box<Account<'info, SettlementReceipt>>,
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
@@ -308,7 +308,7 @@ pub struct RefundInvalid<'info> {
         bump = config.bump,
         has_one = collateral_mint
     )]
-    pub config: Account<'info, ProtocolConfig>,
+    pub config: Box<Account<'info, ProtocolConfig>>,
     #[account(
         mut,
         seeds = [b"market", config.key().as_ref(), market.market_seed.as_ref()],
@@ -318,8 +318,8 @@ pub struct RefundInvalid<'info> {
         has_one = yes_mint,
         has_one = no_mint
     )]
-    pub market: Account<'info, Market>,
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
+    pub market: Box<Account<'info, Market>>,
+    pub collateral_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         address = market.collateral_vault,
@@ -327,32 +327,32 @@ pub struct RefundInvalid<'info> {
         token::authority = market,
         token::token_program = token_program
     )]
-    pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut, address = market.yes_mint)]
-    pub yes_mint: InterfaceAccount<'info, Mint>,
+    pub yes_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, address = market.no_mint)]
-    pub no_mint: InterfaceAccount<'info, Mint>,
+    pub no_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         token::mint = yes_mint,
         token::authority = owner,
         token::token_program = token_program
     )]
-    pub user_yes: InterfaceAccount<'info, TokenAccount>,
+    pub user_yes: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         token::mint = no_mint,
         token::authority = owner,
         token::token_program = token_program
     )]
-    pub user_no: InterfaceAccount<'info, TokenAccount>,
+    pub user_no: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         token::mint = collateral_mint,
         token::authority = owner,
         token::token_program = token_program
     )]
-    pub user_collateral: InterfaceAccount<'info, TokenAccount>,
+    pub user_collateral: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         init_if_needed,
         payer = owner,
@@ -360,7 +360,7 @@ pub struct RefundInvalid<'info> {
         seeds = [b"settlement", market.key().as_ref(), owner.key().as_ref()],
         bump
     )]
-    pub receipt: Account<'info, SettlementReceipt>,
+    pub receipt: Box<Account<'info, SettlementReceipt>>,
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
