@@ -50,6 +50,10 @@ jobs:
         working-directory: .
         run: npm run lint
 
+      - name: Production web/server build
+        working-directory: .
+        run: npm run build
+
       - name: Market indexer tests
         working-directory: .
         run: npm run test:indexer
