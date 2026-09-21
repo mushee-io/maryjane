@@ -40,6 +40,9 @@ jobs:
       - name: Install JS dependencies
         run: npm install
 
+      - name: Limit-order instruction contract check
+        run: node scripts/check-limit-order-contract.mjs
+
       - name: TypeScript check
         run: npm run lint
 

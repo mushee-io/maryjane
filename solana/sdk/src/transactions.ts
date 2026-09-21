@@ -314,7 +314,7 @@ export function buildPlaceOrderInstruction(params: {
     ? params.collateralMint
     : params.side === "YES" ? params.yesMint : params.noMint;
   const data = Buffer.concat([
-    instructionDiscriminator("place_order"),
+    instructionDiscriminator("place_limit_order"),
     Buffer.from(params.orderSeed),
     Buffer.from([params.side === "YES" ? 0 : 1]),
     Buffer.from([params.kind === "BUY" ? 0 : 1]),
@@ -382,7 +382,7 @@ export function buildFillOrderInstruction(params: {
       meta(params.makerOutcome, false, true),
       meta(params.tokenProgram),
     ],
-    data: Buffer.concat([instructionDiscriminator("fill_order"), u64(params.shares)]),
+    data: Buffer.concat([instructionDiscriminator("fill_limit_order"), u64(params.shares)]),
   });
 }
 
