@@ -51,6 +51,22 @@ cd "$ROOT_DIR/solana"
 npm install
 
 mkdir -p target/deploy
+
+# Reclaim any stale upgrade buffer left by a failed prior deployment.
+# This does NOT close the deployed Mary Jane program.
+UPGRADE_BUFFER_KEYPAIR="target/deploy/milady_market-upgrade-buffer.json"
+if [ -f "$UPGRADE_BUFFER_KEYPAIR" ]; then
+  UPGRADE_BUFFER_ADDRESS="$(solana-keygen pubkey "$UPGRADE_BUFFER_KEYPAIR" 2>/dev/null || true)"
+  if [ -n "$UPGRADE_BUFFER_ADDRESS" ]; then
+    if solana account "$UPGRADE_BUFFER_ADDRESS" --url devnet >/dev/null 2>&1; then
+      echo "Closing stale upgrade buffer $UPGRADE_BUFFER_ADDRESS to reclaim DEVNET SOL..."
+      solana program close "$UPGRADE_BUFFER_ADDRESS" --url devnet || true
+      echo "Balance after stale-buffer reclaim: $(solana balance)"
+    fi
+  fi
+  rm -f "$UPGRADE_BUFFER_KEYPAIR"
+fi
+
 PROGRAM_KEYPAIR="target/deploy/milady_market-keypair.json"
 if [ ! -f "$PROGRAM_KEYPAIR" ]; then
   solana-keygen new --no-bip39-passphrase --outfile "$PROGRAM_KEYPAIR"
