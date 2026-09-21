@@ -23,6 +23,8 @@ type Market = {
   nativeMarketSeed?: string;
   status?: string;
   probabilitySource: "last-match" | "external" | "pool-reference" | "unknown";
+  qualityScore?: number;
+  newRank?: number;
 };
 
 const categories = [
@@ -129,15 +131,17 @@ export function MarketHomeScreen() {
       )
       .sort((a, b) => {
         if (category === "New") {
-          const delta =
-            new Date(b.createdAt || 0).getTime() -
-            new Date(a.createdAt || 0).getTime();
-          if (delta !== 0) return delta;
           if (a.source === "maryjane" && b.source !== "maryjane") return -1;
           if (b.source === "maryjane" && a.source !== "maryjane") return 1;
-          return 0;
+          const rankDelta = (b.newRank || 0) - (a.newRank || 0);
+          if (rankDelta !== 0) return rankDelta;
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
         }
-        return (b.volume24h || b.volumeTotal || 0) - (a.volume24h || a.volumeTotal || 0);
+        if (a.source === "maryjane" && b.source !== "maryjane") return -1;
+        if (b.source === "maryjane" && a.source !== "maryjane") return 1;
+        const qualityDelta = (b.qualityScore || 0) - (a.qualityScore || 0);
+        const volumeDelta = (b.volume24h || b.volumeTotal || 0) - (a.volume24h || a.volumeTotal || 0);
+        return volumeDelta !== 0 ? volumeDelta : qualityDelta;
       });
   }, [markets, category, search]);
 

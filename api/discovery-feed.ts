@@ -129,6 +129,119 @@ function category(text:string){
   return"Other";
 }
 
+function cleanTitle(value:any){
+  return String(value||"")
+    .replace(/\s+/g," ")
+    .replace(/[\u0000-\u001F\u007F]/g,"")
+    .trim();
+}
+function canonicalTitle(value:string){
+  return cleanTitle(value)
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g," ")
+    .replace(/0x[a-f0-9]{40}/gi," ")
+    .replace(/[^a-z0-9$%]+/g," ")
+    .replace(/\b(the|a|an|will|would|is|are|be|by|on|in|at|to|of|for|before|after)\b/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+function titleTokens(value:string){
+  return new Set(canonicalTitle(value).split(" ").filter(token=>token.length>1));
+}
+function similarity(a:string,b:string){
+  const A=titleTokens(a),B=titleTokens(b);
+  if(!A.size||!B.size)return 0;
+  let intersection=0;
+  for(const token of A)if(B.has(token))intersection++;
+  return intersection/Math.max(A.size,B.size);
+}
+function looksLikeSpamTitle(title:string){
+  const t=cleanTitle(title);
+  const lower=t.toLowerCase();
+  if(t.length<10||t.length>190)return true;
+  if(/0x[a-f0-9]{40}/i.test(t))return true;
+  if(/\b(?:test(?:ing)?|asdf|qwerty|hello world|sample market|demo market|ignore this|do not bet|fake market)\b/i.test(lower))return true;
+  if(/https?:\/\//i.test(t))return true;
+  if(/[!?]{5,}|[-_=]{8,}/.test(t))return true;
+  const words=t.split(/\s+/).filter(Boolean);
+  if(words.length<3)return true;
+  const meaningful=words.filter(word=>/[a-zA-Z]{2,}/.test(word));
+  if(meaningful.length<3)return true;
+  return false;
+}
+function qualityScore(item:any){
+  if(item.source==="maryjane")return 100;
+  const title=cleanTitle(item.title);
+  let score=58;
+  const description=String(item.description||"").trim();
+  const v24=Math.max(0,Number(item.volume24h||0));
+  const total=Math.max(0,Number(item.volumeTotal||0));
+  const traders=Math.max(0,Number(item.traders||0));
+
+  if(title.length>=20&&title.length<=120)score+=10;
+  else if(title.length>150)score-=10;
+
+  if(description.length>=40)score+=8;
+  else if(description.length===0)score-=4;
+
+  if(v24>=10000)score+=16;
+  else if(v24>=1000)score+=12;
+  else if(v24>=100)score+=8;
+  else if(v24>=10)score+=4;
+  else if(total<=1)score-=10;
+
+  if(total>=10000)score+=8;
+  else if(total>=1000)score+=5;
+  else if(total>=100)score+=2;
+
+  if(traders>=25)score+=5;
+  else if(traders>=5)score+=2;
+
+  if(/[?]$/.test(title))score+=2;
+  if(looksLikeSpamTitle(title))score-=50;
+
+  return Math.max(0,Math.min(100,score));
+}
+function freshnessScore(createdAt:any){
+  const time=new Date(createdAt||0).getTime();
+  if(!Number.isFinite(time)||time<=0)return 0;
+  const ageHours=Math.max(0,(Date.now()-time)/3_600_000);
+  if(ageHours<=6)return 100;
+  if(ageHours<=24)return 92;
+  if(ageHours<=72)return 78;
+  if(ageHours<=168)return 60;
+  if(ageHours<=720)return 35;
+  return 10;
+}
+function newRank(item:any){
+  if(item.source==="maryjane")return 10_000+freshnessScore(item.createdAt);
+  const quality=qualityScore(item);
+  const fresh=freshnessScore(item.createdAt);
+  const activity=Math.min(100,Math.log10(Math.max(1,Number(item.volume24h||item.volumeTotal||0))+1)*24);
+  return quality*0.55+fresh*0.3+activity*0.15;
+}
+function dedupeAndRank(items:any[]){
+  const accepted:any[]=[];
+  const sorted=[...items]
+    .filter(item=>item.source==="maryjane"||(!looksLikeSpamTitle(item.title)&&qualityScore(item)>=48))
+    .map(item=>({...item,title:cleanTitle(item.title),qualityScore:qualityScore(item),newRank:newRank(item)}))
+    .sort((a,b)=>{
+      if(a.source==="maryjane"&&b.source!=="maryjane")return -1;
+      if(b.source==="maryjane"&&a.source!=="maryjane")return 1;
+      return (b.newRank||0)-(a.newRank||0);
+    });
+
+  for(const item of sorted){
+    const exact=canonicalTitle(item.title);
+    const duplicate=accepted.find(existing=>{
+      if(canonicalTitle(existing.title)===exact)return true;
+      return similarity(existing.title,item.title)>=0.9;
+    });
+    if(!duplicate)accepted.push(item);
+  }
+  return accepted;
+}
+
 async function externalMarkets(limit:number){
   const errors:string[]=[];
   const items:any[]=[];
@@ -148,8 +261,10 @@ async function externalMarkets(limit:number){
         const no=prob(prices[ni>=0?ni:1])??(1-yes);
         const id=String(m.id||m.conditionId||m.slug||m.question);
         if(!m.question||m.closed)continue;
+        const title=cleanTitle(m.question);
+        if(looksLikeSpamTitle(title))continue;
         items.push({
-          id:`polymarket:${id}`,source:"polymarket",sourceMarketId:id,title:String(m.question),
+          id:`polymarket:${id}`,source:"polymarket",sourceMarketId:id,title,
           description:String(m.description||event.description||"")||undefined,
           category:category(`${event.title||""} ${m.question}`),
           outcomes:[{id:"yes",label:"YES",probability:yes},{id:"no",label:"NO",probability:no}],
@@ -170,9 +285,11 @@ async function externalMarkets(limit:number){
     for(const m of Array.isArray(rows)?rows:[]){
       const yes=prob(m.probability);
       if(!m.question||yes===undefined||m.isResolved)continue;
+      const title=cleanTitle(m.question);
+      if(looksLikeSpamTitle(title))continue;
       const id=String(m.id||m.slug||m.question);
       items.push({
-        id:`manifold:${id}`,source:"manifold",sourceMarketId:id,title:String(m.question),
+        id:`manifold:${id}`,source:"manifold",sourceMarketId:id,title,
         description:String(m.textDescription||"")||undefined,category:category(String(m.question)),
         outcomes:[{id:"yes",label:"YES",probability:yes},{id:"no",label:"NO",probability:1-yes}],
         volume24h:Number(m.volume24Hours||0),volumeTotal:Number(m.volume||0),
@@ -195,14 +312,21 @@ export default async function handler(req:any,res:any){
   try{
     const limit=Math.min(180,Math.max(1,Number(req.query?.limit||120)));
     const [native,external]=await Promise.all([nativeMarkets(limit),externalMarkets(limit)]);
-    const items=[...native.items,...external.items].filter(x=>!x.resolved).slice(0,limit);
+    const raw=[...native.items,...external.items].filter(x=>!x.resolved);
+    const ranked=dedupeAndRank(raw);
+    const items=ranked.slice(0,limit);
     return res.status(200).json({
       items,
       errors:[...native.errors,...external.errors],
       sources:{
-        maryjane:native.items.length,
-        polymarket:external.items.filter(x=>x.source==="polymarket").length,
-        manifold:external.items.filter(x=>x.source==="manifold").length,
+        maryjane:items.filter(x=>x.source==="maryjane").length,
+        polymarket:items.filter(x=>x.source==="polymarket").length,
+        manifold:items.filter(x=>x.source==="manifold").length,
+      },
+      qualityDiagnostics:{
+        raw:raw.length,
+        accepted:ranked.length,
+        filtered:Math.max(0,raw.length-ranked.length),
       },
       nativeDiagnostics:{runtime:"pure-json-rpc",known:KNOWN.length,rpcHost:new URL(RPC_URL).host},
       updatedAt:Date.now(),
