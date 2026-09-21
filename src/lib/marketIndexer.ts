@@ -772,6 +772,54 @@ export function decodeProgramDataEvents(
   return events;
 }
 
+function decodeMarketMetadataMemo(
+  logs: string[],
+  signature: string,
+  slot: number,
+  blockTime: number,
+  createdMarket?: string,
+): IndexedEvent[] {
+  const events: IndexedEvent[] = [];
+  let ordinal = 10_000;
+
+  for (const line of logs) {
+    const marker = "Program log: Memo (len ";
+    if (!line.includes(marker)) continue;
+    const colon = line.indexOf("): ");
+    if (colon < 0) continue;
+
+    try {
+      // Memo program logs the UTF-8 memo as a quoted JSON string.
+      const quoted = line.slice(colon + 3).trim();
+      const memoText = JSON.parse(quoted);
+      const payload = JSON.parse(memoText);
+      if (payload?.t !== "maryjane-market" || payload?.v !== 1) continue;
+
+      const market = String(payload.m || createdMarket || "");
+      if (!market) continue;
+
+      events.push({
+        id: `${signature}:memo:${ordinal++}`,
+        signature,
+        slot,
+        blockTime,
+        type: "MarketMetadataPublished",
+        market,
+        data: {
+          question: String(payload.q || ""),
+          category: String(payload.c || ""),
+          source: String(payload.s || ""),
+          deadline: String(payload.d || ""),
+        },
+      });
+    } catch {
+      // Ignore unrelated or malformed Memo instructions.
+    }
+  }
+
+  return events;
+}
+
 function defaultState(): IndexState {
   return {
     version: 1,
@@ -824,11 +872,18 @@ export class MarketIndexer {
   }
 
   private persist() {
-    const directory = path.dirname(this.storagePath);
-    fs.mkdirSync(directory, { recursive: true });
-    const tmp = `${this.storagePath}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(this.state), "utf8");
-    fs.renameSync(tmp, this.storagePath);
+    // Vercel functions are ephemeral; /var/task must not be used as a durable index.
+    // Keep state in-memory for the current invocation and rebuild from Solana on demand.
+    if (process.env.VERCEL) return;
+    try {
+      const directory = path.dirname(this.storagePath);
+      fs.mkdirSync(directory, { recursive: true });
+      const tmp = `${this.storagePath}.tmp`;
+      fs.writeFileSync(tmp, JSON.stringify(this.state), "utf8");
+      fs.renameSync(tmp, this.storagePath);
+    } catch (error) {
+      console.warn("[MarketIndexer] Failed to persist index", error);
+    }
   }
 
   subscribe(callback: (update: RealtimeUpdate) => void) {
@@ -874,14 +929,23 @@ export class MarketIndexer {
         this.programId,
         (logInfo, context) => {
           if (logInfo.err) return;
+          const blockTime = Math.floor(Date.now() / 1000);
           const events = decodeProgramDataEvents(
             logInfo.logs,
             logInfo.signature,
             context.slot,
-            Math.floor(Date.now() / 1000),
+            blockTime,
             this.programId,
           );
-          this.addEvents(events);
+          const createdMarket = events.find((event) => event.type === "MarketCreated")?.market;
+          const metadata = decodeMarketMetadataMemo(
+            logInfo.logs,
+            logInfo.signature,
+            context.slot,
+            blockTime,
+            createdMarket,
+          );
+          this.addEvents([...events, ...metadata]);
         },
         "confirmed",
       );
@@ -1054,14 +1118,24 @@ export class MarketIndexer {
         maxSupportedTransactionVersion: 0,
       });
       if (!tx?.meta?.logMessages) continue;
+      const blockTime =
+        tx.blockTime ?? signature.blockTime ?? Math.floor(Date.now() / 1000);
       const events = decodeProgramDataEvents(
         tx.meta.logMessages,
         signature.signature,
         signature.slot,
-        tx.blockTime ?? signature.blockTime ?? Math.floor(Date.now() / 1000),
+        blockTime,
         this.programId,
       );
-      this.addEvents(events);
+      const createdMarket = events.find((event) => event.type === "MarketCreated")?.market;
+      const metadata = decodeMarketMetadataMemo(
+        tx.meta.logMessages,
+        signature.signature,
+        signature.slot,
+        blockTime,
+        createdMarket,
+      );
+      this.addEvents([...events, ...metadata]);
     }
 
     this.state.lastSignature = newestSignature;

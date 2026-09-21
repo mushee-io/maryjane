@@ -26,6 +26,7 @@ export type DiscoveryMarket = {
 };
 
 type Report = {
+  address?: string;
   input?: {
     question?: string;
     description?: string;
@@ -57,6 +58,22 @@ export type OrderBook = {
   totalMatchedVolumeBaseUnits: string;
   tradeCount: number;
   traderCount: number;
+};
+
+const LEGACY_NATIVE_METADATA: Record<string, {
+  question: string;
+  description?: string;
+  category?: string;
+  source?: string;
+  deadline?: string;
+}> = {
+  "B76aB9GWZPtFqwuyTPjB33Gys1UgCQXw27mdyPKEMyeF": {
+    question: "Will SOL/USD be above $250 at 12:00 UTC on 30 September 2026?",
+    description: "YES if the Pyth SOL/USD price is at or above $250.00 at the stated resolution time. NO if it is below $250.00. Use the published Pyth price observation closest to the resolution time.",
+    category: "Crypto",
+    source: "Pyth Oracle · SOL/USD · target 250",
+    deadline: "30 September 2026, 12:00 UTC",
+  },
 };
 
 function categoryFromText(value: unknown): DiscoveryCategory {
@@ -354,20 +371,50 @@ export function buildOrderBook(events: IndexedEvent[]): OrderBook {
   };
 }
 
-export function normalizeNativeMarkets(markets: IndexedMarket[], reports: Report[], eventsFor: (address: string) => IndexedEvent[]): DiscoveryMarket[] {
+export function normalizeNativeMarkets(
+  markets: IndexedMarket[],
+  reports: Report[],
+  eventsFor: (address: string) => IndexedEvent[],
+): DiscoveryMarket[] {
   const reportsBySeed = new Map(reports.map((report) => [report.hashes?.marketSeed, report]));
+
   return markets.map((market) => {
+    const events = eventsFor(market.address);
     const report = reportsBySeed.get(market.marketSeed);
-    const book = buildOrderBook(eventsFor(market.address));
+    const metadataEvent = events.find((event) => event.type === "MarketMetadataPublished");
+    const createdEvent = events.find((event) => event.type === "MarketCreated");
+    const legacy = LEGACY_NATIVE_METADATA[market.address];
+
+    const metadata = metadataEvent
+      ? {
+          question: String(metadataEvent.data.question || ""),
+          description: undefined,
+          category: String(metadataEvent.data.category || ""),
+          source: String(metadataEvent.data.source || ""),
+          deadline: String(metadataEvent.data.deadline || ""),
+        }
+      : legacy;
+
+    const book = buildOrderBook(events);
     const yesBps = book.lastMatchedYesBps ?? market.yesProbabilityBps;
     const hasMatchedPrice = book.lastMatchedYesBps !== null;
+
+    const question =
+      metadata?.question ||
+      report?.input?.question ||
+      `Market ${market.address.slice(0, 8)}…`;
+    const categoryText =
+      metadata?.category ||
+      report?.input?.category ||
+      question;
+
     return {
       id: `maryjane:${market.address}`,
       source: "maryjane",
       sourceMarketId: market.address,
-      title: report?.input?.question || `Market ${market.address.slice(0, 8)}…`,
-      description: report?.input?.description,
-      category: categoryFromText(report?.input?.category || report?.input?.question),
+      title: question,
+      description: metadata?.description || report?.input?.description,
+      category: categoryFromText(categoryText),
       outcomes: [
         { id: "yes", label: "YES", probability: yesBps / 10_000 },
         { id: "no", label: "NO", probability: 1 - yesBps / 10_000 },
@@ -376,7 +423,11 @@ export function normalizeNativeMarkets(markets: IndexedMarket[], reports: Report
       volumeTotal: Number(market.volume) / 1_000_000,
       traders: book.traderCount,
       tradeCount: book.tradeCount,
-      createdAt: report?.certifiedAt ? new Date(report.certifiedAt).toISOString() : undefined,
+      createdAt: createdEvent?.blockTime
+        ? new Date(createdEvent.blockTime * 1000).toISOString()
+        : report?.certifiedAt
+          ? new Date(report.certifiedAt).toISOString()
+          : undefined,
       closesAt: new Date(market.closeTs * 1000).toISOString(),
       resolved: market.status.startsWith("RESOLVED") || market.status === "CANCELLED",
       nativeAddress: market.address,

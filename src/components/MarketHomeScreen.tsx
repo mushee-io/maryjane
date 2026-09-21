@@ -15,6 +15,7 @@ type Market = {
   volumeTotal?: number;
   traders?: number;
   tradeCount?: number;
+  createdAt?: string;
   closesAt?: string;
   resolved: boolean;
   externalUrl?: string;
@@ -101,7 +102,24 @@ export function MarketHomeScreen() {
     try {
       const response = await fetch("/api/v1/discovery?limit=180");
       const data = await jsonOrThrow(response);
-      setMarkets(data.items || []);
+      const hydrated = (data.items || []).map((market: Market) => {
+        if (market.source !== "maryjane" || !market.nativeAddress) return market;
+        try {
+          const raw = localStorage.getItem(`maryjane:market-meta:${market.nativeAddress}`);
+          if (!raw) return market;
+          const meta = JSON.parse(raw);
+          return {
+            ...market,
+            title: meta.question || market.title,
+            description: meta.description || market.description,
+            category: meta.category || market.category,
+            createdAt: meta.createdAt || market.createdAt,
+          };
+        } catch {
+          return market;
+        }
+      });
+      setMarkets(hydrated);
       setSourceHealth(data.errors || []);
     } catch {
       setSourceHealth(["feed:unavailable"]);
@@ -134,7 +152,14 @@ export function MarketHomeScreen() {
       .filter((market) => !q || `${market.title} ${market.category} ${market.source}`.toLowerCase().includes(q))
       .filter((market) => category === "Trending" || category === "New" || market.category.toLowerCase() === category.toLowerCase())
       .sort((a, b) => {
-        if (category === "New") return new Date(b.closesAt || 0).getTime() - new Date(a.closesAt || 0).getTime();
+        if (category === "New") {
+          const createdDelta =
+            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+          if (createdDelta !== 0) return createdDelta;
+          if (a.source === "maryjane" && b.source !== "maryjane") return -1;
+          if (b.source === "maryjane" && a.source !== "maryjane") return 1;
+          return 0;
+        }
         return (b.volume24h || b.volumeTotal || 0) - (a.volume24h || a.volumeTotal || 0);
       });
   }, [markets, category, search]);

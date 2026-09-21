@@ -119,8 +119,22 @@ export function CreateMarketScreen() {
       const data = await readJsonResponse(response);
       setReport(data.report);
       const signature = await signBuiltTransaction(data.transactionBase64);
+      const address = data.addresses?.market;
+      if (address) {
+        try {
+          localStorage.setItem(
+            `maryjane:market-meta:${address}`,
+            JSON.stringify({
+              ...input(),
+              createdAt: new Date().toISOString(),
+            }),
+          );
+        } catch {
+          // Local metadata is only a UX fallback; onchain market creation remains authoritative.
+        }
+      }
       setMarket({ ...data, signature });
-      setNotice("Market creation submitted. The indexer will surface it in New as soon as Solana confirms it.");
+      setNotice("Market creation submitted. Open Markets → New; the Devnet index is now refreshed on every discovery request.");
     } catch (e:any) { setError(e.message); } finally { setBusy(""); }
   };
 

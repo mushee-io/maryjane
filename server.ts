@@ -439,11 +439,8 @@ export async function createMaryJaneApp(options: { local?: boolean } = {}) {
       console.error("[MarketIndexer] startup failed", error);
     });
   } else {
-    // Serverless requests must not be blocked by Solana RPC availability.
-    // External discovery should remain usable even when Devnet is slow/down.
-    void marketIndexer.syncNow().catch((error) => {
-      console.error("[MarketIndexer] serverless sync failed", error);
-    });
+    // Serverless routes explicitly sync when they need native state.
+    // Avoid an unawaited startup sync racing the discovery response.
   }
 
   const liveClients = new Set<express.Response>();
@@ -1155,14 +1152,20 @@ export async function createMaryJaneApp(options: { local?: boolean } = {}) {
 
   app.get("/api/v1/discovery", async (req, res) => {
     const limit = Math.min(250, Math.max(1, Number(req.query.limit || 150)));
-    const nativeRaw = marketIndexer.listMarkets({ sort: "volume", limit: 100 }).items;
+
+    // Fetch external markets in parallel, but do not build the native feed
+    // until the current Devnet accounts/events have been synchronized.
+    const externalPromise = fetchExternalMarkets(limit);
+    await marketIndexer.syncNow();
+
+    const nativeRaw = marketIndexer.listMarkets({ sort: "newest", limit: 100 }).items;
     const reports = marketLintStore.list(500);
     const native = normalizeNativeMarkets(
       nativeRaw,
       reports,
       (address) => marketIndexer.events({ market: address, limit: 500 }),
     );
-    const external = await fetchExternalMarkets(limit);
+    const external = await externalPromise;
     const items = [...native, ...external.items]
       .filter((market) => !market.resolved)
       .slice(0, limit);
@@ -1178,7 +1181,8 @@ export async function createMaryJaneApp(options: { local?: boolean } = {}) {
     });
   });
 
-  app.get("/api/v1/markets/:address/orderbook", (req, res) => {
+  app.get("/api/v1/markets/:address/orderbook", async (req, res) => {
+    await marketIndexer.syncNow();
     const market = marketIndexer.getMarket(req.params.address);
     if (!market) return res.status(404).json({ error: "Market not indexed" });
     res.json(buildOrderBook(marketIndexer.events({ market: market.address, limit: 500 })));

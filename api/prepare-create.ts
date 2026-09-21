@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 const PROGRAM_ID_STRING = "HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL";
 const USDG_MINT_STRING = "4F6PM96JJxngmHnZLBh9n58RH4aTVNWvDs2nuwrT5BP7";
+const MEMO_PROGRAM_ID_STRING = "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
 const RPC_URL = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
 
 type Input = {
@@ -162,6 +163,7 @@ export default async function handler(req:any,res:any) {
     const wallet=new PublicKey(String(body.wallet||""));
     const programId=new PublicKey(PROGRAM_ID_STRING);
     const collateralMint=new PublicKey(USDG_MINT_STRING);
+    const memoProgramId=new PublicKey(MEMO_PROGRAM_ID_STRING);
     const marketSeed=hex32(report.hashes.marketSeed);
     const questionHash=hex32(report.hashes.questionHash);
     const metadataHash=hex32(report.hashes.metadataHash);
@@ -287,8 +289,25 @@ export default async function handler(req:any,res:any) {
         i64(BigInt(report.input.closeTs)),i64(BigInt(report.input.resolutionTs)),
       ]),
     });
+    const memoPayload = JSON.stringify({
+      v: 1,
+      t: "maryjane-market",
+      m: addresses.market.toBase58(),
+      q: String(report.input.question || "").slice(0, 180),
+      c: String(report.input.category || "").slice(0, 32),
+      s: String(report.input.source || "").slice(0, 80),
+      d: String(report.input.deadline || "").slice(0, 64),
+    });
+    const memoIx = new TransactionInstruction({
+      programId: memoProgramId,
+      keys: [],
+      data: Buffer.from(memoPayload, "utf8"),
+    });
+
     const latest=await connection.getLatestBlockhash("confirmed");
-    const tx=new Transaction({feePayer:wallet,recentBlockhash:latest.blockhash}).add(createIx);
+    const tx=new Transaction({feePayer:wallet,recentBlockhash:latest.blockhash})
+      .add(createIx)
+      .add(memoIx);
 
     return res.status(200).json({
       report,
