@@ -111,7 +111,7 @@ export function ThirtyThreeBetaScreen() {
     try {
       const response = await fetch('/api/33-beta/rounds');
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to load 33 Beta rounds');
+      if (!response.ok) throw new Error(data.error || 'Failed to load Mary Jane Beta rounds');
       const nextRounds: BetaRound[] = data.rounds || [];
       setRounds(nextRounds);
       setSelectedAddress((current) => {
@@ -266,9 +266,9 @@ export function ThirtyThreeBetaScreen() {
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0A0A0A]/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
           <div>
-            <div className="text-[11px] uppercase tracking-[0.32em] text-white/40">33milady</div>
+            <div className="text-[11px] uppercase tracking-[0.32em] text-white/40">Mary Jane</div>
             <div className="mt-1 flex items-center gap-2 text-xl font-semibold">
-              33 Beta
+              Mary Jane Beta
               <span className="rounded-full border border-orange-400/30 bg-orange-400/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-orange-300">
                 Devnet
               </span>
@@ -297,7 +297,7 @@ export function ThirtyThreeBetaScreen() {
 
           {!loading && rounds.length === 0 && (
             <div className="rounded-2xl border border-dashed border-white/15 p-5 text-sm leading-6 text-white/50">
-              No 33 Beta rounds exist on Devnet yet. An authorized oracle keeper must open the first round onchain.
+              No Mary Jane Beta rounds exist on Devnet yet. An authorized oracle keeper must open the first round onchain.
             </div>
           )}
 
