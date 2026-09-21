@@ -7,7 +7,7 @@ export function LaunchReadinessScreen() {
   const load=async()=>{try{setError("");const r=await fetch("/api/v1/launch/readiness");const j=await r.json();if(!r.ok)throw new Error(j.error||"Readiness failed");setData(j);}catch(e:any){setError(e.message);}};
   useEffect(()=>{load();},[]);
   return <div className="min-h-screen bg-[#080808] text-white">
-    <header className="border-b border-white/10"><div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-5"><div><div className="text-[10px] uppercase tracking-[0.32em] text-white/35">33milady</div><div className="mt-1 text-xl font-semibold">Launch Readiness</div></div><button onClick={load} className="rounded-full border border-white/10 p-2"><RefreshCw className="h-4 w-4"/></button></div></header>
+    <header className="border-b border-white/10"><div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-5"><div><div className="text-[10px] uppercase tracking-[0.32em] text-white/35">Mary Jane</div><div className="mt-1 text-xl font-semibold">Launch Readiness</div></div><button onClick={load} className="rounded-full border border-white/10 p-2"><RefreshCw className="h-4 w-4"/></button></div></header>
     <main className="mx-auto max-w-5xl px-5 py-6">
       {error&&<div className="rounded-xl border border-rose-400/20 bg-rose-400/10 p-4 text-rose-300">{error}</div>}
       {data&&<>
