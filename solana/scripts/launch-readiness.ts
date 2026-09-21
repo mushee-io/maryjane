@@ -15,11 +15,25 @@ function expandHome(value: string) {
   return value.startsWith("~/") ? path.join(os.homedir(), value.slice(2)) : value;
 }
 
-function keypairStatus(env: string) {
-  const filePath = process.env[env];
+function keypairStatus(env: string, fallback?: string) {
+  const filePath = process.env[env] || fallback;
   if (!filePath) return { ok: false, value: null };
   try {
     const raw = JSON.parse(fs.readFileSync(expandHome(filePath), "utf8")) as number[];
+    const kp = Keypair.fromSecretKey(Uint8Array.from(raw));
+    return { ok: true, value: kp.publicKey.toBase58() };
+  } catch {
+    return { ok: false, value: null };
+  }
+}
+
+function inlineSecretKeyStatus(env: string) {
+  const value = process.env[env]?.trim();
+  if (!value) return { ok: false, value: null };
+  try {
+    const raw = value.startsWith("[")
+      ? JSON.parse(value)
+      : JSON.parse(Buffer.from(value, "base64").toString("utf8"));
     const kp = Keypair.fromSecretKey(Uint8Array.from(raw));
     return { ok: true, value: kp.publicKey.toBase58() };
   } catch {
@@ -45,8 +59,17 @@ async function main() {
       connection.getAccountInfo(beta, "confirmed"),
     ]);
 
-  const attestor = keypairStatus("MARKETLINT_ATTESTOR_KEYPAIR");
-  const betaOracle = keypairStatus("BETA_ORACLE_KEYPAIR");
+  const attestorFile = keypairStatus(
+    "MARKETLINT_ATTESTOR_KEYPAIR",
+    "~/.config/solana/mary-jane-attestor.json",
+  );
+  const attestorInline = inlineSecretKeyStatus("MARKETLINT_ATTESTOR_SECRET_KEY");
+  const attestor = attestorInline.ok ? attestorInline : attestorFile;
+
+  const betaOracle = keypairStatus(
+    "BETA_ORACLE_KEYPAIR",
+    "~/.config/solana/mary-jane-beta-oracle.json",
+  );
   const checks = [
     ["program deployed", Boolean(programInfo?.executable), MILADY_MARKET_PROGRAM_ID.toBase58()],
     ["USDG Devnet mint", Boolean(mintInfo), USDG_DEVNET_MINT.toBase58()],
@@ -59,7 +82,7 @@ async function main() {
     ["Pyth API key", Boolean(process.env.PYTH_API_KEY), null],
   ] as const;
 
-  console.log("\n33MILADY DEVNET LAUNCH READINESS\n");
+  console.log("\nMARY JANE DEVNET LAUNCH READINESS\n");
   for (const [label, ok, value] of checks) {
     console.log(`${ok ? "PASS" : "MISS"}  ${label}${value ? `  ${value}` : ""}`);
   }
