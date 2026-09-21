@@ -14,7 +14,7 @@ pub use orders::*;
 pub use resolution::*;
 pub use settlement::*;
 
-declare_id!("9tELwXSuJCP5vNrvBfo1PxGorDbMCGBQBEcsWTJtpHMy");
+declare_id!("HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL");
 
 pub const BPS_DENOMINATOR: u64 = 10_000;
 pub const MAX_FEE_BPS: u16 = 500;
@@ -1285,19 +1285,19 @@ pub struct CreateMarket<'info> {
         bump = config.bump,
         has_one = collateral_mint
     )]
-    pub config: Account<'info, ProtocolConfig>,
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
+    pub config: Box<Account<'info, ProtocolConfig>>,
+    pub collateral_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         seeds = [b"marketlint-config"],
         bump = marketlint_config.bump
     )]
-    pub marketlint_config: Account<'info, MarketLintConfig>,
+    pub marketlint_config: Box<Account<'info, MarketLintConfig>>,
     #[account(
         mut,
         seeds = [b"marketlint-cert", args.market_seed.as_ref()],
         bump = marketlint_certification.bump
     )]
-    pub marketlint_certification: Account<'info, MarketLintCertification>,
+    pub marketlint_certification: Box<Account<'info, MarketLintCertification>>,
     #[account(
         init,
         payer = authority,
@@ -1305,7 +1305,7 @@ pub struct CreateMarket<'info> {
         seeds = [b"market", config.key().as_ref(), args.market_seed.as_ref()],
         bump
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
     #[account(
         init,
         payer = authority,
@@ -1315,7 +1315,7 @@ pub struct CreateMarket<'info> {
         seeds = [b"collateral-vault", market.key().as_ref()],
         bump
     )]
-    pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         init,
         payer = authority,
@@ -1326,7 +1326,7 @@ pub struct CreateMarket<'info> {
         seeds = [b"yes-mint", market.key().as_ref()],
         bump
     )]
-    pub yes_mint: InterfaceAccount<'info, Mint>,
+    pub yes_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         init,
         payer = authority,
@@ -1337,7 +1337,7 @@ pub struct CreateMarket<'info> {
         seeds = [b"no-mint", market.key().as_ref()],
         bump
     )]
-    pub no_mint: InterfaceAccount<'info, Mint>,
+    pub no_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         init,
         payer = authority,
@@ -1347,7 +1347,7 @@ pub struct CreateMarket<'info> {
         seeds = [b"yes-vault", market.key().as_ref()],
         bump
     )]
-    pub yes_reserve_vault: InterfaceAccount<'info, TokenAccount>,
+    pub yes_reserve_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         init,
         payer = authority,
@@ -1357,7 +1357,7 @@ pub struct CreateMarket<'info> {
         seeds = [b"no-vault", market.key().as_ref()],
         bump
     )]
-    pub no_reserve_vault: InterfaceAccount<'info, TokenAccount>,
+    pub no_reserve_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
@@ -1371,7 +1371,7 @@ pub struct PositionAction<'info> {
         bump = config.bump,
         has_one = collateral_mint
     )]
-    pub config: Account<'info, ProtocolConfig>,
+    pub config: Box<Account<'info, ProtocolConfig>>,
     #[account(
         mut,
         seeds = [b"market", config.key().as_ref(), market.market_seed.as_ref()],
@@ -1381,15 +1381,15 @@ pub struct PositionAction<'info> {
         has_one = yes_mint,
         has_one = no_mint
     )]
-    pub market: Account<'info, Market>,
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
+    pub market: Box<Account<'info, Market>>,
+    pub collateral_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         token::mint = collateral_mint,
         token::authority = authority,
         token::token_program = token_program
     )]
-    pub user_collateral: InterfaceAccount<'info, TokenAccount>,
+    pub user_collateral: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         address = market.collateral_vault,
@@ -1397,25 +1397,25 @@ pub struct PositionAction<'info> {
         token::authority = market,
         token::token_program = token_program
     )]
-    pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut, address = market.yes_mint)]
-    pub yes_mint: InterfaceAccount<'info, Mint>,
+    pub yes_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, address = market.no_mint)]
-    pub no_mint: InterfaceAccount<'info, Mint>,
+    pub no_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         token::mint = yes_mint,
         token::authority = authority,
         token::token_program = token_program
     )]
-    pub user_yes: InterfaceAccount<'info, TokenAccount>,
+    pub user_yes: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         token::mint = no_mint,
         token::authority = authority,
         token::token_program = token_program
     )]
-    pub user_no: InterfaceAccount<'info, TokenAccount>,
+    pub user_no: Box<InterfaceAccount<'info, TokenAccount>>,
     pub token_program: Interface<'info, TokenInterface>,
 }
 
@@ -1428,7 +1428,7 @@ pub struct LiquidityAction<'info> {
         bump = config.bump,
         has_one = collateral_mint
     )]
-    pub config: Account<'info, ProtocolConfig>,
+    pub config: Box<Account<'info, ProtocolConfig>>,
     #[account(
         mut,
         seeds = [b"market", config.key().as_ref(), market.market_seed.as_ref()],
@@ -1440,7 +1440,7 @@ pub struct LiquidityAction<'info> {
         has_one = yes_reserve_vault,
         has_one = no_reserve_vault
     )]
-    pub market: Account<'info, Market>,
+    pub market: Box<Account<'info, Market>>,
     #[account(
         init_if_needed,
         payer = authority,
@@ -1448,15 +1448,15 @@ pub struct LiquidityAction<'info> {
         seeds = [b"lp", market.key().as_ref(), authority.key().as_ref()],
         bump
     )]
-    pub lp_position: Account<'info, UserLiquidity>,
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
+    pub lp_position: Box<Account<'info, UserLiquidity>>,
+    pub collateral_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         token::mint = collateral_mint,
         token::authority = authority,
         token::token_program = token_program
     )]
-    pub user_collateral: InterfaceAccount<'info, TokenAccount>,
+    pub user_collateral: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         address = market.collateral_vault,
@@ -1464,11 +1464,11 @@ pub struct LiquidityAction<'info> {
         token::authority = market,
         token::token_program = token_program
     )]
-    pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut, address = market.yes_mint)]
-    pub yes_mint: InterfaceAccount<'info, Mint>,
+    pub yes_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, address = market.no_mint)]
-    pub no_mint: InterfaceAccount<'info, Mint>,
+    pub no_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         address = market.yes_reserve_vault,
@@ -1476,7 +1476,7 @@ pub struct LiquidityAction<'info> {
         token::authority = market,
         token::token_program = token_program
     )]
-    pub yes_reserve_vault: InterfaceAccount<'info, TokenAccount>,
+    pub yes_reserve_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         address = market.no_reserve_vault,
@@ -1484,21 +1484,21 @@ pub struct LiquidityAction<'info> {
         token::authority = market,
         token::token_program = token_program
     )]
-    pub no_reserve_vault: InterfaceAccount<'info, TokenAccount>,
+    pub no_reserve_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         token::mint = yes_mint,
         token::authority = authority,
         token::token_program = token_program
     )]
-    pub user_yes: InterfaceAccount<'info, TokenAccount>,
+    pub user_yes: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         token::mint = no_mint,
         token::authority = authority,
         token::token_program = token_program
     )]
-    pub user_no: InterfaceAccount<'info, TokenAccount>,
+    pub user_no: Box<InterfaceAccount<'info, TokenAccount>>,
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
@@ -1512,7 +1512,7 @@ pub struct Trade<'info> {
         bump = config.bump,
         has_one = collateral_mint
     )]
-    pub config: Account<'info, ProtocolConfig>,
+    pub config: Box<Account<'info, ProtocolConfig>>,
     #[account(
         mut,
         seeds = [b"market", config.key().as_ref(), market.market_seed.as_ref()],
@@ -1524,15 +1524,15 @@ pub struct Trade<'info> {
         has_one = yes_reserve_vault,
         has_one = no_reserve_vault
     )]
-    pub market: Account<'info, Market>,
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
+    pub market: Box<Account<'info, Market>>,
+    pub collateral_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         token::mint = collateral_mint,
         token::authority = authority,
         token::token_program = token_program
     )]
-    pub user_collateral: InterfaceAccount<'info, TokenAccount>,
+    pub user_collateral: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         address = market.collateral_vault,
@@ -1540,11 +1540,11 @@ pub struct Trade<'info> {
         token::authority = market,
         token::token_program = token_program
     )]
-    pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(mut, address = market.yes_mint)]
-    pub yes_mint: InterfaceAccount<'info, Mint>,
+    pub yes_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(mut, address = market.no_mint)]
-    pub no_mint: InterfaceAccount<'info, Mint>,
+    pub no_mint: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         mut,
         address = market.yes_reserve_vault,
@@ -1552,7 +1552,7 @@ pub struct Trade<'info> {
         token::authority = market,
         token::token_program = token_program
     )]
-    pub yes_reserve_vault: InterfaceAccount<'info, TokenAccount>,
+    pub yes_reserve_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         address = market.no_reserve_vault,
@@ -1560,21 +1560,21 @@ pub struct Trade<'info> {
         token::authority = market,
         token::token_program = token_program
     )]
-    pub no_reserve_vault: InterfaceAccount<'info, TokenAccount>,
+    pub no_reserve_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         token::mint = yes_mint,
         token::authority = authority,
         token::token_program = token_program
     )]
-    pub user_yes: InterfaceAccount<'info, TokenAccount>,
+    pub user_yes: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         token::mint = no_mint,
         token::authority = authority,
         token::token_program = token_program
     )]
-    pub user_no: InterfaceAccount<'info, TokenAccount>,
+    pub user_no: Box<InterfaceAccount<'info, TokenAccount>>,
     pub token_program: Interface<'info, TokenInterface>,
 }
 
