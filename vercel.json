@@ -12,9 +12,16 @@
     },
     "api/discovery-feed.ts": {
       "maxDuration": 60
+    },
+    "api/market-probe.ts": {
+      "maxDuration": 15
     }
   },
   "routes": [
+    {
+      "src": "/api/market-probe",
+      "dest": "/api/market-probe"
+    },
     {
       "src": "/api/discovery-feed",
       "dest": "/api/discovery-feed"
