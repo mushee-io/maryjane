@@ -36,11 +36,11 @@ fi
 solana config set --keypair "$WALLET" >/dev/null
 
 BALANCE="$(solana balance --lamports | awk '{print $1}')"
-MIN_LAMPORTS=2000000000
+MIN_LAMPORTS=5000000000
 if [ "$BALANCE" -lt "$MIN_LAMPORTS" ]; then
-  echo "Funding Devnet wallet..."
+  echo "Funding Devnet wallet (target: at least 5 DEVNET SOL)..."
   for _ in 1 2 3; do
-    solana airdrop 2 || true
+    solana airdrop 2 --url devnet || true
     sleep 3
     BALANCE="$(solana balance --lamports | awk '{print $1}')"
     if [ "$BALANCE" -ge "$MIN_LAMPORTS" ]; then break; fi
@@ -49,6 +49,16 @@ fi
 
 echo "Deployer: $(solana address)"
 echo "Balance: $(solana balance)"
+
+BALANCE="$(solana balance --lamports | awk '{print $1}')"
+if [ "$BALANCE" -lt "$MIN_LAMPORTS" ]; then
+  echo
+  echo "ERROR: Mary Jane deployment wallet needs at least 5 DEVNET SOL before deployment."
+  echo "Address: $(solana address)"
+  echo "Use the official Devnet faucet if CLI airdrops are rate-limited:"
+  echo "https://faucet.solana.com/"
+  exit 1
+fi
 
 cd "$ROOT_DIR/solana"
 npm install
@@ -68,7 +78,7 @@ echo "Building Mary Jane program $PROGRAM_ID..."
 anchor build
 
 echo "Deploying Mary Jane to Solana Devnet..."
-anchor deploy --provider.cluster devnet
+anchor program deploy --provider.cluster devnet
 
 echo "Initializing onchain configuration..."
 npm run init:devnet
