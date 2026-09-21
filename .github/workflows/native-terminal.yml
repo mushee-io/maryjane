@@ -1,0 +1,25 @@
+name: Mary Jane Native Terminal
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/native-market-state.ts"
+      - "api/order-*.ts"
+      - "src/components/NativeMarketTerminal.tsx"
+      - "vercel.json"
+      - "package.json"
+      - "scripts/native-terminal-smoke.mjs"
+      - ".github/workflows/native-terminal.yml"
+  workflow_dispatch:
+
+jobs:
+  native-terminal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify production native market terminal
+        run: node scripts/native-terminal-smoke.mjs
