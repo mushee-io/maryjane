@@ -202,7 +202,9 @@ function loadKeypairFromEnvironment(
   );
 }
 
-const DB_DIR = path.join(process.cwd(), "data");
+const DB_DIR = process.env.VERCEL
+  ? path.join("/tmp", "mary-jane-data")
+  : path.join(process.cwd(), "data");
 
 async function startServer() {
   const app = express();
