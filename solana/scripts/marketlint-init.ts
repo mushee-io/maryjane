@@ -12,7 +12,7 @@ import {
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 
-const PROGRAM_ID = new PublicKey("9tELwXSuJCP5vNrvBfo1PxGorDbMCGBQBEcsWTJtpHMy");
+const PROGRAM_ID = new PublicKey("HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL");
 
 function expandHome(value: string) {
   return value.startsWith("~/") ? path.join(os.homedir(), value.slice(2)) : value;
