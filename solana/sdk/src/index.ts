@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { PublicKey } from "@solana/web3.js";
 
 export const MILADY_MARKET_PROGRAM_ID = new PublicKey(
-  "9tELwXSuJCP5vNrvBfo1PxGorDbMCGBQBEcsWTJtpHMy",
+  "HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL",
 );
 
 export const USDG_DEVNET_MINT = new PublicKey(
