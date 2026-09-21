@@ -215,28 +215,21 @@ export function MarketsExplorerScreen() {
   }, [selected]);
 
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/markets`);
-
-    socket.onopen = () => setConnected(true);
-    socket.onclose = () => setConnected(false);
-    socket.onerror = () => setConnected(false);
-    socket.onmessage = () => {
-      if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
-      refreshTimer.current = window.setTimeout(() => {
-        void load();
-        if (selected) {
-          fetch(`/api/v1/markets/${encodeURIComponent(selected)}/chart?range=24h`)
-            .then((response) => response.json())
-            .then((data) => setChart(data.points || []))
-            .catch(() => undefined);
-        }
-      }, 350);
-    };
+    setConnected(true);
+    const timer = window.setInterval(() => {
+      void load();
+      if (selected) {
+        fetch(`/api/v1/markets/${encodeURIComponent(selected)}/chart?range=24h`)
+          .then((response) => response.json())
+          .then((data) => setChart(data.points || []))
+          .catch(() => undefined);
+      }
+    }, 8_000);
 
     return () => {
+      setConnected(false);
+      window.clearInterval(timer);
       if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
-      socket.close();
     };
   }, [load, selected]);
 
