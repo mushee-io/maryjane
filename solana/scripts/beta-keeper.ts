@@ -13,7 +13,7 @@ import {
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 
-const PROGRAM_ID = new PublicKey("9tELwXSuJCP5vNrvBfo1PxGorDbMCGBQBEcsWTJtpHMy");
+const PROGRAM_ID = new PublicKey("HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL");
 const USDG_DEVNET_MINT = new PublicKey("4F6PM96JJxngmHnZLBh9n58RH4aTVNWvDs2nuwrT5BP7");
 
 const INIT_BETA_CONFIG_DISC = Buffer.from("f36eda7d3f0e0101", "hex");
