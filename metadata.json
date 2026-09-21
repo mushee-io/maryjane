@@ -1,6 +1,5 @@
 {
-  "name": "Miss Milady",
-  "description": "A minimal, premium daily rewards app where users check in, watch rewarded ads, build streaks, and earn Milady Points.",
-  "requestFramePermissions": ["notifications"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "name": "Mary Jane",
+  "description": "Solana prediction markets with USDG collateral, realtime trading, MarketLint certification, fast rounds, and onchain settlement.",
+  "requestFramePermissions": []
 }
