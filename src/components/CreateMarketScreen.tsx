@@ -4,7 +4,12 @@ import { Transaction } from "@solana/web3.js";
 
 function provider() { return (window as any).solana; }
 function fromBase64(value: string) { const binary = atob(value); return Uint8Array.from(binary, (char) => char.charCodeAt(0)); }
-function toUnix(value: string) { return Math.floor(new Date(value).getTime() / 1000); }
+function toUnix(value: string) {
+  if (!value) return NaN;
+  // datetime-local has no timezone. Mary Jane treats these fields as UTC
+  // so the displayed market rules and the onchain timestamps are identical.
+  return Math.floor(new Date(`${value}:00Z`).getTime() / 1000);
+}
 
 async function readJsonResponse(response: Response) {
   const text = await response.text();
@@ -170,8 +175,8 @@ export function CreateMarketScreen() {
           <div className="grid gap-3 md:grid-cols-2">
             <label className="text-xs text-white/40">Category<select value={category} onChange={e=>setCategory(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-[#0b0b0b] p-3 text-white">{["Crypto","Sports","Tech","World","Other"].map(x=><option key={x}>{x}</option>)}</select></label>
             <label className="text-xs text-white/40">Human-readable deadline<input value={deadline} onChange={e=>setDeadline(e.target.value)} placeholder="31 Dec 2026, 23:59 UTC" className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 p-3 text-white"/></label>
-            <label className="text-xs text-white/40">Trading closes<input type="datetime-local" value={closeAt} onChange={e=>setCloseAt(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 p-3 text-white"/></label>
-            <label className="text-xs text-white/40">Resolution time<input type="datetime-local" value={resolutionAt} onChange={e=>setResolutionAt(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 p-3 text-white"/></label>
+            <label className="text-xs text-white/40">Trading closes (UTC)<input type="datetime-local" value={closeAt} onChange={e=>setCloseAt(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 p-3 text-white"/></label>
+            <label className="text-xs text-white/40">Resolution time (UTC)<input type="datetime-local" value={resolutionAt} onChange={e=>setResolutionAt(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 p-3 text-white"/></label>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
