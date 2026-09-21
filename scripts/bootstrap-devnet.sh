@@ -43,9 +43,9 @@ fi
 
 BALANCE="$(solana balance --lamports | awk '{print $1}')"
 if [ "$PROGRAM_EXISTS" -eq 1 ]; then
-  MIN_LAMPORTS=500000000
+  MIN_LAMPORTS=40000000
   echo "Mary Jane program already exists on Devnet: $PROGRAM_ID"
-  echo "Funding target reduced to 0.5 DEVNET SOL for upgrade/config initialization."
+  echo "Funding target reduced to 0.04 DEVNET SOL for upgrade/config initialization."
 else
   MIN_LAMPORTS=5000000000
   echo "Mary Jane program is not yet executable on Devnet."
@@ -69,7 +69,7 @@ BALANCE="$(solana balance --lamports | awk '{print $1}')"
 if [ "$BALANCE" -lt "$MIN_LAMPORTS" ]; then
   echo
   if [ "$PROGRAM_EXISTS" -eq 1 ]; then
-    echo "ERROR: Program is already deployed, but wallet needs at least 0.5 DEVNET SOL for upgrade/config initialization."
+    echo "ERROR: Program is already deployed, but wallet needs at least 0.04 DEVNET SOL for upgrade/config initialization."
   else
     echo "ERROR: Wallet needs at least 5 DEVNET SOL for first program deployment."
   fi
