@@ -5,6 +5,22 @@ import { Transaction } from "@solana/web3.js";
 function provider() { return (window as any).solana; }
 function fromBase64(value: string) { const binary = atob(value); return Uint8Array.from(binary, (char) => char.charCodeAt(0)); }
 function toUnix(value: string) { return Math.floor(new Date(value).getTime() / 1000); }
+
+async function readJsonResponse(response: Response) {
+  const text = await response.text();
+  let data: any = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      const preview = text.replace(/\s+/g, " ").slice(0, 180);
+      throw new Error(`API returned ${response.status}: ${preview || "non-JSON response"}`);
+    }
+  }
+  if (!response.ok) throw new Error(data?.error || `Request failed (${response.status})`);
+  return data;
+}
+
 async function signBuiltTransaction(transactionBase64: string) {
   const wallet = provider();
   if (!wallet?.signAndSendTransaction) throw new Error("Wallet cannot sign Solana transactions");
@@ -53,23 +69,54 @@ export function CreateMarketScreen() {
     resolutionTs: resolutionAt ? toUnix(resolutionAt) : undefined,
   });
 
+  const validateSchedule = () => {
+    if (!question.trim()) return "Enter a market question.";
+    if (!closeAt) return "Choose when trading closes.";
+    if (!resolutionAt) return "Choose the resolution time.";
+
+    const closeTs = toUnix(closeAt);
+    const resolutionTs = toUnix(resolutionAt);
+    const now = Math.floor(Date.now() / 1000);
+
+    if (!Number.isFinite(closeTs) || !Number.isFinite(resolutionTs)) {
+      return "Enter valid trading-close and resolution dates.";
+    }
+    if (closeTs <= now) return "Trading close must be in the future.";
+    if (resolutionTs < closeTs) {
+      return "Resolution time must be at or after the trading close time.";
+    }
+    return "";
+  };
+
   const analyze = async () => {
+    const scheduleError = validateSchedule();
+    if (scheduleError) return setError(scheduleError);
+
     setBusy("analyze"); setError(""); setNotice("");
     try {
-      const response = await fetch("/api/v1/marketlint/analyze", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(input()) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "MarketLint failed");
+      const response = await fetch("/api/v1/marketlint/analyze", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(input()),
+      });
+      const data = await readJsonResponse(response);
       setReport(data);
     } catch (e:any) { setError(e.message); } finally { setBusy(""); }
   };
 
   const create = async () => {
     if (!wallet) return setError("Connect a Solana wallet first.");
+    const scheduleError = validateSchedule();
+    if (scheduleError) return setError(scheduleError);
+
     setBusy("create"); setError(""); setNotice("");
     try {
-      const response = await fetch("/api/v1/markets/prepare-create", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({wallet,input:input()}) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Unable to prepare market");
+      const response = await fetch("/api/v1/markets/prepare-create", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({wallet,input:input()}),
+      });
+      const data = await readJsonResponse(response);
       setReport(data.report);
       const signature = await signBuiltTransaction(data.transactionBase64);
       setMarket({ ...data, signature });
@@ -77,7 +124,8 @@ export function CreateMarketScreen() {
     } catch (e:any) { setError(e.message); } finally { setBusy(""); }
   };
 
-  const certifiable = report?.analysis?.verdict === "green" && closeAt && resolutionAt;
+  const scheduleValid = Boolean(closeAt && resolutionAt && toUnix(resolutionAt) >= toUnix(closeAt));
+  const certifiable = report?.analysis?.verdict === "green" && scheduleValid;
 
   return (
     <div className="min-h-screen bg-[#070707] text-white">
