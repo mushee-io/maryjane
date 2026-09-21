@@ -17,7 +17,8 @@
     "test:prepare-create-function": "tsx scripts/prepare-create-function-smoke.ts",
     "test:solana-runtime": "node scripts/solana-runtime-smoke.mjs",
     "postinstall": "node scripts/verify-solana-deps.mjs",
-    "test:discovery-function": "tsx scripts/discovery-function-smoke.ts"
+    "test:discovery-function": "tsx scripts/discovery-function-smoke.ts",
+    "test:production-discovery": "node scripts/production-discovery-smoke.mjs"
   },
   "dependencies": {
     "@solana/spl-token": "^0.4.14",
