@@ -1,16 +1,7 @@
 import { createHash } from "node:crypto";
-import {
-  Connection,
-  Keypair,
-  PublicKey,
-  SystemProgram,
-  Transaction,
-  TransactionInstruction,
-  sendAndConfirmTransaction,
-} from "@solana/web3.js";
 
-const PROGRAM_ID = new PublicKey("HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL");
-const USDG_DEVNET_MINT = new PublicKey("4F6PM96JJxngmHnZLBh9n58RH4aTVNWvDs2nuwrT5BP7");
+const PROGRAM_ID_STRING = "HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL";
+const USDG_MINT_STRING = "4F6PM96JJxngmHnZLBh9n58RH4aTVNWvDs2nuwrT5BP7";
 const RPC_URL = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
 
 type Input = {
@@ -40,29 +31,6 @@ function i64(value: bigint) {
 }
 function discriminator(name: string) {
   return createHash("sha256").update(`global:${name}`).digest().subarray(0,8);
-}
-function deriveConfig() {
-  return PublicKey.findProgramAddressSync([Buffer.from("config")], PROGRAM_ID)[0];
-}
-function deriveMarketLintConfig() {
-  return PublicKey.findProgramAddressSync([Buffer.from("marketlint-config")], PROGRAM_ID)[0];
-}
-function deriveCertification(marketSeed: Buffer) {
-  return PublicKey.findProgramAddressSync([Buffer.from("marketlint-cert"), marketSeed], PROGRAM_ID)[0];
-}
-function deriveMarketAddresses(marketSeed: Buffer) {
-  const config=deriveConfig();
-  const market=PublicKey.findProgramAddressSync(
-    [Buffer.from("market"),config.toBuffer(),marketSeed],PROGRAM_ID
-  )[0];
-  return {
-    market,
-    collateralVault:PublicKey.findProgramAddressSync([Buffer.from("collateral-vault"),market.toBuffer()],PROGRAM_ID)[0],
-    yesMint:PublicKey.findProgramAddressSync([Buffer.from("yes-mint"),market.toBuffer()],PROGRAM_ID)[0],
-    noMint:PublicKey.findProgramAddressSync([Buffer.from("no-mint"),market.toBuffer()],PROGRAM_ID)[0],
-    yesReserveVault:PublicKey.findProgramAddressSync([Buffer.from("yes-vault"),market.toBuffer()],PROGRAM_ID)[0],
-    noReserveVault:PublicKey.findProgramAddressSync([Buffer.from("no-vault"),market.toBuffer()],PROGRAM_ID)[0],
-  };
 }
 
 function compileReport(input: Input) {
@@ -124,7 +92,7 @@ function compileReport(input: Input) {
   };
 }
 
-function loadAttestor() {
+function parseAttestorSecret(Keypair:any) {
   const raw=process.env.MARKETLINT_ATTESTOR_SECRET_KEY?.trim();
   if(!raw) {
     const err:any=new Error("MARKETLINT_ATTESTOR_SECRET_KEY is not configured in Vercel");
@@ -137,11 +105,18 @@ function loadAttestor() {
       ? JSON.parse(raw)
       : JSON.parse(Buffer.from(raw,"base64").toString("utf8"));
   } catch {
-    const err:any=new Error("MARKETLINT_ATTESTOR_SECRET_KEY has an invalid format");
+    const err:any=new Error("MARKETLINT_ATTESTOR_SECRET_KEY must be a JSON byte array or base64-encoded JSON byte array");
     err.statusCode=503;
     throw err;
   }
-  return Keypair.fromSecretKey(Uint8Array.from(bytes));
+  if(!Array.isArray(bytes) || (bytes.length!==64 && bytes.length!==32)) {
+    const err:any=new Error(`MARKETLINT_ATTESTOR_SECRET_KEY decoded to ${Array.isArray(bytes)?bytes.length:"non-array"} bytes; expected 64-byte secret key or 32-byte seed`);
+    err.statusCode=503;
+    throw err;
+  }
+  return bytes.length===32
+    ? Keypair.fromSeed(Uint8Array.from(bytes))
+    : Keypair.fromSecretKey(Uint8Array.from(bytes));
 }
 
 export default async function handler(req:any,res:any) {
@@ -153,9 +128,11 @@ export default async function handler(req:any,res:any) {
       status:"ok",
       service:"mary-jane-prepare-create",
       network:"devnet",
-      programId:PROGRAM_ID.toBase58(),
+      programId:PROGRAM_ID_STRING,
       attestorConfigured:Boolean(process.env.MARKETLINT_ATTESTOR_SECRET_KEY),
+      publicCertificationEnabled:process.env.MARKETLINT_PUBLIC_CERTIFY==="true",
       rpcConfigured:Boolean(process.env.SOLANA_RPC_URL),
+      rpcHost:(() => { try { return new URL(RPC_URL).host; } catch { return "invalid"; } })(),
     });
   }
   if(req.method!=="POST") {
@@ -163,6 +140,7 @@ export default async function handler(req:any,res:any) {
     return res.status(405).json({error:"Method not allowed"});
   }
 
+  let stage="request";
   try {
     if(process.env.MARKETLINT_PUBLIC_CERTIFY!=="true") {
       const err:any=new Error("Public MarketLint certification is disabled on this deployment");
@@ -171,8 +149,19 @@ export default async function handler(req:any,res:any) {
     }
 
     const body=typeof req.body==="string"?JSON.parse(req.body):req.body||{};
-    const wallet=new PublicKey(String(body.wallet||""));
     const report=compileReport(body.input||{});
+
+    stage="load-web3";
+    const web3=await import("@solana/web3.js");
+    const {
+      Connection,Keypair,PublicKey,SystemProgram,
+      Transaction,TransactionInstruction,
+    }=web3;
+
+    stage="parse-wallet";
+    const wallet=new PublicKey(String(body.wallet||""));
+    const programId=new PublicKey(PROGRAM_ID_STRING);
+    const collateralMint=new PublicKey(USDG_MINT_STRING);
     const marketSeed=hex32(report.hashes.marketSeed);
     const questionHash=hex32(report.hashes.questionHash);
     const metadataHash=hex32(report.hashes.metadataHash);
@@ -180,25 +169,42 @@ export default async function handler(req:any,res:any) {
     const specHash=hex32(report.hashes.specHash);
     const reportHash=hex32(report.hashes.reportHash);
 
-    const connection=new Connection(RPC_URL,"confirmed");
-    const attestor=loadAttestor();
-    const protocolConfig=deriveConfig();
+    const deriveConfig=()=>PublicKey.findProgramAddressSync([Buffer.from("config")],programId)[0];
+    const deriveMarketLintConfig=()=>PublicKey.findProgramAddressSync([Buffer.from("marketlint-config")],programId)[0];
+    const deriveCertification=()=>PublicKey.findProgramAddressSync([Buffer.from("marketlint-cert"),marketSeed],programId)[0];
+    const config=deriveConfig();
     const marketLintConfig=deriveMarketLintConfig();
-    const certification=deriveCertification(marketSeed);
+    const certification=deriveCertification();
 
-    const [programAccount,protocolAccount,lintAccount,mintAccount,certAccount]=await Promise.all([
-      connection.getAccountInfo(PROGRAM_ID,"confirmed"),
-      connection.getAccountInfo(protocolConfig,"confirmed"),
+    const market=PublicKey.findProgramAddressSync([Buffer.from("market"),config.toBuffer(),marketSeed],programId)[0];
+    const addresses={
+      market,
+      collateralVault:PublicKey.findProgramAddressSync([Buffer.from("collateral-vault"),market.toBuffer()],programId)[0],
+      yesMint:PublicKey.findProgramAddressSync([Buffer.from("yes-mint"),market.toBuffer()],programId)[0],
+      noMint:PublicKey.findProgramAddressSync([Buffer.from("no-mint"),market.toBuffer()],programId)[0],
+      yesReserveVault:PublicKey.findProgramAddressSync([Buffer.from("yes-vault"),market.toBuffer()],programId)[0],
+      noReserveVault:PublicKey.findProgramAddressSync([Buffer.from("no-vault"),market.toBuffer()],programId)[0],
+    };
+
+    stage="load-attestor";
+    const attestor=parseAttestorSecret(Keypair);
+
+    stage="rpc-connect";
+    const connection=new Connection(RPC_URL,"confirmed");
+
+    stage="rpc-readiness";
+    const [programAccount,configAccount,lintAccount,mintAccount,certAccount]=await Promise.all([
+      connection.getAccountInfo(programId,"confirmed"),
+      connection.getAccountInfo(config,"confirmed"),
       connection.getAccountInfo(marketLintConfig,"confirmed"),
-      connection.getAccountInfo(USDG_DEVNET_MINT,"confirmed"),
+      connection.getAccountInfo(collateralMint,"confirmed"),
       connection.getAccountInfo(certification,"confirmed"),
     ]);
-
     if(!programAccount?.executable) {
       const err:any=new Error("Mary Jane program is not deployed/executable on Devnet");
       err.statusCode=409; throw err;
     }
-    if(!protocolAccount) {
+    if(!configAccount) {
       const err:any=new Error("ProtocolConfig is not initialized on Devnet");
       err.statusCode=409; throw err;
     }
@@ -213,48 +219,57 @@ export default async function handler(req:any,res:any) {
 
     let certificationSignature:string|null=null;
     if(!certAccount) {
+      stage="certify";
       const ttlSecs=Math.min(7*24*60*60,Math.max(300,Number(process.env.MARKETLINT_CERT_TTL_SECS||"86400")));
       const expiresAt=BigInt(Math.floor(Date.now()/1000)+ttlSecs);
-      const certifyData=Buffer.concat([
-        discriminator("certify_market"),
-        marketSeed,
-        wallet.toBuffer(),
-        questionHash,
-        metadataHash,
-        specHash,
-        reportHash,
-        sourceHash,
-        i64(BigInt(report.input.closeTs)),
-        i64(BigInt(report.input.resolutionTs)),
-        Buffer.from([report.analysis.overallScore]),
-        Buffer.from([0]),
-        Buffer.from([report.analysis.ambiguityScore]),
-        Buffer.from([0]),
-        Buffer.from([report.analysis.resolutionClarityScore]),
-        i64(expiresAt),
-      ]);
       const certifyIx=new TransactionInstruction({
-        programId:PROGRAM_ID,
+        programId,
         keys:[
           {pubkey:attestor.publicKey,isSigner:true,isWritable:true},
           {pubkey:marketLintConfig,isSigner:false,isWritable:false},
           {pubkey:certification,isSigner:false,isWritable:true},
           {pubkey:SystemProgram.programId,isSigner:false,isWritable:false},
         ],
-        data:certifyData,
+        data:Buffer.concat([
+          discriminator("certify_market"),
+          marketSeed,wallet.toBuffer(),questionHash,metadataHash,specHash,reportHash,sourceHash,
+          i64(BigInt(report.input.closeTs)),i64(BigInt(report.input.resolutionTs)),
+          Buffer.from([report.analysis.overallScore]),
+          Buffer.from([0]),
+          Buffer.from([report.analysis.ambiguityScore]),
+          Buffer.from([0]),
+          Buffer.from([report.analysis.resolutionClarityScore]),
+          i64(expiresAt),
+        ]),
       });
-      certificationSignature=await sendAndConfirmTransaction(
-        connection,new Transaction().add(certifyIx),[attestor],{commitment:"confirmed"}
-      );
+
+      const latestCert=await connection.getLatestBlockhash("confirmed");
+      const certTx=new Transaction({
+        feePayer:attestor.publicKey,
+        recentBlockhash:latestCert.blockhash,
+      }).add(certifyIx);
+      certTx.sign(attestor);
+      const raw=certTx.serialize();
+
+      certificationSignature=await connection.sendRawTransaction(raw,{
+        skipPreflight:false,
+        preflightCommitment:"confirmed",
+        maxRetries:3,
+      });
+      await connection.confirmTransaction({
+        signature:certificationSignature,
+        blockhash:latestCert.blockhash,
+        lastValidBlockHeight:latestCert.lastValidBlockHeight,
+      },"confirmed");
     }
 
-    const addresses=deriveMarketAddresses(marketSeed);
+    stage="build-transaction";
     const createIx=new TransactionInstruction({
-      programId:PROGRAM_ID,
+      programId,
       keys:[
         {pubkey:wallet,isSigner:true,isWritable:true},
-        {pubkey:protocolConfig,isSigner:false,isWritable:false},
-        {pubkey:USDG_DEVNET_MINT,isSigner:false,isWritable:false},
+        {pubkey:config,isSigner:false,isWritable:false},
+        {pubkey:collateralMint,isSigner:false,isWritable:false},
         {pubkey:marketLintConfig,isSigner:false,isWritable:false},
         {pubkey:certification,isSigner:false,isWritable:true},
         {pubkey:addresses.market,isSigner:false,isWritable:true},
@@ -268,14 +283,10 @@ export default async function handler(req:any,res:any) {
       ],
       data:Buffer.concat([
         discriminator("create_market"),
-        marketSeed,
-        questionHash,
-        metadataHash,
-        i64(BigInt(report.input.closeTs)),
-        i64(BigInt(report.input.resolutionTs)),
+        marketSeed,questionHash,metadataHash,
+        i64(BigInt(report.input.closeTs)),i64(BigInt(report.input.resolutionTs)),
       ]),
     });
-
     const latest=await connection.getLatestBlockhash("confirmed");
     const tx=new Transaction({feePayer:wallet,recentBlockhash:latest.blockhash}).add(createIx);
 
@@ -285,13 +296,14 @@ export default async function handler(req:any,res:any) {
       certification:certification.toBase58(),
       transactionBase64:tx.serialize({requireAllSignatures:false,verifySignatures:false}).toString("base64"),
       lastValidBlockHeight:latest.lastValidBlockHeight,
-      addresses:Object.fromEntries(Object.entries(addresses).map(([k,v])=>[k,v.toBase58()])),
+      addresses:Object.fromEntries(Object.entries(addresses).map(([k,v]:any)=>[k,v.toBase58()])),
       tokenProgram:mintAccount.owner.toBase58(),
     });
   } catch(error:any) {
-    console.error("[Prepare Create]",error);
+    console.error("[Prepare Create]",{stage,error:error?.message});
     return res.status(error?.statusCode||400).json({
       error:error?.message||"Unable to prepare certified market",
+      stage,
     });
   }
 }
