@@ -15,9 +15,30 @@
     },
     "api/market-probe.ts": {
       "maxDuration": 15
+    },
+    "api/native-market-state.ts": {
+      "maxDuration": 60
+    },
+    "api/order-place.ts": {
+      "maxDuration": 60
+    },
+    "api/order-fill.ts": {
+      "maxDuration": 60
     }
   },
   "routes": [
+    {
+      "src": "/api/native-market-state",
+      "dest": "/api/native-market-state"
+    },
+    {
+      "src": "/api/order-place",
+      "dest": "/api/order-place"
+    },
+    {
+      "src": "/api/order-fill",
+      "dest": "/api/order-fill"
+    },
     {
       "src": "/api/market-probe",
       "dest": "/api/market-probe"

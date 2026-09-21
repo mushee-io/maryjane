@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Clock3, ExternalLink, Flame, Globe2, Search, Sparkles, Trophy, Wallet, Zap } from "lucide-react";
 import { Transaction } from "@solana/web3.js";
+import NativeMarketTerminal from "./NativeMarketTerminal";
 
 type Source = "maryjane" | "polymarket" | "manifold";
 type Market = {
@@ -303,55 +304,38 @@ export function MarketHomeScreen() {
         </section>
       </main>
 
-      {selected && (
+      {selected?.source === "maryjane" && (
+        <NativeMarketTerminal
+          market={selected}
+          wallet={wallet}
+          onConnect={connect}
+          onClose={() => setSelected(null)}
+        />
+      )}
+
+      {selected && selected.source !== "maryjane" && (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm" onClick={() => setSelected(null)}>
-          <aside className="h-full w-full max-w-[540px] overflow-y-auto border-l border-white/[.08] bg-[#090909] p-6" onClick={(e) => e.stopPropagation()}>
+          <aside className="h-full w-full max-w-[560px] overflow-y-auto border-l border-white/[.08] bg-[#090909] p-6" onClick={(event) => event.stopPropagation()}>
             <button onClick={() => setSelected(null)} className="text-sm text-white/35 hover:text-white">← Back</button>
-            <div className="mt-7 flex items-center justify-between"><span className="rounded-full bg-white/[.06] px-2.5 py-1 text-[10px] font-semibold tracking-[.12em] text-white/45">{sourceLabel(selected.source)}</span><span className="text-xs text-white/28">{selected.category}</span></div>
+            <div className="mt-7 flex items-center justify-between">
+              <span className="rounded-full bg-white/[.06] px-2.5 py-1 text-[10px] font-semibold tracking-[.12em] text-white/45">{sourceLabel(selected.source)}</span>
+              <span className="text-xs text-white/28">{selected.category}</span>
+            </div>
             <h2 className="mt-4 text-3xl font-semibold leading-9 tracking-[-.045em]">{selected.title}</h2>
-            {selected.description && <p className="mt-4 text-sm leading-6 text-white/40">{selected.description.slice(0,500)}</p>}
-
-            {selected.source !== "maryjane" ? (
-              <div className="mt-8 rounded-2xl border border-white/[.08] bg-white/[.025] p-5">
-                <div className="text-xs uppercase tracking-[.16em] text-white/30">External market</div>
-                <p className="mt-3 text-sm leading-6 text-white/45">Mary Jane indexes this market for discovery. Trading and settlement remain on the source platform.</p>
-                {selected.externalUrl && <a href={selected.externalUrl} target="_blank" rel="noreferrer" className="mt-5 flex items-center justify-between rounded-xl bg-white px-4 py-3 text-sm font-semibold text-black">Open on {sourceLabel(selected.source)} <ExternalLink className="h-4 w-4"/></a>}
-              </div>
-            ) : (
-              <>
-                <div className="mt-7 grid grid-cols-4 gap-2">
-                  {[["Best bid", book?.yes.bestBidBps],["Best ask", book?.yes.bestAskBps],["24h vol", book ? Number(book.volume24hBaseUnits)/1e6 : undefined],["Traders", book?.traderCount]].map(([label,value]) => <div key={String(label)} className="rounded-xl border border-white/[.07] p-3"><div className="text-[10px] text-white/25">{label}</div><div className="mt-2 text-sm font-semibold">{label === "Best bid" || label === "Best ask" ? (typeof value === "number" ? `${(value/100).toFixed(0)}¢` : "—") : value ?? "—"}</div></div>)}
-                </div>
-
-                <div className="mt-6 rounded-2xl border border-white/[.08] bg-white/[.025] p-4">
-                  <div className="flex items-center justify-between"><div className="text-sm font-semibold">Order book</div><div className="text-xs text-white/28">Matched trades set probability</div></div>
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    {(["YES","NO"] as const).map((side) => <button key={side} onClick={() => setBookSide(side)} className={`rounded-xl py-2 text-sm font-semibold ${bookSide===side ? (side==="YES"?"bg-emerald-300 text-black":"bg-rose-300 text-black") : "bg-white/[.05] text-white/45"}`}>{side}</button>)}
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div><div className="mb-2 text-[10px] uppercase tracking-wider text-white/25">Bids</div>{(book?.[bookSide.toLowerCase() as "yes"|"no"]?.bids || []).slice(0,6).map((o) => <button key={o.order} onClick={() => void fillOrder(o)} className="mb-1 flex w-full justify-between rounded-lg bg-emerald-400/[.07] px-3 py-2 text-xs"><span>{(o.priceBps/100).toFixed(2)}¢</span><span className="text-white/35">{(Number(o.remainingShares)/1e6).toFixed(2)}</span></button>)}</div>
-                    <div><div className="mb-2 text-[10px] uppercase tracking-wider text-white/25">Asks</div>{(book?.[bookSide.toLowerCase() as "yes"|"no"]?.asks || []).slice(0,6).map((o) => <button key={o.order} onClick={() => void fillOrder(o)} className="mb-1 flex w-full justify-between rounded-lg bg-rose-400/[.07] px-3 py-2 text-xs"><span>{(o.priceBps/100).toFixed(2)}¢</span><span className="text-white/35">{(Number(o.remainingShares)/1e6).toFixed(2)}</span></button>)}</div>
-                  </div>
-                  {!book || (book.yes.bids.length+book.yes.asks.length+book.no.bids.length+book.no.asks.length===0) ? <div className="mt-4 rounded-xl border border-dashed border-white/[.08] p-4 text-center text-xs text-white/30">No resting orders yet. Be the first to post a price.</div> : null}
-                </div>
-
-                <div className="mt-4 rounded-2xl border border-white/[.08] bg-white/[.025] p-4">
-                  <div className="text-sm font-semibold">Place order</div>
-                  <div className="mt-4 grid grid-cols-2 gap-2">{(["BUY","SELL"] as const).map((kind) => <button key={kind} onClick={()=>setOrderKind(kind)} className={`rounded-xl py-2 text-xs font-semibold ${orderKind===kind?"bg-white text-black":"bg-white/[.05] text-white/40"}`}>{kind}</button>)}</div>
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    <label className="text-[10px] text-white/28">Price (¢)<input value={price} onChange={(e)=>setPrice(e.target.value)} inputMode="decimal" className="mt-2 w-full rounded-xl border border-white/[.08] bg-black/30 p-3 text-base text-white outline-none"/></label>
-                    <label className="text-[10px] text-white/28">Shares<input value={shares} onChange={(e)=>setShares(e.target.value)} inputMode="decimal" className="mt-2 w-full rounded-xl border border-white/[.08] bg-black/30 p-3 text-base text-white outline-none"/></label>
-                  </div>
-                  <button onClick={() => void placeOrder()} disabled={busy} className={`mt-4 w-full rounded-xl py-3.5 text-sm font-semibold disabled:opacity-50 ${bookSide==="YES"?"bg-emerald-300 text-black":"bg-rose-300 text-black"}`}>{busy ? "Preparing…" : wallet ? `${orderKind} ${bookSide} @ ${price}¢` : "Connect wallet to trade"}</button>
-                  {notice && <div className="mt-3 text-xs leading-5 text-white/40">{notice}</div>}
-                </div>
-
-                {selected.nativeAddress && <a href={`https://explorer.solana.com/address/${selected.nativeAddress}?cluster=devnet`} target="_blank" rel="noreferrer" className="mt-5 flex items-center justify-between rounded-xl border border-white/[.07] px-4 py-3 text-xs text-white/40 hover:text-white">View on Solana Explorer <ArrowUpRight className="h-3.5 w-3.5"/></a>}
-              </>
-            )}
+            {selected.description && <p className="mt-4 text-sm leading-6 text-white/40">{selected.description.slice(0, 700)}</p>}
+            <div className="mt-8 rounded-2xl border border-white/[.08] bg-white/[.025] p-5">
+              <div className="text-xs uppercase tracking-[.16em] text-white/30">External discovery market</div>
+              <p className="mt-3 text-sm leading-6 text-white/45">Mary Jane indexes this market for discovery. Orders and settlement remain on the source venue.</p>
+              {selected.externalUrl && (
+                <a href={selected.externalUrl} target="_blank" rel="noreferrer" className="mt-5 flex items-center justify-between rounded-xl bg-white px-4 py-3 text-sm font-semibold text-black">
+                  Open on {sourceLabel(selected.source)} <ExternalLink className="h-4 w-4"/>
+                </a>
+              )}
+            </div>
           </aside>
         </div>
       )}
+
     </div>
   );
 }
