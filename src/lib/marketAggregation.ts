@@ -92,48 +92,85 @@ function parseJsonArray(value: unknown): unknown[] {
   }
 }
 
-async function getJson(url: string) {
+async function getJson(url: string, timeoutMs = 9_000) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 4_500);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(url, {
-      headers: { "user-agent": "MaryJane-Market-Aggregator/1.0" },
+      headers: {
+        "accept": "application/json",
+        "user-agent": "MaryJane-Market-Aggregator/1.1",
+      },
+      redirect: "follow",
+      cache: "no-store",
       signal: controller.signal,
     });
-    if (!response.ok) throw new Error(`upstream ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`upstream ${response.status} ${response.statusText}`);
+    }
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.toLowerCase().includes("json")) {
+      throw new Error(`unexpected content-type ${contentType || "unknown"}`);
+    }
     return await response.json();
   } finally {
     clearTimeout(timeout);
   }
 }
 
+async function firstSuccessful(
+  source: string,
+  urls: string[],
+): Promise<{ value: any; url: string; attempts: string[] }> {
+  const attempts: string[] = [];
+  for (const url of urls) {
+    try {
+      return { value: await getJson(url), url, attempts };
+    } catch (error: any) {
+      attempts.push(`${url} -> ${error?.name === "AbortError" ? "timeout" : error?.message || String(error)}`);
+    }
+  }
+  throw new Error(`${source} failed: ${attempts.join(" | ")}`);
+}
+
 function normalizePolymarket(raw: any): DiscoveryMarket | null {
   const title = String(raw?.question || raw?.title || "").trim();
   if (!title) return null;
+
   const labels = parseJsonArray(raw?.outcomes).map(String);
   const prices = parseJsonArray(raw?.outcomePrices);
   const yesIndex = labels.findIndex((label) => label.toLowerCase() === "yes");
   const noIndex = labels.findIndex((label) => label.toLowerCase() === "no");
   const yes = probability(prices[yesIndex >= 0 ? yesIndex : 0]) ?? probability(raw?.probability);
   const no = probability(prices[noIndex >= 0 ? noIndex : 1]) ?? (yes === undefined ? undefined : 1 - yes);
-  const id = String(raw?.id || raw?.conditionId || raw?.slug || title);
+  const id = String(raw?.id || raw?.conditionId || raw?.conditionID || raw?.slug || title);
+  const eventSlug = String(raw?.__eventSlug || raw?.eventSlug || "");
+  const marketSlug = String(raw?.slug || "");
+  const urlSlug = eventSlug || marketSlug;
+
+  const tagText = Array.isArray(raw?.__eventTags)
+    ? raw.__eventTags.map((tag: any) => tag?.label || tag?.slug || tag).join(" ")
+    : "";
+
   return {
     id: `polymarket:${id}`,
     source: "polymarket",
     sourceMarketId: id,
     title,
-    description: String(raw?.description || "") || undefined,
-    category: categoryFromText(`${raw?.category || ""} ${raw?.tags || ""} ${title}`),
+    description: String(raw?.description || raw?.__eventDescription || "") || undefined,
+    category: categoryFromText(
+      `${raw?.category || ""} ${raw?.tags || ""} ${tagText} ${raw?.__eventTitle || ""} ${title}`,
+    ),
     outcomes: [
       { id: "yes", label: "YES", probability: yes ?? 0.5 },
       { id: "no", label: "NO", probability: no ?? 0.5 },
     ],
-    volume24h: number(raw?.volume24hr ?? raw?.volume24h),
-    volumeTotal: number(raw?.volume),
-    createdAt: raw?.createdAt || raw?.created_at || undefined,
+    volume24h: number(raw?.volume24hr ?? raw?.volume24h ?? raw?.volume24Hr),
+    volumeTotal: number(raw?.volumeNum ?? raw?.volume),
+    createdAt: raw?.createdAt || raw?.created_at || raw?.startDate || undefined,
     closesAt: raw?.endDate || raw?.end_date_iso || undefined,
     resolved: Boolean(raw?.closed || raw?.resolved),
-    externalUrl: raw?.slug ? `https://polymarket.com/event/${raw.slug}` : "https://polymarket.com",
+    externalUrl: urlSlug ? `https://polymarket.com/event/${urlSlug}` : "https://polymarket.com",
     probabilitySource: "external",
   };
 }
@@ -141,14 +178,18 @@ function normalizePolymarket(raw: any): DiscoveryMarket | null {
 function normalizeManifold(raw: any): DiscoveryMarket | null {
   const title = String(raw?.question || "").trim();
   if (!title) return null;
-  const p = probability(raw?.probability) ?? 0.5;
+  if (raw?.outcomeType && raw.outcomeType !== "BINARY") return null;
+
+  const p = probability(raw?.probability);
+  if (p === undefined) return null;
+
   const id = String(raw?.id || raw?.slug || title);
   return {
     id: `manifold:${id}`,
     source: "manifold",
     sourceMarketId: id,
     title,
-    description: String(raw?.textDescription || raw?.description || "") || undefined,
+    description: String(raw?.textDescription || "") || undefined,
     category: categoryFromText(`${raw?.groupSlugs || ""} ${raw?.tags || ""} ${title}`),
     outcomes: [
       { id: "yes", label: "YES", probability: p },
@@ -159,41 +200,90 @@ function normalizeManifold(raw: any): DiscoveryMarket | null {
     traders: number(raw?.uniqueBettorCount),
     createdAt: raw?.createdTime ? new Date(Number(raw.createdTime)).toISOString() : undefined,
     closesAt: raw?.closeTime ? new Date(Number(raw.closeTime)).toISOString() : undefined,
-    resolved: Boolean(raw?.isResolved || raw?.resolution),
-    externalUrl: raw?.url || (raw?.slug ? `https://manifold.markets/market/${raw.slug}` : "https://manifold.markets"),
+    resolved: Boolean(raw?.isResolved),
+    externalUrl: raw?.url || "https://manifold.markets",
     probabilitySource: "external",
   };
 }
 
-export async function fetchExternalMarkets(limit = 80): Promise<{ items: DiscoveryMarket[]; errors: string[] }> {
+async function fetchPolymarketRows(limit: number) {
+  const count = Math.min(100, Math.max(20, limit));
+  const primary =
+    `https://gamma-api.polymarket.com/events?active=true&closed=false&order=volume_24hr&ascending=false&limit=${count}`;
+  const fallback =
+    `https://gamma-api.polymarket.com/markets?active=true&closed=false&order=volumeNum&ascending=false&limit=${count}`;
+
+  const result = await firstSuccessful("polymarket", [primary, fallback]);
+  if (result.url.includes("/events?")) {
+    const events = Array.isArray(result.value) ? result.value : result.value?.data || [];
+    return events.flatMap((event: any) => {
+      const markets = Array.isArray(event?.markets) ? event.markets : [];
+      return markets.map((market: any) => ({
+        ...market,
+        __eventSlug: event?.slug,
+        __eventTitle: event?.title,
+        __eventDescription: event?.description,
+        __eventTags: event?.tags,
+      }));
+    });
+  }
+  return Array.isArray(result.value) ? result.value : result.value?.data || [];
+}
+
+async function fetchManifoldRows(limit: number) {
+  const count = Math.min(100, Math.max(20, limit));
+  const primary =
+    `https://api.manifold.markets/v0/search-markets?term=&sort=24-hour-vol&filter=open&contractType=BINARY&limit=${count}`;
+  const fallback =
+    `https://api.manifold.markets/v0/markets?limit=${count}&sort=last-bet-time&order=desc`;
+
+  const result = await firstSuccessful("manifold", [primary, fallback]);
+  return Array.isArray(result.value) ? result.value : [];
+}
+
+export async function fetchExternalMarkets(
+  limit = 80,
+): Promise<{ items: DiscoveryMarket[]; errors: string[] }> {
   const errors: string[] = [];
   const [poly, manifold] = await Promise.allSettled([
-    getJson(`https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=${Math.min(100, limit)}`),
-    getJson(`https://api.manifold.markets/v0/markets?limit=${Math.min(100, limit)}`),
+    fetchPolymarketRows(limit),
+    fetchManifoldRows(limit),
   ]);
 
   const items: DiscoveryMarket[] = [];
   if (poly.status === "fulfilled") {
-    const rows = Array.isArray(poly.value) ? poly.value : poly.value?.data || [];
-    for (const row of rows) {
+    for (const row of poly.value) {
       const item = normalizePolymarket(row);
-      if (item) items.push(item);
+      if (item && !item.resolved) items.push(item);
     }
   } else {
     errors.push(`polymarket:${poly.reason?.message || "unavailable"}`);
   }
 
   if (manifold.status === "fulfilled") {
-    const rows = Array.isArray(manifold.value) ? manifold.value : [];
-    for (const row of rows) {
+    for (const row of manifold.value) {
       const item = normalizeManifold(row);
-      if (item) items.push(item);
+      if (item && !item.resolved) items.push(item);
     }
   } else {
     errors.push(`manifold:${manifold.reason?.message || "unavailable"}`);
   }
 
-  return { items, errors };
+  const deduped = new Map<string, DiscoveryMarket>();
+  for (const item of items) {
+    if (!deduped.has(item.id)) deduped.set(item.id, item);
+  }
+
+  return {
+    items: [...deduped.values()]
+      .sort(
+        (a, b) =>
+          (b.volume24h ?? b.volumeTotal ?? 0) -
+          (a.volume24h ?? a.volumeTotal ?? 0),
+      )
+      .slice(0, Math.max(limit, 20)),
+    errors,
+  };
 }
 
 export function buildOrderBook(events: IndexedEvent[]): OrderBook {
