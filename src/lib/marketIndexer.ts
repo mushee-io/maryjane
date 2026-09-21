@@ -516,6 +516,30 @@ registerEvent("LiquidityRemoved", (data) => {
   };
 });
 
+
+registerEvent("LimitOrderPlaced", (data) => {
+  const r = eventReader(data);
+  const order = r.pubkey();
+  const market = r.pubkey();
+  const maker = r.pubkey();
+  const side = r.u8() === 0 ? "YES" : "NO";
+  const kind = r.u8() === 0 ? "BUY" : "SELL";
+  return {
+    type: "LimitOrderPlaced",
+    market,
+    actor: maker,
+    data: {
+      order,
+      maker,
+      side,
+      kind,
+      priceBps: r.u16(),
+      shares: r.u64(),
+      escrowAmount: r.u64(),
+    },
+  };
+});
+
 registerEvent("LimitOrderFilled", (data) => {
   const r = eventReader(data);
   const order = r.pubkey();
@@ -537,6 +561,25 @@ registerEvent("LimitOrderFilled", (data) => {
       shares: r.u64(),
       quoteAmount: r.u64(),
       remainingShares: r.u64(),
+    },
+  };
+});
+
+
+registerEvent("LimitOrderCancelled", (data) => {
+  const r = eventReader(data);
+  const order = r.pubkey();
+  const market = r.pubkey();
+  const maker = r.pubkey();
+  return {
+    type: "LimitOrderCancelled",
+    market,
+    actor: maker,
+    data: {
+      order,
+      maker,
+      returnedAmount: r.u64(),
+      unfilledShares: r.u64(),
     },
   };
 });

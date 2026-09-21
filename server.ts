@@ -19,6 +19,7 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { MarketIndexer, rangeToMs, type MarketStatus } from "./src/lib/marketIndexer";
+import { buildOrderBook, fetchExternalMarkets, normalizeNativeMarkets } from "./src/lib/marketAggregation";
 import {
   MILADY_MARKET_PROGRAM_ID as SDK_PROGRAM_ID,
   USDG_DEVNET_MINT,
@@ -36,6 +37,8 @@ import {
   buildProposeResolutionInstruction,
   buildRedeemWinningsInstruction,
   buildTradeInstruction,
+  buildPlaceOrderInstruction,
+  buildFillOrderInstruction,
 } from "./solana/sdk/src/transactions";
 import {
   MarketLintReportStore,
@@ -50,6 +53,45 @@ const BETA_ROUND_DISCRIMINATOR = Buffer.from("cde37f64f671e03d", "hex");
 const BETA_POSITION_DISCRIMINATOR = Buffer.from("5a698f407c23b0fb", "hex");
 const ENTER_BETA_ROUND_DISCRIMINATOR = Buffer.from("404c2c1e78d8eeca", "hex");
 const CLAIM_BETA_ROUND_DISCRIMINATOR = Buffer.from("5db4f8f7614b6f55", "hex");
+
+
+type DecodedLimitOrder = {
+  maker: PublicKey;
+  market: PublicKey;
+  orderSeed: Buffer;
+  side: "YES" | "NO";
+  kind: "BUY" | "SELL";
+  priceBps: number;
+  originalShares: bigint;
+  remainingShares: bigint;
+  escrowMint: PublicKey;
+  escrowVault: PublicKey;
+  status: "ACTIVE" | "FILLED";
+};
+
+const LIMIT_ORDER_DISCRIMINATOR = crypto
+  .createHash("sha256")
+  .update("account:LimitOrder")
+  .digest()
+  .subarray(0, 8);
+
+function decodeLimitOrderAccount(raw: Buffer): DecodedLimitOrder | null {
+  if (raw.length < 198 || !raw.subarray(0, 8).equals(LIMIT_ORDER_DISCRIMINATOR)) return null;
+  let o = 8;
+  const maker = new PublicKey(raw.subarray(o, o + 32)); o += 32;
+  const market = new PublicKey(raw.subarray(o, o + 32)); o += 32;
+  const orderSeed = Buffer.from(raw.subarray(o, o + 32)); o += 32;
+  const side = raw.readUInt8(o++) === 0 ? "YES" : "NO";
+  const kind = raw.readUInt8(o++) === 0 ? "BUY" : "SELL";
+  const priceBps = raw.readUInt16LE(o); o += 2;
+  const originalShares = raw.readBigUInt64LE(o); o += 8;
+  const remainingShares = raw.readBigUInt64LE(o); o += 8;
+  const escrowMint = new PublicKey(raw.subarray(o, o + 32)); o += 32;
+  const escrowVault = new PublicKey(raw.subarray(o, o + 32)); o += 32;
+  o += 8;
+  const status = raw.readUInt8(o++) === 0 ? "ACTIVE" : "FILLED";
+  return { maker, market, orderSeed, side, kind, priceBps, originalShares, remainingShares, escrowMint, escrowVault, status };
+}
 
 type DecodedBetaRound = {
   address: string;
@@ -1103,6 +1145,149 @@ export async function createMaryJaneApp(options: { local?: boolean } = {}) {
       });
     } catch (error: any) {
       res.status(400).json({ error: error?.message || "Unable to build redemption transaction" });
+    }
+  });
+
+
+  app.get("/api/v1/discovery", async (req, res) => {
+    const limit = Math.min(250, Math.max(1, Number(req.query.limit || 150)));
+    const nativeRaw = marketIndexer.listMarkets({ sort: "volume", limit: 100 }).items;
+    const reports = marketLintStore.list(500);
+    const native = normalizeNativeMarkets(
+      nativeRaw,
+      reports,
+      (address) => marketIndexer.events({ market: address, limit: 500 }),
+    );
+    const external = await fetchExternalMarkets(limit);
+    const items = [...native, ...external.items]
+      .filter((market) => !market.resolved)
+      .slice(0, limit);
+    res.json({
+      items,
+      errors: external.errors,
+      sources: {
+        maryjane: native.length,
+        polymarket: external.items.filter((x) => x.source === "polymarket").length,
+        manifold: external.items.filter((x) => x.source === "manifold").length,
+      },
+      updatedAt: Date.now(),
+    });
+  });
+
+  app.get("/api/v1/markets/:address/orderbook", (req, res) => {
+    const market = marketIndexer.getMarket(req.params.address);
+    if (!market) return res.status(404).json({ error: "Market not indexed" });
+    res.json(buildOrderBook(marketIndexer.events({ market: market.address, limit: 500 })));
+  });
+
+  app.post("/api/v1/orders/place-transaction", async (req, res) => {
+    try {
+      const wallet = new PublicKey(String(req.body.wallet || ""));
+      const marketSeed = hex32(String(req.body.marketSeed || ""));
+      const side = String(req.body.side || "").toUpperCase();
+      const kind = String(req.body.kind || "").toUpperCase();
+      const priceBps = Number(req.body.priceBps || 0);
+      const shares = BigInt(String(req.body.sharesBaseUnits || "0"));
+      if ((side !== "YES" && side !== "NO") || (kind !== "BUY" && kind !== "SELL")) {
+        return res.status(400).json({ error: "side/kind must be YES|NO and BUY|SELL" });
+      }
+      if (!Number.isInteger(priceBps) || priceBps < 1 || priceBps > 9999 || shares <= 0n) {
+        return res.status(400).json({ error: "invalid price or share quantity" });
+      }
+
+      const addresses = deriveMarketAddresses(marketSeed, MILADY_MARKET_PROGRAM_ID);
+      const [marketAccount, collateralMintAccount] = await Promise.all([
+        solana.getAccountInfo(addresses.market, "confirmed"),
+        solana.getAccountInfo(USDG_DEVNET_MINT, "confirmed"),
+      ]);
+      if (!marketAccount) return res.status(404).json({ error: "Market does not exist on Devnet" });
+      if (!collateralMintAccount) return res.status(409).json({ error: "USDG Devnet mint was not found" });
+      const tokenProgram = collateralMintAccount.owner;
+      const outcomeMint = side === "YES" ? addresses.yesMint : addresses.noMint;
+      const escrowMint = kind === "BUY" ? USDG_DEVNET_MINT : outcomeMint;
+      const makerSource = getAssociatedTokenAddressSync(escrowMint, wallet, false, tokenProgram);
+      const orderSeed = crypto.randomBytes(32);
+      const built = buildPlaceOrderInstruction({
+        maker: wallet,
+        collateralMint: USDG_DEVNET_MINT,
+        yesMint: addresses.yesMint,
+        noMint: addresses.noMint,
+        tokenProgram,
+        marketSeed,
+        orderSeed,
+        side: side as "YES" | "NO",
+        kind: kind as "BUY" | "SELL",
+        priceBps,
+        shares,
+        makerSource,
+      });
+      const latest = await solana.getLatestBlockhash("confirmed");
+      const tx = new Transaction({ feePayer: wallet, recentBlockhash: latest.blockhash })
+        .add(createAssociatedTokenAccountIdempotentInstruction(wallet, makerSource, wallet, escrowMint, tokenProgram))
+        .add(built.instruction);
+      res.json({
+        transactionBase64: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString("base64"),
+        lastValidBlockHeight: latest.lastValidBlockHeight,
+        order: built.order.toBase58(),
+        escrowVault: built.escrowVault.toBase58(),
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error?.message || "Unable to build order transaction" });
+    }
+  });
+
+  app.post("/api/v1/orders/fill-transaction", async (req, res) => {
+    try {
+      const taker = new PublicKey(String(req.body.wallet || ""));
+      const orderKey = new PublicKey(String(req.body.order || ""));
+      const shares = BigInt(String(req.body.sharesBaseUnits || "0"));
+      if (shares <= 0n) return res.status(400).json({ error: "sharesBaseUnits must be positive" });
+      const orderAccount = await solana.getAccountInfo(orderKey, "confirmed");
+      if (!orderAccount) return res.status(404).json({ error: "Order not found" });
+      const order = decodeLimitOrderAccount(Buffer.from(orderAccount.data));
+      if (!order || order.status !== "ACTIVE") return res.status(409).json({ error: "Order is not active" });
+      if (shares > order.remainingShares) return res.status(400).json({ error: "Cannot fill more than remaining shares" });
+
+      const market = marketIndexer.getMarket(order.market.toBase58());
+      if (!market) return res.status(404).json({ error: "Order market is not indexed" });
+      const collateralMint = new PublicKey(market.collateralMint);
+      const outcomeMint = new PublicKey(order.side === "YES" ? market.yesMint : market.noMint);
+      const mintAccount = await solana.getAccountInfo(collateralMint, "confirmed");
+      if (!mintAccount) return res.status(409).json({ error: "Collateral mint unavailable" });
+      const tokenProgram = mintAccount.owner;
+      const takerCollateral = getAssociatedTokenAddressSync(collateralMint, taker, false, tokenProgram);
+      const takerOutcome = getAssociatedTokenAddressSync(outcomeMint, taker, false, tokenProgram);
+      const makerCollateral = getAssociatedTokenAddressSync(collateralMint, order.maker, false, tokenProgram);
+      const makerOutcome = getAssociatedTokenAddressSync(outcomeMint, order.maker, false, tokenProgram);
+      const ix = buildFillOrderInstruction({
+        taker,
+        market: order.market,
+        order: orderKey,
+        maker: order.maker,
+        collateralMint,
+        outcomeMint,
+        escrowMint: order.escrowMint,
+        escrowVault: order.escrowVault,
+        takerCollateral,
+        takerOutcome,
+        makerCollateral,
+        makerOutcome,
+        tokenProgram,
+        shares,
+      });
+      const latest = await solana.getLatestBlockhash("confirmed");
+      const tx = new Transaction({ feePayer: taker, recentBlockhash: latest.blockhash })
+        .add(createAssociatedTokenAccountIdempotentInstruction(taker, takerCollateral, taker, collateralMint, tokenProgram))
+        .add(createAssociatedTokenAccountIdempotentInstruction(taker, takerOutcome, taker, outcomeMint, tokenProgram))
+        .add(createAssociatedTokenAccountIdempotentInstruction(taker, makerCollateral, order.maker, collateralMint, tokenProgram))
+        .add(createAssociatedTokenAccountIdempotentInstruction(taker, makerOutcome, order.maker, outcomeMint, tokenProgram))
+        .add(ix);
+      res.json({
+        transactionBase64: tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString("base64"),
+        lastValidBlockHeight: latest.lastValidBlockHeight,
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error?.message || "Unable to build fill transaction" });
     }
   });
 

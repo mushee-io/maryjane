@@ -1,555 +1,333 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  ArrowRight,
-  BarChart3,
-  ChevronRight,
-  Clock3,
-  Flame,
-  Globe2,
-  Search,
-  Sparkles,
-  Trophy,
-  Wallet,
-  Zap,
-} from "lucide-react";
+import { ArrowUpRight, Clock3, ExternalLink, Flame, Globe2, Search, Sparkles, Trophy, Wallet, Zap } from "lucide-react";
 import { Transaction } from "@solana/web3.js";
 
+type Source = "maryjane" | "polymarket" | "manifold";
 type Market = {
-  address: string;
-  authority: string;
-  marketSeed: string;
-  questionHash: string;
-  metadataHash: string;
-  closeTs: number;
-  resolutionTs: number;
-  status: string;
-  volume: string;
-  collateralVaultBalance: string;
-  yesProbabilityBps: number;
-  noProbabilityBps: number;
+  id: string;
+  source: Source;
+  sourceMarketId: string;
+  title: string;
+  description?: string;
+  category: string;
+  outcomes: Array<{ id: string; label: string; probability: number }>;
+  volume24h?: number;
+  volumeTotal?: number;
+  traders?: number;
+  tradeCount?: number;
+  closesAt?: string;
+  resolved: boolean;
+  externalUrl?: string;
+  nativeAddress?: string;
+  nativeMarketSeed?: string;
+  status?: string;
+  probabilitySource: "last-match" | "external" | "pool-reference" | "unknown";
 };
 
-type MarketLintReport = {
-  certifiedAt?: number;
-  input: {
-    question: string;
-    description?: string;
-    category?: string;
-    source?: string;
-    deadline?: string;
-  };
-  hashes: {
-    marketSeed: string;
-    questionHash: string;
-    metadataHash: string;
-  };
+type BookOrder = {
+  order: string;
+  maker: string;
+  side: "YES" | "NO";
+  kind: "BUY" | "SELL";
+  priceBps: number;
+  originalShares: string;
+  remainingShares: string;
+  createdAt: number;
 };
-
-type Analytics = {
-  totalMarkets: number;
-  openMarkets: number;
+type OrderBook = {
+  yes: { bids: BookOrder[]; asks: BookOrder[]; bestBidBps: number | null; bestAskBps: number | null };
+  no: { bids: BookOrder[]; asks: BookOrder[]; bestBidBps: number | null; bestAskBps: number | null };
+  lastMatchedYesBps: number | null;
+  lastMatchedAt: number | null;
   volume24hBaseUnits: string;
-  activeTraders24h: number;
+  totalMatchedVolumeBaseUnits: string;
+  tradeCount: number;
+  traderCount: number;
 };
 
-const SCALE = 1_000_000n;
+const categories = [
+  ["Trending", Flame],
+  ["New", Clock3],
+  ["Crypto", Zap],
+  ["Sports", Trophy],
+  ["Tech", Sparkles],
+  ["World", Globe2],
+] as const;
 
-function formatUnits(value: string | bigint, digits = 0) {
-  const amount = typeof value === "bigint" ? value : BigInt(value || "0");
-  const whole = amount / SCALE;
-  const fraction = (amount % SCALE).toString().padStart(6, "0").slice(0, digits);
-  return digits ? `${whole.toLocaleString()}.${fraction}` : whole.toLocaleString();
+function provider() { return (window as any).solana; }
+function short(value: string, left = 5, right = 4) { return value.length > left + right + 1 ? `${value.slice(0,left)}…${value.slice(-right)}` : value; }
+function money(value?: number) {
+  if (!value) return "$0";
+  return new Intl.NumberFormat("en", { notation: value >= 1000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(value);
 }
-
-function short(value: string, left = 5, right = 4) {
-  return value.length <= left + right + 1
-    ? value
-    : `${value.slice(0, left)}…${value.slice(-right)}`;
-}
-
-async function jsonOrThrow(response: Response) {
-  const text = await response.text();
-  const contentType = response.headers.get("content-type") || "";
-  if (!contentType.includes("application/json")) {
-    throw new Error("market-api-unavailable");
-  }
-  const data = text ? JSON.parse(text) : {};
-  if (!response.ok) throw new Error(data?.error || "Request failed");
-  return data;
-}
-
-function provider() {
-  return (window as any).solana;
-}
-
 function fromBase64(value: string) {
   const binary = atob(value);
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
-
+async function jsonOrThrow(response: Response) {
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error || "Request failed");
+  return data;
+}
 async function signBuiltTransaction(transactionBase64: string) {
   const wallet = provider();
-  if (!wallet?.signAndSendTransaction) {
-    throw new Error("Connect a compatible Solana wallet first.");
-  }
+  if (!wallet?.signAndSendTransaction) throw new Error("Connect a compatible Solana wallet first.");
   const tx = Transaction.from(fromBase64(transactionBase64));
   const result = await wallet.signAndSendTransaction(tx);
   return typeof result === "string" ? result : result.signature;
 }
 
-const categories = [
-  { label: "Trending", icon: Flame },
-  { label: "Crypto", icon: Zap },
-  { label: "Sports", icon: Trophy },
-  { label: "World", icon: Globe2 },
-  { label: "Tech", icon: Sparkles },
-];
+function sourceLabel(source: Source) {
+  if (source === "maryjane") return "MARY JANE";
+  return source.toUpperCase();
+}
 
 export function MarketHomeScreen() {
   const [markets, setMarkets] = useState<Market[]>([]);
-  const [reports, setReports] = useState<MarketLintReport[]>([]);
-  const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [category, setCategory] = useState("Trending");
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<Market | null>(null);
   const [wallet, setWallet] = useState("");
-  const [tradeSide, setTradeSide] = useState<"YES" | "NO">("YES");
-  const [tradeAmount, setTradeAmount] = useState("1");
-  const [tradeBusy, setTradeBusy] = useState(false);
-  const [tradeNotice, setTradeNotice] = useState("");
-  const [feedAvailable, setFeedAvailable] = useState(true);
+  const [selected, setSelected] = useState<Market | null>(null);
+  const [book, setBook] = useState<OrderBook | null>(null);
+  const [bookSide, setBookSide] = useState<"YES" | "NO">("YES");
+  const [orderKind, setOrderKind] = useState<"BUY" | "SELL">("BUY");
+  const [price, setPrice] = useState("50");
+  const [shares, setShares] = useState("1");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [sourceHealth, setSourceHealth] = useState<string[]>([]);
+
+  const load = async () => {
+    try {
+      const response = await fetch("/api/v1/discovery?limit=180");
+      const data = await jsonOrThrow(response);
+      setMarkets(data.items || []);
+      setSourceHealth(data.errors || []);
+    } catch {
+      setSourceHealth(["feed:unavailable"]);
+    }
+  };
 
   useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const [marketsRes, reportsRes, analyticsRes] = await Promise.all([
-          fetch("/api/v1/markets?sort=volume&limit=100"),
-          fetch("/api/v1/marketlint/reports?limit=250"),
-          fetch("/api/v1/analytics/protocol"),
-        ]);
-
-        const [marketJson, reportJson, analyticsJson] = await Promise.all([
-          jsonOrThrow(marketsRes),
-          jsonOrThrow(reportsRes),
-          jsonOrThrow(analyticsRes),
-        ]);
-
-        if (!active) return;
-        setMarkets(marketJson.items || []);
-        setReports(reportJson.items || []);
-        setAnalytics(analyticsJson);
-        setFeedAvailable(true);
-      } catch {
-        if (!active) return;
-        setFeedAvailable(false);
-      }
-    };
-
     void load();
-    const timer = window.setInterval(() => void load(), 10_000);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
+    const timer = window.setInterval(() => void load(), 30_000);
+    return () => window.clearInterval(timer);
   }, []);
 
-  const reportsBySeed = useMemo(
-    () => new Map(reports.map((report) => [report.hashes.marketSeed, report])),
-    [reports],
-  );
+  useEffect(() => {
+    if (!selected?.nativeAddress) { setBook(null); return; }
+    let active = true;
+    const loadBook = async () => {
+      const response = await fetch(`/api/v1/markets/${selected.nativeAddress}/orderbook`);
+      if (!response.ok) return;
+      const data = await response.json();
+      if (active) setBook(data);
+    };
+    void loadBook();
+    const timer = window.setInterval(() => void loadBook(), 8_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [selected?.nativeAddress]);
 
-  const visibleMarkets = useMemo(() => {
+  const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return markets.filter((market) => {
-      const report = reportsBySeed.get(market.marketSeed);
-      const marketCategory = report?.input.category || "Other";
-      const categoryOk =
-        category === "Trending" ||
-        marketCategory.toLowerCase() === category.toLowerCase();
-      const haystack = `${report?.input.question || ""} ${market.address} ${marketCategory}`.toLowerCase();
-      return categoryOk && (!q || haystack.includes(q));
-    });
-  }, [markets, reportsBySeed, category, search]);
+    return markets
+      .filter((market) => !q || `${market.title} ${market.category} ${market.source}`.toLowerCase().includes(q))
+      .filter((market) => category === "Trending" || category === "New" || market.category.toLowerCase() === category.toLowerCase())
+      .sort((a, b) => {
+        if (category === "New") return new Date(b.closesAt || 0).getTime() - new Date(a.closesAt || 0).getTime();
+        return (b.volume24h || b.volumeTotal || 0) - (a.volume24h || a.volumeTotal || 0);
+      });
+  }, [markets, category, search]);
 
   const connect = async () => {
     const p = provider();
-    if (!p?.connect) {
-      setTradeNotice("Install or unlock a compatible Solana wallet.");
-      return;
-    }
+    if (!p?.connect) return setNotice("Install or unlock a compatible Solana wallet.");
     const result = await p.connect();
     setWallet(result.publicKey.toString());
   };
 
-  const trade = async () => {
-    if (!selected) return;
-    if (!wallet) {
-      await connect();
-      return;
-    }
-
-    setTradeBusy(true);
-    setTradeNotice("");
+  const placeOrder = async () => {
+    if (!selected?.nativeMarketSeed) return;
+    if (!wallet) { await connect(); return; }
+    const px = Number(price);
+    const qty = Number(shares);
+    if (!Number.isFinite(px) || px <= 0 || px >= 100) return setNotice("Price must be between 0.01¢ and 99.99¢.");
+    if (!Number.isFinite(qty) || qty <= 0) return setNotice("Enter a positive share amount.");
+    setBusy(true); setNotice("");
     try {
-      const amount = Number(tradeAmount);
-      if (!Number.isFinite(amount) || amount <= 0) throw new Error("Enter a valid USDG amount.");
-
-      const response = await fetch("/api/v1/markets/trade-transaction", {
+      const response = await fetch("/api/v1/orders/place-transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           wallet,
-          marketSeed: selected.marketSeed,
-          side: tradeSide,
-          direction: "BUY",
-          amountInBaseUnits: String(Math.round(amount * 1_000_000)),
-          minAmountOutBaseUnits: "1",
+          marketSeed: selected.nativeMarketSeed,
+          side: bookSide,
+          kind: orderKind,
+          priceBps: Math.round(px * 100),
+          sharesBaseUnits: String(Math.round(qty * 1_000_000)),
         }),
       });
       const data = await jsonOrThrow(response);
       const signature = await signBuiltTransaction(data.transactionBase64);
-      setTradeNotice(`Submitted on Devnet · ${short(signature, 8, 8)}`);
+      setNotice(`Order submitted · ${short(signature, 8, 8)}`);
+      window.setTimeout(() => void load(), 1500);
     } catch (error: any) {
-      setTradeNotice(
-        error?.message === "market-api-unavailable"
-          ? "Trading API is redeploying. Try again shortly."
-          : error?.message || "Unable to submit trade.",
-      );
+      setNotice(error?.message || "Unable to place order.");
     } finally {
-      setTradeBusy(false);
+      setBusy(false);
     }
   };
 
+  const fillOrder = async (order: BookOrder) => {
+    if (!wallet) { await connect(); return; }
+    setBusy(true); setNotice("");
+    try {
+      const response = await fetch("/api/v1/orders/fill-transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet, order: order.order, sharesBaseUnits: order.remainingShares }),
+      });
+      const data = await jsonOrThrow(response);
+      const signature = await signBuiltTransaction(data.transactionBase64);
+      setNotice(`Matched · ${short(signature, 8, 8)}`);
+    } catch (error: any) {
+      setNotice(error?.message || "Unable to fill order.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const nativeCount = markets.filter((m) => m.source === "maryjane").length;
+  const externalCount = markets.length - nativeCount;
+
   return (
-    <div className="min-h-screen bg-[#070707] text-[#f6f6f2]">
-      <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#070707]/95 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1440px] items-center gap-5 px-5 py-4">
-          <a href="/" className="mr-2 flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#b7ff3c] text-sm font-black text-black">
-              M
-            </div>
-            <span className="text-lg font-semibold tracking-[-0.03em]">Mary Jane</span>
+    <div className="min-h-screen bg-[#060606] text-[#f5f5ef]">
+      <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#060606]/95 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1500px] items-center gap-5 px-5 py-4">
+          <a href="/" className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#b7ff3c] text-sm font-black text-black">M</div>
+            <span className="text-lg font-semibold tracking-[-.03em]">Mary Jane</span>
           </a>
-
           <nav className="hidden items-center gap-1 lg:flex">
-            <a href="/" className="rounded-full bg-white/[0.08] px-4 py-2 text-sm font-medium">Markets</a>
-            <a href="/create" className="rounded-full px-4 py-2 text-sm text-white/55 hover:bg-white/[0.05] hover:text-white">Create</a>
-            <a href="/beta" className="rounded-full px-4 py-2 text-sm text-white/55 hover:bg-white/[0.05] hover:text-white">Beta</a>
-            <a href="/analytics" className="rounded-full px-4 py-2 text-sm text-white/55 hover:bg-white/[0.05] hover:text-white">Analytics</a>
+            <a href="/" className="rounded-full bg-white/[0.08] px-4 py-2 text-sm">Markets</a>
+            <a href="/create" className="rounded-full px-4 py-2 text-sm text-white/50 hover:text-white">Create</a>
+            <a href="/beta" className="rounded-full px-4 py-2 text-sm text-white/50 hover:text-white">Beta</a>
+            <a href="/analytics" className="rounded-full px-4 py-2 text-sm text-white/50 hover:text-white">Analytics</a>
           </nav>
-
-          <div className="ml-auto flex items-center gap-2">
-            <div className="hidden w-[280px] items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.035] px-3 md:flex">
-              <Search className="h-4 w-4 text-white/25" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search markets"
-                className="w-full bg-transparent py-2.5 text-sm outline-none placeholder:text-white/25"
-              />
-            </div>
-            <button
-              onClick={connect}
-              className="flex items-center gap-2 rounded-xl bg-[#f2f2ed] px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-white"
-            >
-              <Wallet className="h-4 w-4" />
-              {wallet ? short(wallet) : "Connect"}
-            </button>
+          <div className="ml-auto hidden w-[310px] items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.035] px-3 md:flex">
+            <Search className="h-4 w-4 text-white/25" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search all prediction markets" className="w-full bg-transparent py-2.5 text-sm outline-none placeholder:text-white/25" />
           </div>
+          <button onClick={connect} className="flex items-center gap-2 rounded-xl bg-[#f2f2ed] px-4 py-2.5 text-sm font-semibold text-black">
+            <Wallet className="h-4 w-4" />{wallet ? short(wallet) : "Connect"}
+          </button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1440px] px-5 pb-20">
-        <section className="border-b border-white/[0.06] py-12 md:py-16">
-          <div className="max-w-4xl">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#b7ff3c]/20 bg-[#b7ff3c]/10 px-3 py-1.5 text-xs font-medium text-[#c9ff72]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#b7ff3c]" />
-              Solana Devnet live
+      <main className="mx-auto max-w-[1500px] px-5 pb-20">
+        <section className="border-b border-white/[0.06] py-10 md:py-14">
+          <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
+            <div className="max-w-3xl">
+              <div className="mb-4 text-xs font-medium uppercase tracking-[.2em] text-[#b7ff3c]">Prediction market terminal</div>
+              <h1 className="text-4xl font-semibold leading-[.98] tracking-[-.055em] sm:text-6xl">One feed for what the world thinks happens next.</h1>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-white/42">Discover public markets across Mary Jane, Polymarket and Manifold. Create permissionless Solana markets and trade native markets through an onchain order book.</p>
             </div>
-            <h1 className="max-w-3xl text-4xl font-semibold leading-[0.98] tracking-[-0.055em] sm:text-6xl md:text-7xl">
-              Predict what happens next.
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-white/45 md:text-lg">
-              Trade outcomes, launch markets and price uncertainty on Solana.
-              Permissionless markets with onchain liquidity and transparent resolution.
-            </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <a href="/create" className="flex items-center gap-2 rounded-xl bg-[#b7ff3c] px-5 py-3 text-sm font-semibold text-black hover:brightness-105">
-                Create a market <ArrowRight className="h-4 w-4" />
-              </a>
-              <a href="/beta" className="rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-white/70 hover:bg-white/[0.05]">
-                Open Mary Jane Beta
-              </a>
-            </div>
-          </div>
-
-          <div className="mt-10 grid max-w-3xl grid-cols-3 gap-6 border-t border-white/[0.06] pt-6">
-            <div>
-              <div className="text-2xl font-semibold tracking-tight">{analytics?.openMarkets ?? markets.filter((m) => m.status === "OPEN").length}</div>
-              <div className="mt-1 text-xs text-white/30">Open markets</div>
-            </div>
-            <div>
-              <div className="text-2xl font-semibold tracking-tight">{analytics ? formatUnits(analytics.volume24hBaseUnits) : "0"}</div>
-              <div className="mt-1 text-xs text-white/30">24h USDG volume</div>
-            </div>
-            <div>
-              <div className="text-2xl font-semibold tracking-tight">{analytics?.activeTraders24h ?? 0}</div>
-              <div className="mt-1 text-xs text-white/30">24h traders</div>
+            <div className="grid min-w-[310px] grid-cols-3 gap-2">
+              {[["Native", nativeCount],["External", externalCount],["Sources", 3]].map(([label,value]) => <div key={label} className="rounded-2xl border border-white/[.07] bg-white/[.025] p-4"><div className="text-2xl font-semibold">{value}</div><div className="mt-1 text-[11px] text-white/30">{label}</div></div>)}
             </div>
           </div>
         </section>
 
-        <section className="py-8">
+        <section className="py-7">
           <div className="flex gap-2 overflow-x-auto pb-2">
-            {categories.map(({ label, icon: Icon }) => (
-              <button
-                key={label}
-                onClick={() => setCategory(label)}
-                className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm transition ${
-                  category === label
-                    ? "border-white bg-white text-black"
-                    : "border-white/[0.08] bg-white/[0.025] text-white/45 hover:text-white"
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {label}
+            {categories.map(([label, Icon]) => (
+              <button key={label} onClick={() => setCategory(label)} className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm transition ${category === label ? "border-white bg-white text-black" : "border-white/[.08] bg-white/[.025] text-white/45 hover:text-white"}`}>
+                <Icon className="h-3.5 w-3.5" />{label}
               </button>
             ))}
           </div>
 
-          <div className="mt-7 flex items-end justify-between">
-            <div>
-              <div className="text-xs font-medium uppercase tracking-[0.18em] text-white/30">
-                {category}
-              </div>
-              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em]">
-                {category === "Trending" ? "Markets people are watching" : `${category} markets`}
-              </h2>
-            </div>
-            <div className="hidden text-xs text-white/25 sm:block">
-              {feedAvailable ? "Live from Solana Devnet" : "Market feed reconnecting"}
-            </div>
+          <div className="mt-7 flex items-end justify-between gap-5">
+            <div><div className="text-xs uppercase tracking-[.18em] text-white/28">{category}</div><h2 className="mt-2 text-2xl font-semibold tracking-[-.035em]">{category === "Trending" ? "Markets moving now" : category === "New" ? "Recently surfaced markets" : `${category} markets`}</h2></div>
+            <div className="text-right text-xs text-white/25">{sourceHealth.length ? "Some external sources are temporarily unavailable" : "Mary Jane · Polymarket · Manifold"}</div>
           </div>
 
-          {visibleMarkets.length > 0 ? (
-            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {visibleMarkets.map((market) => {
-                const report = reportsBySeed.get(market.marketSeed);
-                const question = report?.input.question || `Market ${short(market.address, 8, 6)}`;
-                const marketCategory = report?.input.category || "Prediction";
-                const yes = market.yesProbabilityBps / 100;
-                const no = market.noProbabilityBps / 100;
-
-                return (
-                  <button
-                    key={market.address}
-                    onClick={() => {
-                      setSelected(market);
-                      setTradeSide(yes >= no ? "YES" : "NO");
-                      setTradeNotice("");
-                    }}
-                    className="group rounded-2xl border border-white/[0.08] bg-[#0d0d0d] p-5 text-left transition hover:-translate-y-0.5 hover:border-white/[0.16] hover:bg-[#101010]"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <span className="rounded-full bg-white/[0.055] px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-white/40">
-                        {marketCategory}
-                      </span>
-                      <span className="text-[10px] uppercase tracking-wider text-[#b7ff3c]">
-                        {market.status}
-                      </span>
-                    </div>
-
-                    <h3 className="mt-5 min-h-[72px] text-xl font-semibold leading-6 tracking-[-0.025em] text-white/90">
-                      {question}
-                    </h3>
-
-                    <div className="mt-6 grid grid-cols-2 gap-2">
-                      <div className="rounded-xl bg-[#163824] px-3 py-3">
-                        <div className="text-[10px] uppercase tracking-wider text-emerald-300/55">Yes</div>
-                        <div className="mt-1 text-xl font-semibold text-emerald-300">{yes.toFixed(0)}¢</div>
-                      </div>
-                      <div className="rounded-xl bg-[#3a171b] px-3 py-3">
-                        <div className="text-[10px] uppercase tracking-wider text-rose-300/55">No</div>
-                        <div className="mt-1 text-xl font-semibold text-rose-300">{no.toFixed(0)}¢</div>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 flex items-center justify-between border-t border-white/[0.06] pt-4 text-xs text-white/30">
-                      <span>{formatUnits(market.volume)} USDG vol.</span>
-                      <span className="flex items-center gap-1">
-                        <Clock3 className="h-3 w-3" />
-                        {new Date(market.closeTs * 1000).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="mt-6 overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0c0c0c]">
-              <div className="grid min-h-[360px] gap-8 p-7 md:grid-cols-[1fr_380px] md:p-10">
-                <div className="flex max-w-xl flex-col justify-center">
-                  <div className="text-xs font-medium uppercase tracking-[0.2em] text-[#b7ff3c]">
-                    Mary Jane is live
+          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {visible.map((market) => {
+              const yes = market.outcomes.find((o) => o.label === "YES")?.probability ?? .5;
+              const no = market.outcomes.find((o) => o.label === "NO")?.probability ?? 1 - yes;
+              return (
+                <button key={market.id} onClick={() => { setSelected(market); setBookSide(yes >= no ? "YES" : "NO"); setPrice(String(Math.round((yes >= no ? yes : no) * 100))); setNotice(""); }} className="group rounded-2xl border border-white/[.08] bg-[#0c0c0c] p-5 text-left transition hover:-translate-y-0.5 hover:border-white/[.16]">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-[.12em] ${market.source === "maryjane" ? "bg-[#b7ff3c]/12 text-[#caff75]" : "bg-white/[.06] text-white/38"}`}>{sourceLabel(market.source)}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-white/28">{market.category}</span>
                   </div>
-                  <h3 className="mt-4 text-3xl font-semibold tracking-[-0.045em] md:text-4xl">
-                    Launch the first market.
-                  </h3>
-                  <p className="mt-4 max-w-lg text-sm leading-6 text-white/40">
-                    The protocol is deployed on Solana Devnet. Create a real binary market,
-                    certify it through MarketLint and seed USDG liquidity. It will appear here
-                    automatically once indexed.
-                  </p>
-                  <div className="mt-7">
-                    <a href="/create" className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black">
-                      Create market <ChevronRight className="h-4 w-4" />
-                    </a>
+                  <h3 className="mt-5 min-h-[72px] text-xl font-semibold leading-6 tracking-[-.025em] text-white/90">{market.title}</h3>
+                  <div className="mt-6 grid grid-cols-2 gap-2">
+                    <div className="rounded-xl bg-emerald-400/[.10] px-3 py-3"><div className="text-[10px] text-emerald-300/55">YES</div><div className="mt-1 text-xl font-semibold text-emerald-300">{Math.round(yes*100)}¢</div></div>
+                    <div className="rounded-xl bg-rose-400/[.10] px-3 py-3"><div className="text-[10px] text-rose-300/55">NO</div><div className="mt-1 text-xl font-semibold text-rose-300">{Math.round(no*100)}¢</div></div>
                   </div>
-                </div>
-
-                <div className="flex flex-col justify-center rounded-2xl border border-white/[0.07] bg-black/30 p-5">
-                  <div className="text-xs uppercase tracking-[0.16em] text-white/25">Protocol status</div>
-                  {[
-                    ["Solana Devnet", "Live"],
-                    ["USDG collateral", "Ready"],
-                    ["MarketLint", "Ready"],
-                    ["Resolution", "Ready"],
-                  ].map(([label, value]) => (
-                    <div key={label} className="flex items-center justify-between border-b border-white/[0.06] py-4 last:border-0">
-                      <span className="text-sm text-white/50">{label}</span>
-                      <span className="flex items-center gap-2 text-xs font-medium text-[#b7ff3c]">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#b7ff3c]" />
-                        {value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+                  <div className="mt-5 flex items-center justify-between border-t border-white/[.06] pt-4 text-xs text-white/30">
+                    <span>{money(market.volume24h || market.volumeTotal)} vol</span>
+                    <span>{market.probabilitySource === "last-match" ? "Last matched" : market.source === "maryjane" ? "Indicative" : "External probability"}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </section>
       </main>
 
       {selected && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/65 backdrop-blur-sm" onClick={() => setSelected(null)}>
-          <aside
-            className="h-full w-full max-w-[460px] overflow-y-auto border-l border-white/[0.08] bg-[#0a0a0a] p-6"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {(() => {
-              const report = reportsBySeed.get(selected.marketSeed);
-              const question = report?.input.question || `Market ${short(selected.address, 8, 6)}`;
-              const yes = selected.yesProbabilityBps / 100;
-              const no = selected.noProbabilityBps / 100;
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm" onClick={() => setSelected(null)}>
+          <aside className="h-full w-full max-w-[540px] overflow-y-auto border-l border-white/[.08] bg-[#090909] p-6" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setSelected(null)} className="text-sm text-white/35 hover:text-white">← Back</button>
+            <div className="mt-7 flex items-center justify-between"><span className="rounded-full bg-white/[.06] px-2.5 py-1 text-[10px] font-semibold tracking-[.12em] text-white/45">{sourceLabel(selected.source)}</span><span className="text-xs text-white/28">{selected.category}</span></div>
+            <h2 className="mt-4 text-3xl font-semibold leading-9 tracking-[-.045em]">{selected.title}</h2>
+            {selected.description && <p className="mt-4 text-sm leading-6 text-white/40">{selected.description.slice(0,500)}</p>}
 
-              return (
-                <>
-                  <button onClick={() => setSelected(null)} className="text-sm text-white/35 hover:text-white">
-                    ← Back to markets
-                  </button>
-                  <div className="mt-7 text-xs uppercase tracking-[0.16em] text-white/30">
-                    {report?.input.category || "Prediction"}
+            {selected.source !== "maryjane" ? (
+              <div className="mt-8 rounded-2xl border border-white/[.08] bg-white/[.025] p-5">
+                <div className="text-xs uppercase tracking-[.16em] text-white/30">External market</div>
+                <p className="mt-3 text-sm leading-6 text-white/45">Mary Jane indexes this market for discovery. Trading and settlement remain on the source platform.</p>
+                {selected.externalUrl && <a href={selected.externalUrl} target="_blank" rel="noreferrer" className="mt-5 flex items-center justify-between rounded-xl bg-white px-4 py-3 text-sm font-semibold text-black">Open on {sourceLabel(selected.source)} <ExternalLink className="h-4 w-4"/></a>}
+              </div>
+            ) : (
+              <>
+                <div className="mt-7 grid grid-cols-4 gap-2">
+                  {[["Best bid", book?.yes.bestBidBps],["Best ask", book?.yes.bestAskBps],["24h vol", book ? Number(book.volume24hBaseUnits)/1e6 : undefined],["Traders", book?.traderCount]].map(([label,value]) => <div key={String(label)} className="rounded-xl border border-white/[.07] p-3"><div className="text-[10px] text-white/25">{label}</div><div className="mt-2 text-sm font-semibold">{label === "Best bid" || label === "Best ask" ? (typeof value === "number" ? `${(value/100).toFixed(0)}¢` : "—") : value ?? "—"}</div></div>)}
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-white/[.08] bg-white/[.025] p-4">
+                  <div className="flex items-center justify-between"><div className="text-sm font-semibold">Order book</div><div className="text-xs text-white/28">Matched trades set probability</div></div>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    {(["YES","NO"] as const).map((side) => <button key={side} onClick={() => setBookSide(side)} className={`rounded-xl py-2 text-sm font-semibold ${bookSide===side ? (side==="YES"?"bg-emerald-300 text-black":"bg-rose-300 text-black") : "bg-white/[.05] text-white/45"}`}>{side}</button>)}
                   </div>
-                  <h2 className="mt-3 text-3xl font-semibold leading-9 tracking-[-0.045em]">
-                    {question}
-                  </h2>
-                  {report?.input.description && (
-                    <p className="mt-4 text-sm leading-6 text-white/40">{report.input.description}</p>
-                  )}
-
-                  <div className="mt-7 grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setTradeSide("YES")}
-                      className={`rounded-2xl border p-4 text-left transition ${
-                        tradeSide === "YES"
-                          ? "border-emerald-300/45 bg-[#173923]"
-                          : "border-white/[0.08] bg-white/[0.025]"
-                      }`}
-                    >
-                      <div className="text-xs text-emerald-300/60">YES</div>
-                      <div className="mt-1 text-3xl font-semibold text-emerald-300">{yes.toFixed(0)}¢</div>
-                    </button>
-                    <button
-                      onClick={() => setTradeSide("NO")}
-                      className={`rounded-2xl border p-4 text-left transition ${
-                        tradeSide === "NO"
-                          ? "border-rose-300/45 bg-[#3a171b]"
-                          : "border-white/[0.08] bg-white/[0.025]"
-                      }`}
-                    >
-                      <div className="text-xs text-rose-300/60">NO</div>
-                      <div className="mt-1 text-3xl font-semibold text-rose-300">{no.toFixed(0)}¢</div>
-                    </button>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div><div className="mb-2 text-[10px] uppercase tracking-wider text-white/25">Bids</div>{(book?.[bookSide.toLowerCase() as "yes"|"no"]?.bids || []).slice(0,6).map((o) => <button key={o.order} onClick={() => void fillOrder(o)} className="mb-1 flex w-full justify-between rounded-lg bg-emerald-400/[.07] px-3 py-2 text-xs"><span>{(o.priceBps/100).toFixed(2)}¢</span><span className="text-white/35">{(Number(o.remainingShares)/1e6).toFixed(2)}</span></button>)}</div>
+                    <div><div className="mb-2 text-[10px] uppercase tracking-wider text-white/25">Asks</div>{(book?.[bookSide.toLowerCase() as "yes"|"no"]?.asks || []).slice(0,6).map((o) => <button key={o.order} onClick={() => void fillOrder(o)} className="mb-1 flex w-full justify-between rounded-lg bg-rose-400/[.07] px-3 py-2 text-xs"><span>{(o.priceBps/100).toFixed(2)}¢</span><span className="text-white/35">{(Number(o.remainingShares)/1e6).toFixed(2)}</span></button>)}</div>
                   </div>
+                  {!book || (book.yes.bids.length+book.yes.asks.length+book.no.bids.length+book.no.asks.length===0) ? <div className="mt-4 rounded-xl border border-dashed border-white/[.08] p-4 text-center text-xs text-white/30">No resting orders yet. Be the first to post a price.</div> : null}
+                </div>
 
-                  <div className="mt-7 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4">
-                    <div className="flex items-center justify-between text-xs text-white/35">
-                      <span>Amount</span>
-                      <span>USDG · Devnet</span>
-                    </div>
-                    <div className="mt-3 flex items-center rounded-xl border border-white/[0.08] bg-black/30 px-4">
-                      <input
-                        value={tradeAmount}
-                        onChange={(event) => setTradeAmount(event.target.value)}
-                        inputMode="decimal"
-                        className="w-full bg-transparent py-4 text-2xl font-semibold outline-none"
-                      />
-                      <span className="text-sm text-white/30">USDG</span>
-                    </div>
-                    <button
-                      onClick={() => void trade()}
-                      disabled={tradeBusy}
-                      className={`mt-3 w-full rounded-xl py-3.5 text-sm font-semibold transition disabled:opacity-50 ${
-                        tradeSide === "YES"
-                          ? "bg-emerald-300 text-[#07120b]"
-                          : "bg-rose-300 text-[#1a080a]"
-                      }`}
-                    >
-                      {tradeBusy ? "Preparing trade…" : wallet ? `Buy ${tradeSide}` : "Connect wallet to trade"}
-                    </button>
-                    {tradeNotice && <div className="mt-3 text-xs leading-5 text-white/40">{tradeNotice}</div>}
+                <div className="mt-4 rounded-2xl border border-white/[.08] bg-white/[.025] p-4">
+                  <div className="text-sm font-semibold">Place order</div>
+                  <div className="mt-4 grid grid-cols-2 gap-2">{(["BUY","SELL"] as const).map((kind) => <button key={kind} onClick={()=>setOrderKind(kind)} className={`rounded-xl py-2 text-xs font-semibold ${orderKind===kind?"bg-white text-black":"bg-white/[.05] text-white/40"}`}>{kind}</button>)}</div>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <label className="text-[10px] text-white/28">Price (¢)<input value={price} onChange={(e)=>setPrice(e.target.value)} inputMode="decimal" className="mt-2 w-full rounded-xl border border-white/[.08] bg-black/30 p-3 text-base text-white outline-none"/></label>
+                    <label className="text-[10px] text-white/28">Shares<input value={shares} onChange={(e)=>setShares(e.target.value)} inputMode="decimal" className="mt-2 w-full rounded-xl border border-white/[.08] bg-black/30 p-3 text-base text-white outline-none"/></label>
                   </div>
+                  <button onClick={() => void placeOrder()} disabled={busy} className={`mt-4 w-full rounded-xl py-3.5 text-sm font-semibold disabled:opacity-50 ${bookSide==="YES"?"bg-emerald-300 text-black":"bg-rose-300 text-black"}`}>{busy ? "Preparing…" : wallet ? `${orderKind} ${bookSide} @ ${price}¢` : "Connect wallet to trade"}</button>
+                  {notice && <div className="mt-3 text-xs leading-5 text-white/40">{notice}</div>}
+                </div>
 
-                  <div className="mt-6 grid grid-cols-2 gap-3 text-xs">
-                    <div className="rounded-xl border border-white/[0.07] p-4">
-                      <div className="text-white/25">Volume</div>
-                      <div className="mt-2 text-sm font-medium">{formatUnits(selected.volume)} USDG</div>
-                    </div>
-                    <div className="rounded-xl border border-white/[0.07] p-4">
-                      <div className="text-white/25">Liquidity</div>
-                      <div className="mt-2 text-sm font-medium">{formatUnits(selected.collateralVaultBalance)} USDG</div>
-                    </div>
-                  </div>
-
-                  <a
-                    href={`https://explorer.solana.com/address/${selected.address}?cluster=devnet`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-6 flex items-center justify-between rounded-xl border border-white/[0.07] px-4 py-3 text-xs text-white/40 hover:text-white"
-                  >
-                    View on Solana Explorer
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </a>
-                </>
-              );
-            })()}
+                {selected.nativeAddress && <a href={`https://explorer.solana.com/address/${selected.nativeAddress}?cluster=devnet`} target="_blank" rel="noreferrer" className="mt-5 flex items-center justify-between rounded-xl border border-white/[.07] px-4 py-3 text-xs text-white/40 hover:text-white">View on Solana Explorer <ArrowUpRight className="h-3.5 w-3.5"/></a>}
+              </>
+            )}
           </aside>
         </div>
       )}
-
-      <footer className="border-t border-white/[0.06]">
-        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-3 px-5 py-6 text-xs text-white/25">
-          <span>Mary Jane · Prediction markets on Solana</span>
-          <div className="flex items-center gap-4">
-            <a href="/create" className="hover:text-white">Create</a>
-            <a href="/analytics" className="hover:text-white">Analytics</a>
-            <a href="/launch" className="hover:text-white">Protocol</a>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
-
 export default MarketHomeScreen;

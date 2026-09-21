@@ -276,6 +276,116 @@ export function buildTradeInstruction(
   });
 }
 
+
+export type OrderSide = "YES" | "NO";
+export type OrderKind = "BUY" | "SELL";
+
+export function buildPlaceOrderInstruction(params: {
+  maker: PublicKey;
+  collateralMint: PublicKey;
+  yesMint: PublicKey;
+  noMint: PublicKey;
+  tokenProgram: PublicKey;
+  marketSeed: Uint8Array;
+  orderSeed: Uint8Array;
+  side: OrderSide;
+  kind: OrderKind;
+  priceBps: number;
+  shares: bigint;
+  makerSource: PublicKey;
+  programId?: PublicKey;
+}) {
+  const programId = params.programId ?? MILADY_MARKET_PROGRAM_ID;
+  assertBytes32(params.marketSeed, "marketSeed");
+  assertBytes32(params.orderSeed, "orderSeed");
+  if (params.priceBps < 1 || params.priceBps > 9_999) throw new Error("invalid order price");
+  if (params.shares <= 0n) throw new Error("shares must be positive");
+  const [config] = deriveConfigPda(programId);
+  const addresses = deriveMarketAddresses(params.marketSeed, programId);
+  const [order] = PublicKey.findProgramAddressSync(
+    [Buffer.from("order"), addresses.market.toBuffer(), params.maker.toBuffer(), Buffer.from(params.orderSeed)],
+    programId,
+  );
+  const [escrowVault] = PublicKey.findProgramAddressSync(
+    [Buffer.from("order-vault"), order.toBuffer()],
+    programId,
+  );
+  const escrowMint = params.kind === "BUY"
+    ? params.collateralMint
+    : params.side === "YES" ? params.yesMint : params.noMint;
+  const data = Buffer.concat([
+    instructionDiscriminator("place_order"),
+    Buffer.from(params.orderSeed),
+    Buffer.from([params.side === "YES" ? 0 : 1]),
+    Buffer.from([params.kind === "BUY" ? 0 : 1]),
+    u16(params.priceBps),
+    u64(params.shares),
+  ]);
+  return {
+    order,
+    escrowVault,
+    instruction: new TransactionInstruction({
+      programId,
+      keys: [
+        meta(params.maker, true, true),
+        meta(config),
+        meta(addresses.market),
+        meta(params.collateralMint),
+        meta(params.yesMint),
+        meta(params.noMint),
+        meta(escrowMint),
+        meta(params.makerSource, false, true),
+        meta(order, false, true),
+        meta(escrowVault, false, true),
+        meta(params.tokenProgram),
+        meta(SystemProgram.programId),
+      ],
+      data,
+    }),
+  };
+}
+
+export function buildFillOrderInstruction(params: {
+  taker: PublicKey;
+  market: PublicKey;
+  order: PublicKey;
+  maker: PublicKey;
+  collateralMint: PublicKey;
+  outcomeMint: PublicKey;
+  escrowMint: PublicKey;
+  escrowVault: PublicKey;
+  takerCollateral: PublicKey;
+  takerOutcome: PublicKey;
+  makerCollateral: PublicKey;
+  makerOutcome: PublicKey;
+  tokenProgram: PublicKey;
+  shares: bigint;
+  programId?: PublicKey;
+}) {
+  const programId = params.programId ?? MILADY_MARKET_PROGRAM_ID;
+  const [config] = deriveConfigPda(programId);
+  return new TransactionInstruction({
+    programId,
+    keys: [
+      meta(params.taker, true, true),
+      meta(config),
+      meta(params.market, false, true),
+      meta(params.order, false, true),
+      meta(params.maker),
+      meta(params.collateralMint),
+      meta(params.outcomeMint),
+      meta(params.escrowMint),
+      meta(params.escrowVault, false, true),
+      meta(params.takerCollateral, false, true),
+      meta(params.takerOutcome, false, true),
+      meta(params.makerCollateral, false, true),
+      meta(params.makerOutcome, false, true),
+      meta(params.tokenProgram),
+    ],
+    data: Buffer.concat([instructionDiscriminator("fill_order"), u64(params.shares)]),
+  });
+}
+
 export function buildCloseMarketInstruction(params: {
   caller: PublicKey;
   marketSeed: Uint8Array;
