@@ -39,45 +39,13 @@ PROGRAM_ID="HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL"
 PROGRAM_EXISTS=0
 if solana program show "$PROGRAM_ID" --url devnet >/dev/null 2>&1; then
   PROGRAM_EXISTS=1
-fi
-
-BALANCE="$(solana balance --lamports | awk '{print $1}')"
-if [ "$PROGRAM_EXISTS" -eq 1 ]; then
-  MIN_LAMPORTS=40000000
   echo "Mary Jane program already exists on Devnet: $PROGRAM_ID"
-  echo "Funding target reduced to 0.04 DEVNET SOL for upgrade/config initialization."
 else
-  MIN_LAMPORTS=5000000000
   echo "Mary Jane program is not yet executable on Devnet."
-  echo "Funding target: at least 5 DEVNET SOL for first deployment."
-fi
-
-if [ "$BALANCE" -lt "$MIN_LAMPORTS" ]; then
-  echo "Funding Devnet wallet..."
-  for _ in 1 2 3; do
-    solana airdrop 2 --url devnet || true
-    sleep 3
-    BALANCE="$(solana balance --lamports | awk '{print $1}')"
-    if [ "$BALANCE" -ge "$MIN_LAMPORTS" ]; then break; fi
-  done
 fi
 
 echo "Deployer: $(solana address)"
-echo "Balance: $(solana balance)"
-
-BALANCE="$(solana balance --lamports | awk '{print $1}')"
-if [ "$BALANCE" -lt "$MIN_LAMPORTS" ]; then
-  echo
-  if [ "$PROGRAM_EXISTS" -eq 1 ]; then
-    echo "ERROR: Program is already deployed, but wallet needs at least 0.04 DEVNET SOL for upgrade/config initialization."
-  else
-    echo "ERROR: Wallet needs at least 5 DEVNET SOL for first program deployment."
-  fi
-  echo "Address: $(solana address)"
-  echo "Use the official Devnet faucet if CLI airdrops are rate-limited:"
-  echo "https://faucet.solana.com/"
-  exit 1
-fi
+echo "Current balance: $(solana balance)"
 
 cd "$ROOT_DIR/solana"
 npm install
@@ -93,17 +61,37 @@ cd "$ROOT_DIR"
 node scripts/sync-program-id.mjs "$PROGRAM_ID"
 
 cd "$ROOT_DIR/solana"
-echo "Building Mary Jane program $PROGRAM_ID..."
-anchor build
+echo "Building Mary Jane program $PROGRAM_ID for Devnet-compatible sBPF v2..."
+anchor build --arch v2
+
+PROGRAM_SO="target/deploy/milady_market.so"
+PROGRAM_SIZE="$(wc -c < "$PROGRAM_SO" | tr -d ' ')"
+echo "Program binary size: $PROGRAM_SIZE bytes"
+echo "Approximate rent for this binary:"
+solana rent "$PROGRAM_SIZE" --url devnet || true
+
+BALANCE_LAMPORTS="$(solana balance --lamports | awk '{print $1}')"
+MIN_DEPLOY_LAMPORTS=5000000000
+
+if [ "$BALANCE_LAMPORTS" -lt "$MIN_DEPLOY_LAMPORTS" ]; then
+  echo
+  echo "STOP: Mary Jane deployment/upgrade needs a temporary program buffer."
+  echo "Your wallet has: $(solana balance)"
+  echo "Required safe balance: at least 5 DEVNET SOL"
+  echo "The last deployment attempt reported an exact requirement of 4.753239160 SOL."
+  echo
+  echo "Fund this DEVNET address only:"
+  echo "$(solana address)"
+  echo
+  echo "Official faucet: https://faucet.solana.com/"
+  echo "Sign in with GitHub there if you need the higher faucet limit."
+  echo
+  echo "After the balance is >= 5 SOL, rerun this same script."
+  exit 1
+fi
 
 echo "Deploying/upgrading Mary Jane on Solana Devnet (IDL upload disabled)..."
-if ! anchor program deploy --provider.cluster devnet --no-idl; then
-  echo "Anchor program deploy did not complete; falling back to Solana CLI deployment..."
-  solana program deploy \
-    target/deploy/milady_market.so \
-    --program-id target/deploy/milady_market-keypair.json \
-    --url devnet
-fi
+anchor program deploy --provider.cluster devnet --no-idl
 
 echo "Verifying executable program account..."
 solana program show "$PROGRAM_ID" --url devnet
