@@ -7,10 +7,10 @@ resolution = false
 skip-lint = false
 
 [programs.localnet]
-milady_market = "9tELwXSuJCP5vNrvBfo1PxGorDbMCGBQBEcsWTJtpHMy"
+milady_market = "HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL"
 
 [programs.devnet]
-milady_market = "9tELwXSuJCP5vNrvBfo1PxGorDbMCGBQBEcsWTJtpHMy"
+milady_market = "HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL"
 
 [provider]
 cluster = "devnet"
