@@ -188,6 +188,30 @@ function loadKeypairFromPath(filePath: string): Keypair {
   return Keypair.fromSecretKey(Uint8Array.from(raw));
 }
 
+function loadKeypairFromEnvironment(
+  secretEnvName: string,
+  pathEnvName: string,
+): Keypair {
+  const inlineSecret = process.env[secretEnvName]?.trim();
+  if (inlineSecret) {
+    let raw: number[];
+    if (inlineSecret.startsWith("[")) {
+      raw = JSON.parse(inlineSecret) as number[];
+    } else {
+      const decoded = Buffer.from(inlineSecret, "base64").toString("utf8");
+      raw = JSON.parse(decoded) as number[];
+    }
+    return Keypair.fromSecretKey(Uint8Array.from(raw));
+  }
+
+  const filePath = process.env[pathEnvName];
+  if (filePath) return loadKeypairFromPath(filePath);
+
+  throw new Error(
+    `${secretEnvName} or ${pathEnvName} must be configured`,
+  );
+}
+
 const DB_DIR = path.join(process.cwd(), "data");
 const DB_FILE = path.join(DB_DIR, "db.json");
 
@@ -502,9 +526,13 @@ async function startServer() {
     creator: PublicKey,
     input: MarketLintInput,
   ) => {
-    const keypairPath = process.env.MARKETLINT_ATTESTOR_KEYPAIR;
-    if (!keypairPath) {
-      throw new Error("MARKETLINT_ATTESTOR_KEYPAIR is not configured");
+    const hasAttestor =
+      Boolean(process.env.MARKETLINT_ATTESTOR_SECRET_KEY) ||
+      Boolean(process.env.MARKETLINT_ATTESTOR_KEYPAIR);
+    if (!hasAttestor) {
+      throw new Error(
+        "MARKETLINT_ATTESTOR_SECRET_KEY or MARKETLINT_ATTESTOR_KEYPAIR is not configured",
+      );
     }
     if (
       !Number.isInteger(input?.closeTs) ||
@@ -532,7 +560,10 @@ async function startServer() {
       throw error;
     }
 
-    const attestor = loadKeypairFromPath(keypairPath);
+    const attestor = loadKeypairFromEnvironment(
+      "MARKETLINT_ATTESTOR_SECRET_KEY",
+      "MARKETLINT_ATTESTOR_KEYPAIR",
+    );
     const [marketLintConfig] = PublicKey.findProgramAddressSync(
       [Buffer.from("marketlint-config")],
       MILADY_MARKET_PROGRAM_ID,
@@ -740,9 +771,14 @@ async function startServer() {
       let attestorConfigured = false;
       let attestorPublicKey: string | null = null;
       try {
-        const keypairPath = process.env.MARKETLINT_ATTESTOR_KEYPAIR;
-        if (keypairPath) {
-          const attestor = loadKeypairFromPath(keypairPath);
+        if (
+          process.env.MARKETLINT_ATTESTOR_SECRET_KEY ||
+          process.env.MARKETLINT_ATTESTOR_KEYPAIR
+        ) {
+          const attestor = loadKeypairFromEnvironment(
+            "MARKETLINT_ATTESTOR_SECRET_KEY",
+            "MARKETLINT_ATTESTOR_KEYPAIR",
+          );
           attestorConfigured = true;
           attestorPublicKey = attestor.publicKey.toBase58();
         }
