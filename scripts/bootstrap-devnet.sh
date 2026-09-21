@@ -83,26 +83,45 @@ anchor build --arch v2
 PROGRAM_SO="target/deploy/milady_market.so"
 PROGRAM_SIZE="$(wc -c < "$PROGRAM_SO" | tr -d ' ')"
 echo "Program binary size: $PROGRAM_SIZE bytes"
-echo "Approximate rent for this binary:"
-solana rent "$PROGRAM_SIZE" --url devnet || true
 
+RENT_OUTPUT="$(solana rent "$PROGRAM_SIZE" --url devnet)"
+echo "$RENT_OUTPUT"
+RENT_SOL="$(printf '%s\n' "$RENT_OUTPUT" | awk '/Rent-exempt minimum:/ {print $3}')"
+if [ -z "$RENT_SOL" ]; then
+  echo "ERROR: Could not determine exact deployment-buffer rent."
+  exit 1
+fi
+
+# Buffer rent plus a small transaction-fee cushion.
+REQUIRED_LAMPORTS="$(node -e 'const rent=Number(process.argv[1]); console.log(Math.ceil((rent + 0.005) * 1e9))' "$RENT_SOL")"
 BALANCE_LAMPORTS="$(solana balance --lamports | awk '{print $1}')"
-MIN_DEPLOY_LAMPORTS=4800000000
 
-if [ "$BALANCE_LAMPORTS" -lt "$MIN_DEPLOY_LAMPORTS" ]; then
+if [ "$BALANCE_LAMPORTS" -lt "$REQUIRED_LAMPORTS" ]; then
+  SHORTFALL_LAMPORTS=$((REQUIRED_LAMPORTS - BALANCE_LAMPORTS))
+  SHORTFALL_SOL="$(node -e 'console.log((Number(process.argv[1])/1e9).toFixed(9))' "$SHORTFALL_LAMPORTS")"
   echo
-  echo "STOP: Mary Jane deployment/upgrade needs a temporary program buffer."
-  echo "Your wallet has: $(solana balance)"
-  echo "Required safe balance: at least 4.8 DEVNET SOL"
-  echo "The last deployment attempt reported an exact requirement of 4.753239160 SOL."
+  echo "Deployment preflight: wallet is short by only $SHORTFALL_SOL DEVNET SOL."
+
+  # For small shortfalls, try one small faucet request rather than asking for another large airdrop.
+  if [ "$SHORTFALL_LAMPORTS" -le 200000000 ]; then
+    echo "Trying one 0.1 DEVNET SOL airdrop to cover the small shortfall..."
+    solana airdrop 0.1 --url devnet || true
+    sleep 3
+    BALANCE_LAMPORTS="$(solana balance --lamports | awk '{print $1}')"
+  fi
+fi
+
+if [ "$BALANCE_LAMPORTS" -lt "$REQUIRED_LAMPORTS" ]; then
+  SHORTFALL_LAMPORTS=$((REQUIRED_LAMPORTS - BALANCE_LAMPORTS))
+  SHORTFALL_SOL="$(node -e 'console.log((Number(process.argv[1])/1e9).toFixed(9))' "$SHORTFALL_LAMPORTS")"
   echo
-  echo "Fund this DEVNET address only:"
-  echo "$(solana address)"
+  echo "STOP BEFORE DEPLOY: insufficient buffer rent."
+  echo "Current balance: $(solana balance)"
+  echo "Exact rent: $RENT_SOL DEVNET SOL"
+  echo "Remaining shortfall including fee cushion: $SHORTFALL_SOL DEVNET SOL"
+  echo "Address: $(solana address)"
   echo
-  echo "Official faucet: https://faucet.solana.com/"
-  echo "Sign in with GitHub there if you need the higher faucet limit."
-  echo
-  echo "After the balance is >= 4.8 SOL, rerun this same script."
+  echo "Do NOT send another 5 SOL. Only cover the printed shortfall, then rerun."
   exit 1
 fi
 
