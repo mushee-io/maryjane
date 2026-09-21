@@ -6,6 +6,8 @@ on:
       - "solana/**"
       - "src/**"
       - "server.ts"
+      - "api/**"
+      - "vercel.json"
       - "package.json"
       - ".github/workflows/solana-protocol.yml"
   push:
