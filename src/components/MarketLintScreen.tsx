@@ -172,7 +172,7 @@ export function MarketLintScreen() {
       <header className="border-b border-white/10 bg-[#080808]/95">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.34em] text-white/35">33milady</div>
+            <div className="text-[10px] uppercase tracking-[0.34em] text-white/35">Mary Jane</div>
             <div className="mt-1 flex items-center gap-2 text-xl font-semibold">
               MarketLint
               <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[9px] uppercase tracking-wider text-white/40">
@@ -185,7 +185,7 @@ export function MarketLintScreen() {
               Markets
             </a>
             <a href="/33-beta" className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/55 hover:text-white">
-              33 Beta
+              Mary Jane Beta
             </a>
           </div>
         </div>
@@ -201,7 +201,7 @@ export function MarketLintScreen() {
             Prediction markets should begin with a good question.
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/40">
-            MarketLint checks ambiguity, duplicate risk, resolution clarity, source quality and deadline completeness before 33milady will certify a market for creation.
+            MarketLint checks ambiguity, duplicate risk, resolution clarity, source quality and deadline completeness before Mary Jane will certify a market for creation.
           </p>
 
           <div className="mt-8 space-y-4">
