@@ -96,17 +96,20 @@ async function discoverNative(limit:number) {
   const {Connection,PublicKey}=web3;
   const connection=new Connection(RPC_URL,"confirmed");
   const programId=new PublicKey(PROGRAM_ID_STRING);
-  const addresses=new Set<string>();
-  const metadata=new Map<string,any>();
-  const createdAt=new Map<string,string>();
+  const addresses=new Set<string>(KNOWN_MARKETS);
   const errors:string[]=[];
 
+  // Discover additional markets, but never let a slow RPC block the known
+  // onchain markets from appearing.
   try {
-    const accounts=await connection.getProgramAccounts(programId,{
-      commitment:"confirmed",
-      filters:[{dataSize:MARKET_SIZE}],
-    });
-    for(const row of accounts) {
+    const gpa:any = await Promise.race([
+      connection.getProgramAccounts(programId,{
+        commitment:"confirmed",
+        filters:[{dataSize:MARKET_SIZE}],
+      }),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error("getProgramAccounts timeout")),5_000)),
+    ]);
+    for(const row of gpa || []) {
       const raw=Buffer.from(row.account.data);
       if(raw.subarray(0,8).equals(MARKET_DISC)) addresses.add(row.pubkey.toBase58());
     }
@@ -114,50 +117,32 @@ async function discoverNative(limit:number) {
     errors.push(`getProgramAccounts:${error?.message||String(error)}`);
   }
 
-  for(const address of KNOWN_MARKETS) addresses.add(address);
-
-  try {
-    const signatures=await connection.getSignaturesForAddress(programId,{limit:80},"confirmed");
-    for(let i=0;i<signatures.length;i+=10) {
-      const chunk=signatures.slice(i,i+10);
-      const txs=await Promise.all(chunk.map((sig:any)=>connection.getTransaction(sig.signature,{
-        commitment:"confirmed",
-        maxSupportedTransactionVersion:0,
-      }).catch(()=>null)));
-      txs.forEach((tx:any,index:number)=>{
-        const logs=tx?.meta?.logMessages||[];
-        const created=marketCreatedFromLogs(PublicKey,logs);
-        for(const address of created) {
-          addresses.add(address);
-          const bt=tx?.blockTime||chunk[index]?.blockTime;
-          if(bt) createdAt.set(address,new Date(bt*1000).toISOString());
-        }
-        const memos=metadataMemo(logs,created);
-        for(const [address,value] of memos) metadata.set(address,value);
-      });
-      if(addresses.size>=limit) break;
-    }
-  } catch(error:any) {
-    errors.push(`transactions:${error?.message||String(error)}`);
-  }
-
   const selected=[...addresses].slice(0,Math.max(limit,10));
   const infos=await Promise.all(selected.map(async(address)=>{
     try {
-      const info=await connection.getAccountInfo(new PublicKey(address),"confirmed");
+      const info:any = await Promise.race([
+        connection.getAccountInfo(new PublicKey(address),"confirmed"),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error("getAccountInfo timeout")),5_000)),
+      ]);
       return {address,info};
-    } catch { return {address,info:null}; }
+    } catch(error:any) {
+      errors.push(`account:${address}:${error?.message||String(error)}`);
+      return {address,info:null};
+    }
   }));
 
   const items:DiscoveryMarket[]=[];
   for(const {address,info} of infos) {
     if(!info) continue;
     const decoded=decodeMarket(PublicKey,address,Buffer.from(info.data));
-    if(!decoded) continue;
+    if(!decoded) {
+      errors.push(`decode:${address}:not-a-Market-account(len=${Buffer.from(info.data).length})`);
+      continue;
+    }
+
     const legacy=LEGACY_METADATA[address];
-    const memo=metadata.get(address);
-    const title=String(memo?.q||legacy?.question||`Mary Jane market ${address.slice(0,8)}…`);
-    const category=String(memo?.c||legacy?.category||categoryFromText(title)) as any;
+    const title=legacy?.question||`Mary Jane market ${address.slice(0,8)}…`;
+    const category=(legacy?.category||categoryFromText(title)) as any;
     const total=decoded.yesReserve+decoded.noReserve;
     const yes=total===0n?0.5:Number(decoded.noReserve*10000n/total)/10000;
     const status=statusName(decoded.statusIndex);
@@ -177,7 +162,9 @@ async function discoverNative(limit:number) {
       volumeTotal:Number(decoded.volume)/1_000_000,
       traders:0,
       tradeCount:0,
-      createdAt:createdAt.get(address),
+      createdAt:address==="B76aB9GWZPtFqwuyTPjB33Gys1UgCQXw27mdyPKEMyeF"
+        ? "2026-09-21T17:09:00.000Z"
+        : undefined,
       closesAt:new Date(decoded.closeTs*1000).toISOString(),
       resolved:status.startsWith("RESOLVED")||status==="CANCELLED",
       nativeAddress:address,
