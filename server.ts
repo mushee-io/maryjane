@@ -206,7 +206,8 @@ const DB_DIR = process.env.VERCEL
   ? path.join("/tmp", "mary-jane-data")
   : path.join(process.cwd(), "data");
 
-async function startServer() {
+export async function createMaryJaneApp(options: { local?: boolean } = {}) {
+  const local = options.local ?? true;
   const app = express();
   const httpServer = createHttpServer(app);
   app.use(express.json({ limit: "256kb" }));
@@ -391,9 +392,13 @@ async function startServer() {
     current.count += 1;
   };
 
-  void marketIndexer.start().catch((error) => {
-    console.error("[MarketIndexer] startup failed", error);
-  });
+  if (local) {
+    void marketIndexer.start().catch((error) => {
+      console.error("[MarketIndexer] startup failed", error);
+    });
+  } else {
+    await marketIndexer.syncNow();
+  }
 
   const liveClients = new Set<express.Response>();
 
@@ -1434,6 +1439,10 @@ async function startServer() {
   });
 
   // Vite middleware setup
+  if (!local) {
+    return app;
+  }
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -1492,6 +1501,10 @@ async function startServer() {
 
   process.once("SIGTERM", () => void shutdown());
   process.once("SIGINT", () => void shutdown());
+
+  return app;
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  void createMaryJaneApp({ local: true });
+}
