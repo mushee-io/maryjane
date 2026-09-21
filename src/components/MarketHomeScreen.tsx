@@ -137,7 +137,7 @@ export function MarketHomeScreen() {
     if (!selected?.nativeAddress) { setBook(null); return; }
     let active = true;
     const loadBook = async () => {
-      const response = await fetch(`/api/v1/markets/${selected.nativeAddress}/orderbook`);
+      const response = await fetch(`/api/market-book?market=${selected.nativeAddress}`);
       if (!response.ok) return;
       const data = await response.json();
       if (active) setBook(data);
@@ -181,12 +181,12 @@ export function MarketHomeScreen() {
     if (!Number.isFinite(qty) || qty <= 0) return setNotice("Enter a positive share amount.");
     setBusy(true); setNotice("");
     try {
-      const response = await fetch("/api/v1/orders/place-transaction", {
+      const response = await fetch("/api/order-place", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           wallet,
-          marketSeed: selected.nativeMarketSeed,
+          market: selected.nativeAddress,
           side: bookSide,
           kind: orderKind,
           priceBps: Math.round(px * 100),
@@ -208,7 +208,7 @@ export function MarketHomeScreen() {
     if (!wallet) { await connect(); return; }
     setBusy(true); setNotice("");
     try {
-      const response = await fetch("/api/v1/orders/fill-transaction", {
+      const response = await fetch("/api/order-fill", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ wallet, order: order.order, sharesBaseUnits: order.remainingShares }),

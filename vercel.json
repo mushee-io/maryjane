@@ -20,16 +20,19 @@
       "maxDuration": 60
     },
     "api/order-place.ts": {
-      "maxDuration": 60
+      "maxDuration": 30
     },
     "api/order-fill.ts": {
-      "maxDuration": 60
+      "maxDuration": 30
+    },
+    "api/market-book.ts": {
+      "maxDuration": 30
     }
   },
   "routes": [
     {
-      "src": "/api/native-market-state",
-      "dest": "/api/native-market-state"
+      "src": "/api/market-book",
+      "dest": "/api/market-book"
     },
     {
       "src": "/api/order-place",
@@ -38,6 +41,10 @@
     {
       "src": "/api/order-fill",
       "dest": "/api/order-fill"
+    },
+    {
+      "src": "/api/native-market-state",
+      "dest": "/api/native-market-state"
     },
     {
       "src": "/api/market-probe",
