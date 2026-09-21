@@ -35,10 +35,25 @@ fi
 
 solana config set --keypair "$WALLET" >/dev/null
 
+PROGRAM_ID="HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL"
+PROGRAM_EXISTS=0
+if solana program show "$PROGRAM_ID" --url devnet >/dev/null 2>&1; then
+  PROGRAM_EXISTS=1
+fi
+
 BALANCE="$(solana balance --lamports | awk '{print $1}')"
-MIN_LAMPORTS=5000000000
+if [ "$PROGRAM_EXISTS" -eq 1 ]; then
+  MIN_LAMPORTS=500000000
+  echo "Mary Jane program already exists on Devnet: $PROGRAM_ID"
+  echo "Funding target reduced to 0.5 DEVNET SOL for upgrade/config initialization."
+else
+  MIN_LAMPORTS=5000000000
+  echo "Mary Jane program is not yet executable on Devnet."
+  echo "Funding target: at least 5 DEVNET SOL for first deployment."
+fi
+
 if [ "$BALANCE" -lt "$MIN_LAMPORTS" ]; then
-  echo "Funding Devnet wallet (target: at least 5 DEVNET SOL)..."
+  echo "Funding Devnet wallet..."
   for _ in 1 2 3; do
     solana airdrop 2 --url devnet || true
     sleep 3
@@ -53,7 +68,11 @@ echo "Balance: $(solana balance)"
 BALANCE="$(solana balance --lamports | awk '{print $1}')"
 if [ "$BALANCE" -lt "$MIN_LAMPORTS" ]; then
   echo
-  echo "ERROR: Mary Jane deployment wallet needs at least 5 DEVNET SOL before deployment."
+  if [ "$PROGRAM_EXISTS" -eq 1 ]; then
+    echo "ERROR: Program is already deployed, but wallet needs at least 0.5 DEVNET SOL for upgrade/config initialization."
+  else
+    echo "ERROR: Wallet needs at least 5 DEVNET SOL for first program deployment."
+  fi
   echo "Address: $(solana address)"
   echo "Use the official Devnet faucet if CLI airdrops are rate-limited:"
   echo "https://faucet.solana.com/"
