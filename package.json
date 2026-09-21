@@ -11,7 +11,8 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "test:indexer": "tsx src/lib/marketIndexer.spec.ts",
-    "test:marketlint": "tsx src/lib/marketLint.spec.ts"
+    "test:marketlint": "tsx src/lib/marketLint.spec.ts",
+    "test:external-feed": "tsx scripts/external-feed-smoke.ts"
   },
   "dependencies": {
     "@solana/spl-token": "^0.4.14",

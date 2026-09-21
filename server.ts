@@ -439,7 +439,11 @@ export async function createMaryJaneApp(options: { local?: boolean } = {}) {
       console.error("[MarketIndexer] startup failed", error);
     });
   } else {
-    await marketIndexer.syncNow();
+    // Serverless requests must not be blocked by Solana RPC availability.
+    // External discovery should remain usable even when Devnet is slow/down.
+    void marketIndexer.syncNow().catch((error) => {
+      console.error("[MarketIndexer] serverless sync failed", error);
+    });
   }
 
   const liveClients = new Set<express.Response>();
