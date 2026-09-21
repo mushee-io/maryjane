@@ -97,3 +97,7 @@ jobs:
 
       - name: Cargo check
         run: cargo check --workspace
+
+      - name: Production discovery smoke
+        working-directory: .
+        run: npm run test:production-discovery
