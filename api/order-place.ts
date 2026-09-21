@@ -96,7 +96,7 @@ export default async function handler(req:any,res:any){
         {pubkey:tokenProgram,isSigner:false,isWritable:false},
         {pubkey:SystemProgram.programId,isSigner:false,isWritable:false},
       ],
-      data:Buffer.concat([disc("place_order"),orderSeed,Buffer.from([side==="YES"?0:1]),Buffer.from([kind==="BUY"?0:1]),u16(priceBps),u64(shares)]),
+      data:Buffer.concat([disc("place_limit_order"),orderSeed,Buffer.from([side==="YES"?0:1]),Buffer.from([kind==="BUY"?0:1]),u16(priceBps),u64(shares)]),
     });
 
     const latest=await connection.getLatestBlockhash("confirmed");

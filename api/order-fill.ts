@@ -62,7 +62,7 @@ export default async function handler(req:any,res:any){
         {pubkey:takerCollateral,isSigner:false,isWritable:true},{pubkey:takerOutcome,isSigner:false,isWritable:true},{pubkey:makerCollateral,isSigner:false,isWritable:true},
         {pubkey:makerOutcome,isSigner:false,isWritable:true},{pubkey:tokenProgram,isSigner:false,isWritable:false},
       ],
-      data:Buffer.concat([disc("fill_order"),u64(shares)]),
+      data:Buffer.concat([disc("fill_limit_order"),u64(shares)]),
     });
     const latest=await connection.getLatestBlockhash("confirmed");
     const tx=new Transaction({feePayer:taker,recentBlockhash:latest.blockhash})

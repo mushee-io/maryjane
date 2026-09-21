@@ -42,7 +42,7 @@ export default async function handler(req:any,res:any){
         {pubkey:destination,isSigner:false,isWritable:true},
         {pubkey:tokenProgram,isSigner:false,isWritable:false},
       ],
-      data:disc("cancel_order"),
+      data:disc("cancel_limit_order"),
     });
     const latest=await connection.getLatestBlockhash("confirmed");
     const tx=new Transaction({feePayer:wallet,recentBlockhash:latest.blockhash})
