@@ -109,7 +109,7 @@ export function CreateMarketScreen() {
     <div className="min-h-screen bg-[#080808] text-white">
       <header className="border-b border-white/10">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
-          <div><div className="text-[10px] uppercase tracking-[0.32em] text-white/35">33milady</div><div className="mt-1 text-xl font-semibold">Create Market</div></div>
+          <div><div className="text-[10px] uppercase tracking-[0.32em] text-white/35">Mary Jane</div><div className="mt-1 text-xl font-semibold">Create Market</div></div>
           <button onClick={connect} className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-black"><Wallet className="h-4 w-4"/>{wallet ? `${wallet.slice(0,4)}…${wallet.slice(-4)}` : "Connect wallet"}</button>
         </div>
       </header>
