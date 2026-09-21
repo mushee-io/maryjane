@@ -77,8 +77,21 @@ cd "$ROOT_DIR/solana"
 echo "Building Mary Jane program $PROGRAM_ID..."
 anchor build
 
-echo "Deploying Mary Jane to Solana Devnet..."
-anchor program deploy --provider.cluster devnet
+echo "Deploying/upgrading Mary Jane on Solana Devnet (IDL upload disabled)..."
+if ! anchor program deploy --provider.cluster devnet --no-idl; then
+  echo "Anchor program deploy did not complete; falling back to Solana CLI deployment..."
+  solana program deploy \
+    target/deploy/milady_market.so \
+    --program-id target/deploy/milady_market-keypair.json \
+    --url devnet
+fi
+
+echo "Verifying executable program account..."
+solana program show "$PROGRAM_ID" --url devnet
+
+echo "Publishing Anchor IDL separately (non-blocking)..."
+anchor idl init -f target/idl/milady_market.json "$PROGRAM_ID" || \
+  echo "IDL publication skipped/failed; program deployment remains valid."
 
 echo "Initializing onchain configuration..."
 npm run init:devnet
