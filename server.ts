@@ -44,7 +44,7 @@ import {
   type MarketLintInput,
 } from "./src/lib/marketLint";
 const PORT = 3000;
-const MILADY_MARKET_PROGRAM_ID = new PublicKey("9tELwXSuJCP5vNrvBfo1PxGorDbMCGBQBEcsWTJtpHMy");
+const MILADY_MARKET_PROGRAM_ID = new PublicKey("HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL");
 const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
 const BETA_ROUND_DISCRIMINATOR = Buffer.from("cde37f64f671e03d", "hex");
 const BETA_POSITION_DISCRIMINATOR = Buffer.from("5a698f407c23b0fb", "hex");
