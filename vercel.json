@@ -30,9 +30,16 @@
     },
     "api/order-cancel.ts": {
       "maxDuration": 30
+    },
+    "api/trader-state.ts": {
+      "maxDuration": 30
     }
   },
   "routes": [
+    {
+      "src": "/api/trader-state",
+      "dest": "/api/trader-state"
+    },
     {
       "src": "/api/order-cancel",
       "dest": "/api/order-cancel"

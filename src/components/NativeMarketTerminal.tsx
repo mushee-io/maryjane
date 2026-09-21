@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, BarChart3, Wallet } from "lucide-react";
-import { Transaction } from "@solana/web3.js";
+import { Connection, Transaction } from "@solana/web3.js";
 
 type Market = {
   title: string;
@@ -32,6 +32,12 @@ type Trade = {
   shares: string;
   quoteAmount: string;
   blockTime: number;
+};
+
+type TraderState = {
+  collateral: { symbol: "USDG"; mint: string; amount: string; decimals: number; uiAmount: number; ata: string };
+  yes: { symbol: "YES"; mint: string; amount: string; decimals: number; uiAmount: number; ata: string };
+  no: { symbol: "NO"; mint: string; amount: string; decimals: number; uiAmount: number; ata: string };
 };
 
 type NativeState = {
@@ -73,12 +79,39 @@ async function jsonOrThrow(response: Response) {
   if (!response.ok) throw new Error(data?.error || "Request failed");
   return data;
 }
-async function signBuiltTransaction(transactionBase64: string) {
+async function signBuiltTransaction(transactionBase64: string, lastValidBlockHeight?: number) {
   const wallet = provider();
   if (!wallet?.signAndSendTransaction) throw new Error("Connect a compatible Solana wallet first.");
   const tx = Transaction.from(fromBase64(transactionBase64));
   const result = await wallet.signAndSendTransaction(tx);
-  return typeof result === "string" ? result : result.signature;
+  const signature = typeof result === "string" ? result : result.signature;
+
+  if (tx.recentBlockhash && lastValidBlockHeight) {
+    const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+    const confirmation = await connection.confirmTransaction({
+      signature,
+      blockhash: tx.recentBlockhash,
+      lastValidBlockHeight,
+    }, "confirmed");
+
+    if (confirmation.value.err) {
+      let detail = "";
+      try {
+        const parsed = await connection.getTransaction(signature, {
+          commitment: "confirmed",
+          maxSupportedTransactionVersion: 0,
+        });
+        const logs = parsed?.meta?.logMessages || [];
+        const useful = logs.filter((line) =>
+          /error|failed|insufficient|custom program error/i.test(line)
+        ).slice(-3);
+        detail = useful.length ? ` · ${useful.join(" · ")}` : "";
+      } catch {}
+      throw new Error(`Transaction failed on Solana${detail}`);
+    }
+  }
+
+  return signature;
 }
 function short(value: string, left = 7, right = 6) {
   return value.length > left + right + 1 ? `${value.slice(0, left)}…${value.slice(-right)}` : value;
@@ -139,6 +172,7 @@ export default function NativeMarketTerminal({
   onClose: () => void;
 }) {
   const [state, setState] = useState<NativeState | null>(null);
+  const [traderState, setTraderState] = useState<TraderState | null>(null);
   const [error, setError] = useState("");
   const [side, setSide] = useState<"YES" | "NO">("YES");
   const [kind, setKind] = useState<"BUY" | "SELL">("BUY");
@@ -151,12 +185,29 @@ export default function NativeMarketTerminal({
   const load = async () => {
     if (!address) return;
     try {
-      const response = await fetch(`/api/native-market-state?address=${encodeURIComponent(address)}`);
+      const response = await fetch(`/api/native-market-state?address=${encodeURIComponent(address)}`, { cache: "no-store" });
       const data = await jsonOrThrow(response);
       setState(data);
       setError("");
     } catch (err: any) {
       setError(err?.message || "Unable to load live market state");
+    }
+  };
+
+  const loadTrader = async () => {
+    if (!address || !wallet) {
+      setTraderState(null);
+      return;
+    }
+    try {
+      const response = await fetch(
+        `/api/trader-state?market=${encodeURIComponent(address)}&wallet=${encodeURIComponent(wallet)}`,
+        { cache: "no-store" },
+      );
+      const data = await jsonOrThrow(response);
+      setTraderState(data);
+    } catch {
+      setTraderState(null);
     }
   };
 
@@ -166,12 +217,28 @@ export default function NativeMarketTerminal({
     return () => window.clearInterval(timer);
   }, [address]);
 
+  useEffect(() => {
+    void loadTrader();
+    const timer = window.setInterval(() => void loadTrader(), 5_000);
+    return () => window.clearInterval(timer);
+  }, [address, wallet]);
+
   const fallbackYes = Math.round((market.outcomes.find((outcome) => outcome.label === "YES")?.probability ?? .5) * 10_000);
   const yesBps = state?.book.lastMatchedYesBps ?? state?.market.reserveYesBps ?? fallbackYes;
   const selectedBps = side === "YES" ? yesBps : 10_000 - yesBps;
   const book = state?.book[side.toLowerCase() as "yes" | "no"];
   const spread = book?.bestBidBps != null && book?.bestAskBps != null ? book.bestAskBps - book.bestBidBps : null;
   const estimatedCost = (Number(shares) || 0) * (Number(price) || 0) / 100;
+  const selectedOutcomeBalance = side === "YES" ? traderState?.yes.uiAmount : traderState?.no.uiAmount;
+  const availableForOrder = kind === "BUY" ? traderState?.collateral.uiAmount : selectedOutcomeBalance;
+  const requiredForOrder = kind === "BUY" ? estimatedCost : (Number(shares) || 0);
+  const insufficientBalance = Boolean(
+    wallet &&
+    traderState &&
+    Number.isFinite(requiredForOrder) &&
+    requiredForOrder > 0 &&
+    (availableForOrder ?? 0) + 1e-9 < requiredForOrder
+  );
 
   useEffect(() => {
     setPrice((selectedBps / 100).toFixed(0));
@@ -210,9 +277,10 @@ export default function NativeMarketTerminal({
         }),
       });
       const data = await jsonOrThrow(response);
-      const signature = await signBuiltTransaction(data.transactionBase64);
-      setNotice(`Order submitted · ${short(signature)}`);
-      window.setTimeout(() => void load(), 1800);
+      setNotice("Waiting for Solana confirmation…");
+      const signature = await signBuiltTransaction(data.transactionBase64, data.lastValidBlockHeight);
+      setNotice(`Confirmed on Solana · ${short(signature)}`);
+      await Promise.all([load(), loadTrader()]);
     } catch (err: any) {
       setNotice(err?.message || "Unable to place order");
     } finally {
@@ -231,9 +299,10 @@ export default function NativeMarketTerminal({
         body: JSON.stringify({ wallet, order: order.order }),
       });
       const data = await jsonOrThrow(response);
-      const signature = await signBuiltTransaction(data.transactionBase64);
+      setNotice("Waiting for Solana confirmation…");
+      const signature = await signBuiltTransaction(data.transactionBase64, data.lastValidBlockHeight);
       setNotice(`Cancelled · ${short(signature)}`);
-      window.setTimeout(() => void load(), 1400);
+      await Promise.all([load(), loadTrader()]);
     } catch (err: any) {
       setNotice(err?.message || "Unable to cancel order");
     } finally {
@@ -252,9 +321,10 @@ export default function NativeMarketTerminal({
         body: JSON.stringify({ wallet, order: order.order, sharesBaseUnits: order.remainingShares }),
       });
       const data = await jsonOrThrow(response);
-      const signature = await signBuiltTransaction(data.transactionBase64);
+      setNotice("Waiting for Solana confirmation…");
+      const signature = await signBuiltTransaction(data.transactionBase64, data.lastValidBlockHeight);
       setNotice(`Matched · ${short(signature)}`);
-      window.setTimeout(() => void load(), 1800);
+      await Promise.all([load(), loadTrader()]);
     } catch (err: any) {
       setNotice(err?.message || "Unable to fill order");
     } finally {
@@ -422,15 +492,28 @@ export default function NativeMarketTerminal({
             <div className="mt-4 space-y-2 rounded-xl bg-white/[.025] p-3 text-xs">
               <div className="flex justify-between text-white/35"><span>{kind === "BUY" ? "Max cost" : "Order value"}</span><span className="text-white/70">${estimatedCost.toFixed(2)}</span></div>
               <div className="flex justify-between text-white/35"><span>Potential payout</span><span className="text-white/70">${(Number(shares) || 0).toFixed(2)}</span></div>
+              <div className="flex justify-between text-white/35"><span>USDG balance</span><span className="text-white/70">{wallet ? traderState ? traderState.collateral.uiAmount.toFixed(2) : "Loading…" : "—"}</span></div>
+              <div className="flex justify-between text-white/35"><span>{side} balance</span><span className="text-white/70">{wallet ? traderState ? (side === "YES" ? traderState.yes.uiAmount : traderState.no.uiAmount).toFixed(2) : "Loading…" : "—"}</span></div>
               <div className="flex justify-between text-white/35"><span>Network</span><span className="text-white/70">Solana Devnet</span></div>
             </div>
 
-            <button onClick={() => void placeOrder()} disabled={busy || state?.market.status !== "OPEN"} className={`mt-4 w-full rounded-xl py-4 text-sm font-semibold disabled:opacity-35 ${side === "YES" ? "bg-emerald-300 text-black" : "bg-rose-300 text-black"}`}>
-              {busy ? "Preparing transaction…" : wallet ? `${kind} ${side} @ ${price}¢` : "Connect wallet to trade"}
-            </button>
-
-            {notice && <div className="mt-3 rounded-xl border border-white/[.07] bg-white/[.025] p-3 text-xs leading-5 text-white/55">{notice}</div>}
+            {insufficientBalance && (
+              <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/[.07] p-3 text-xs leading-5 text-amber-200">
+                Insufficient {kind === "BUY" ? "Devnet USDG" : `${side} shares`}. Need {requiredForOrder.toFixed(2)}, have {(availableForOrder ?? 0).toFixed(2)}.
+              </div>
+            )}
+            {notice && <div className="mt-3 rounded-xl border border-white/[.07] bg-white/[.025] p-3 text-xs leading-5 text-white/65">{notice}</div>}
             {error && <div className="mt-3 rounded-xl border border-rose-400/20 bg-rose-400/[.08] p-3 text-xs text-rose-300">{error}</div>}
+
+            <button onClick={() => void placeOrder()} disabled={busy || state?.market.status !== "OPEN" || insufficientBalance} className={`mt-4 w-full rounded-xl py-4 text-sm font-semibold disabled:opacity-35 ${side === "YES" ? "bg-emerald-300 text-black" : "bg-rose-300 text-black"}`}>
+              {busy
+                ? "Confirming on Solana…"
+                : !wallet
+                  ? "Connect wallet to trade"
+                  : insufficientBalance
+                    ? `Need ${requiredForOrder.toFixed(2)} ${kind === "BUY" ? "USDG" : side}`
+                    : `${kind} ${side} @ ${price}¢`}
+            </button>
 
             <p className="mt-4 text-[10px] leading-4 text-white/20">
               No fake liquidity. Prices come from real resting orders and matched fills on the Mary Jane Devnet program.

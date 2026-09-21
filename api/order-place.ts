@@ -49,6 +49,37 @@ export default async function handler(req:any,res:any){
     const escrowMint=kind==="BUY"?market.collateralMint:(side==="YES"?market.yesMint:market.noMint);
     const makerSource=getAssociatedTokenAddressSync(escrowMint,wallet,false,tokenProgram);
 
+    const requiredAmount=kind==="BUY"
+      ? (shares*BigInt(priceBps))/10_000n
+      : shares;
+    let availableAmount=0n;
+    let decimals=6;
+    const sourceInfo=await connection.getAccountInfo(makerSource,"confirmed");
+    if(sourceInfo){
+      try{
+        const balance=await connection.getTokenAccountBalance(makerSource,"confirmed");
+        availableAmount=BigInt(balance.value.amount);
+        decimals=balance.value.decimals;
+      }catch{}
+    }
+    if(availableAmount<requiredAmount){
+      const scale=10**decimals;
+      const available=(Number(availableAmount)/scale).toFixed(Math.min(decimals,6));
+      const required=(Number(requiredAmount)/scale).toFixed(Math.min(decimals,6));
+      const asset=kind==="BUY"?"Devnet USDG":`${side} shares`;
+      return res.status(400).json({
+        error:`Insufficient ${asset}. Need ${required}, wallet has ${available}.`,
+        code:"INSUFFICIENT_BALANCE",
+        asset,
+        requiredBaseUnits:requiredAmount.toString(),
+        availableBaseUnits:availableAmount.toString(),
+        decimals,
+        mint:escrowMint.toBase58(),
+        tokenAccount:makerSource.toBase58(),
+        stage:"order-balance",
+      });
+    }
+
     const ix=new TransactionInstruction({
       programId:PROGRAM_ID,
       keys:[
