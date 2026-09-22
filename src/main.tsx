@@ -7,6 +7,7 @@ import { MarketLintScreen } from './components/MarketLintScreen';
 import { CreateMarketScreen } from './components/CreateMarketScreen';
 import { LaunchReadinessScreen } from './components/LaunchReadinessScreen';
 import { PortfolioScreen } from './components/PortfolioScreen';
+import { AppErrorBoundary } from './components/AppErrorBoundary';
 import './index.css';
 
 const pathname = window.location.pathname;
@@ -20,6 +21,7 @@ const isPortfolio = pathname === '/portfolio' || pathname === '/positions';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
+    <AppErrorBoundary>
     {isFastMarkets ? (
       <ThirtyThreeBetaScreen />
     ) : isCreateMarket ? (
@@ -37,5 +39,6 @@ createRoot(document.getElementById('root')!).render(
     ) : (
       <MarketHomeScreen />
     )}
+    </AppErrorBoundary>
   </StrictMode>,
 );
