@@ -98,6 +98,18 @@ function short(value: string, left = 5, right = 4) {
     : `${value.slice(0, left)}…${value.slice(-right)}`;
 }
 
+async function readJson(response: Response) {
+  const text = await response.text();
+  let data: any;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(`API ${response.status} returned a non-JSON response`);
+  }
+  if (!response.ok) throw new Error(data?.error || `API ${response.status}`);
+  return data;
+}
+
 function statusTone(status: string) {
   if (status === 'OPEN') return 'text-emerald-300 border-emerald-400/20 bg-emerald-400/10';
   if (status.includes('RESOLVED') || status === 'SETTLED') return 'text-sky-300 border-sky-400/20 bg-sky-400/10';
@@ -166,33 +178,24 @@ export function MarketsExplorerScreen() {
       if (search.trim()) marketParams.set('q', search.trim());
       if (status !== 'ALL') marketParams.set('status', status);
 
-      const [analyticsRes, marketsRes, betaRes, eventsRes] = await Promise.all([
-        fetch('/api/v1/analytics/protocol'),
-        fetch(`/api/v1/markets?${marketParams.toString()}`),
-        fetch('/api/v1/beta/rounds?limit=50'),
-        fetch('/api/v1/events?limit=50'),
-      ]);
+      const response = await fetch(`/api/analytics-feed?${marketParams.toString()}`, { cache: 'no-store' });
+      const data = await readJson(response);
+      const nextMarkets = data.markets || [];
 
-      const analyticsJson = await analyticsRes.json();
-      const marketsJson = await marketsRes.json();
-      const betaJson = await betaRes.json();
-      const eventsJson = await eventsRes.json();
-
-      if (!analyticsRes.ok) throw new Error(analyticsJson.error || 'Analytics unavailable');
-      if (!marketsRes.ok) throw new Error(marketsJson.error || 'Markets unavailable');
-
-      setAnalytics(analyticsJson);
-      setMarkets(marketsJson.items || []);
-      setBetaRounds(betaJson.items || []);
-      setEvents(eventsJson.items || []);
+      setAnalytics(data.analytics || null);
+      setMarkets(nextMarkets);
+      setBetaRounds(data.betaRounds || []);
+      setEvents(data.events || []);
+      setConnected(true);
       setSelected((current) => {
-        const next = marketsJson.items || [];
+        const next = nextMarkets;
         if (current && next.some((market: Market) => market.address === current)) return current;
         return next[0]?.address || '';
       });
       setError('');
     } catch (err: any) {
-      setError(err?.message || 'Unable to load indexed market data');
+      setConnected(false);
+      setError(err?.message || 'Unable to load live market data');
     } finally {
       setLoading(false);
     }
@@ -202,36 +205,61 @@ export function MarketsExplorerScreen() {
     load();
   }, [load]);
 
-  useEffect(() => {
+  const loadSelectedActivity = useCallback(async () => {
     if (!selected) {
       setChart([]);
+      setEvents([]);
       return;
     }
-
-    fetch(`/api/v1/markets/${encodeURIComponent(selected)}/chart?range=24h`)
-      .then((response) => response.json())
-      .then((data) => setChart(data.points || []))
-      .catch(() => setChart([]));
-  }, [selected]);
+    try {
+      const response = await fetch(`/api/native-market-state?address=${encodeURIComponent(selected)}`, { cache: 'no-store' });
+      const data = await readJson(response);
+      const trades = Array.isArray(data.recentTrades) ? data.recentTrades : [];
+      setChart(
+        [...trades].reverse().map((trade: any) => ({
+          timestamp: Number(trade.blockTime || 0) * 1000,
+          yesProbabilityBps: Number(trade.yesPriceBps || 5000),
+          volume: String(trade.quoteAmount || '0'),
+          collateralVaultBalance: markets.find((market) => market.address === selected)?.collateralVaultBalance || '0',
+        })),
+      );
+      setEvents(
+        trades.map((trade: any, index: number) => ({
+          id: `${trade.signature || 'fill'}-${index}`,
+          signature: String(trade.signature || ''),
+          blockTime: Number(trade.blockTime || 0),
+          type: 'LIMIT ORDER FILLED',
+          market: selected,
+          actor: String(trade.taker || trade.maker || ''),
+          data: {
+            side: String(trade.side || ''),
+            priceBps: Number(trade.priceBps || 0),
+            shares: String(trade.shares || '0'),
+            quoteAmount: String(trade.quoteAmount || '0'),
+          },
+        })),
+      );
+    } catch {
+      setChart([]);
+      setEvents([]);
+    }
+  }, [selected, markets]);
 
   useEffect(() => {
-    setConnected(true);
+    void loadSelectedActivity();
+  }, [loadSelectedActivity]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => {
       void load();
-      if (selected) {
-        fetch(`/api/v1/markets/${encodeURIComponent(selected)}/chart?range=24h`)
-          .then((response) => response.json())
-          .then((data) => setChart(data.points || []))
-          .catch(() => undefined);
-      }
+      void loadSelectedActivity();
     }, 8_000);
 
     return () => {
-      setConnected(false);
       window.clearInterval(timer);
       if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
     };
-  }, [load, selected]);
+  }, [load, loadSelectedActivity]);
 
   const selectedMarket = useMemo(
     () => markets.find((market) => market.address === selected) || null,
@@ -343,13 +371,13 @@ export function MarketsExplorerScreen() {
             <div className="space-y-2">
               {loading && (
                 <div className="rounded-2xl border border-white/10 p-6 text-sm text-white/35">
-                  Reading the Mary Jane index…
+                  Reading Mary Jane from Solana Devnet…
                 </div>
               )}
 
               {!loading && markets.length === 0 && (
                 <div className="rounded-2xl border border-dashed border-white/10 p-6 text-sm leading-6 text-white/35">
-                  No indexed prediction markets yet. This view will populate automatically as markets are deployed and traded.
+                  No native prediction markets found on Solana Devnet.
                 </div>
               )}
 
@@ -447,7 +475,7 @@ export function MarketsExplorerScreen() {
                     <div className="mb-4 flex items-center justify-between">
                       <div>
                         <div className="text-sm font-semibold">Live activity</div>
-                        <div className="mt-1 text-xs text-white/30">Indexed Solana program events</div>
+                        <div className="mt-1 text-xs text-white/30">Live matched fills from Solana Devnet</div>
                       </div>
                       <Activity className="h-4 w-4 text-white/35" />
                     </div>
@@ -480,7 +508,7 @@ export function MarketsExplorerScreen() {
                     <div className="mb-4 flex items-center justify-between">
                       <div>
                         <div className="text-sm font-semibold">Mary Jane Beta rounds</div>
-                        <div className="mt-1 text-xs text-white/30">Fast-market activity from the same index</div>
+                        <div className="mt-1 text-xs text-white/30">Fast-market activity from Solana Devnet</div>
                       </div>
                       <Waves className="h-4 w-4 text-white/35" />
                     </div>
@@ -514,7 +542,7 @@ export function MarketsExplorerScreen() {
               </>
             ) : (
               <div className="flex min-h-[500px] items-center justify-center rounded-3xl border border-dashed border-white/10 text-sm text-white/30">
-                Select a market when one is indexed.
+                Select a native market to inspect live activity.
               </div>
             )}
           </div>

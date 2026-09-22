@@ -36,9 +36,16 @@
     },
     "api/complete-set.ts": {
       "maxDuration": 30
+    },
+    "api/analytics-feed.ts": {
+      "maxDuration": 30
     }
   },
   "routes": [
+    {
+      "src": "/api/analytics-feed",
+      "dest": "/api/analytics-feed"
+    },
     {
       "src": "/api/complete-set",
       "dest": "/api/complete-set"

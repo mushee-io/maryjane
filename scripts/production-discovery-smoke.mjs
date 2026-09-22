@@ -33,3 +33,23 @@ for (let attempt = 1; attempt <= 18; attempt++) {
 }
 
 throw new Error(`Production discovery did not expose ${expected}. Last response: ${last.slice(0, 1500)}`);
+
+
+for (let attempt = 1; attempt <= 18; attempt++) {
+  const response = await fetch("https://maryjane-blue.vercel.app/api/analytics-feed?limit=100", {
+    headers: { "cache-control": "no-cache" },
+    signal: AbortSignal.timeout(15000),
+  }).catch(() => null);
+  const text = response ? await response.text() : "";
+  console.log(`analytics attempt ${attempt} status=${response?.status || 0} body=${text.slice(0, 500)}`);
+  if (response?.ok) {
+    let data;
+    try { data = JSON.parse(text); } catch {}
+    if (data?.analytics?.totalMarkets >= 1 && Array.isArray(data?.markets) && data.markets.length >= 1) {
+      console.log(JSON.stringify({ productionAnalytics: "PASS", markets: data.analytics.totalMarkets }));
+      break;
+    }
+  }
+  if (attempt === 18) throw new Error("production analytics feed did not expose native markets");
+  await new Promise((resolve) => setTimeout(resolve, 10000));
+}
