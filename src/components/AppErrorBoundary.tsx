@@ -6,6 +6,12 @@ type State={error:Error|null};
 
 export class AppErrorBoundary extends Component<Props,State>{
   state:State={error:null};
+  private readonly content:ReactNode;
+
+  constructor(props:Props){
+    super(props);
+    this.content=props.children;
+  }
 
   static getDerivedStateFromError(error:Error):State{return{error};}
 
@@ -14,7 +20,7 @@ export class AppErrorBoundary extends Component<Props,State>{
   }
 
   render(){
-    if(!this.state.error)return this.props.children;
+    if(!this.state.error)return this.content;
     return(
       <div className="min-h-screen bg-[#060606] px-5 py-16 text-[#f5f5ef]">
         <div className="mx-auto max-w-xl rounded-3xl border border-rose-300/15 bg-rose-300/[.04] p-7">
