@@ -117,6 +117,39 @@ pub mod milady_market {
         Ok(())
     }
 
+    /// Creator-only safety valve for mistakes discovered immediately after launch.
+    ///
+    /// An unused market can be cancelled only while it is OPEN and before any
+    /// collateral, outcome supply, liquidity, volume, or protocol fees exist.
+    /// This deliberately does not provide a creator "rug" path once users have
+    /// taken positions. Active markets must use the normal INVALID resolution flow.
+    pub fn cancel_unused_market(ctx: Context<CancelUnusedMarket>) -> Result<()> {
+        let market = &mut ctx.accounts.market;
+
+        require!(market.status == MarketStatus::Open, MiladyError::MarketNotOpen);
+        require!(
+            market.volume == 0
+                && market.protocol_fees == 0
+                && market.lp_supply == 0
+                && market.yes_reserve == 0
+                && market.no_reserve == 0
+                && ctx.accounts.collateral_vault.amount == 0
+                && ctx.accounts.yes_mint.supply == 0
+                && ctx.accounts.no_mint.supply == 0,
+            MiladyError::MarketHasActivity
+        );
+
+        market.status = MarketStatus::Cancelled;
+
+        emit!(MarketCancelledByCreator {
+            market: market.key(),
+            authority: ctx.accounts.authority.key(),
+            cancelled_at: Clock::get()?.unix_timestamp,
+        });
+
+        Ok(())
+    }
+
     pub fn split_complete_set(ctx: Context<PositionAction>, amount: u64) -> Result<()> {
         require!(amount > 0, MiladyError::ZeroAmount);
         validate_market_open(&ctx.accounts.config, &ctx.accounts.market)?;
@@ -1363,6 +1396,32 @@ pub struct CreateMarket<'info> {
 }
 
 #[derive(Accounts)]
+pub struct CancelUnusedMarket<'info> {
+    pub authority: Signer<'info>,
+    #[account(
+        seeds = [b"config"],
+        bump = config.bump
+    )]
+    pub config: Box<Account<'info, ProtocolConfig>>,
+    #[account(
+        mut,
+        seeds = [b"market", config.key().as_ref(), market.market_seed.as_ref()],
+        bump = market.bump,
+        has_one = authority @ MiladyError::Unauthorized,
+        has_one = collateral_vault,
+        has_one = yes_mint,
+        has_one = no_mint
+    )]
+    pub market: Box<Account<'info, Market>>,
+    #[account(address = market.collateral_vault)]
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
+    #[account(address = market.yes_mint)]
+    pub yes_mint: Box<InterfaceAccount<'info, Mint>>,
+    #[account(address = market.no_mint)]
+    pub no_mint: Box<InterfaceAccount<'info, Mint>>,
+}
+
+#[derive(Accounts)]
 pub struct PositionAction<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -1605,6 +1664,13 @@ pub struct MarketCreated {
 }
 
 #[event]
+pub struct MarketCancelledByCreator {
+    pub market: Pubkey,
+    pub authority: Pubkey,
+    pub cancelled_at: i64,
+}
+
+#[event]
 pub struct CompleteSetSplit {
     pub market: Pubkey,
     pub user: Pubkey,
@@ -1665,6 +1731,8 @@ pub enum MiladyError {
     MarketNotOpen,
     #[msg("Market is already closed")]
     MarketClosed,
+    #[msg("Market already has positions, liquidity, volume, or collateral and cannot be creator-cancelled")]
+    MarketHasActivity,
     #[msg("Amount must be greater than zero")]
     ZeroAmount,
     #[msg("Amount is too small after fees")]
