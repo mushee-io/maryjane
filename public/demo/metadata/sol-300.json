@@ -1,0 +1,14 @@
+{
+  "v": 2,
+  "t": "maryjane-market-metadata",
+  "question": "Will SOL/USD close above $300 at 23:59 UTC on 15 October 2026?",
+  "description": "Resolve from Pyth SOL/USD. YES only if the final valid observation is strictly above $300.",
+  "source": "Pyth SOL/USD",
+  "category": "Crypto",
+  "yesLabel": "Above $300",
+  "noLabel": "$300 or below",
+  "coverImageUrl": "/demo/sol.svg",
+  "yesImageUrl": "/demo/up.svg",
+  "noImageUrl": "/demo/down.svg",
+  "createdAt": "2026-09-22T10:45:00.000Z"
+}
