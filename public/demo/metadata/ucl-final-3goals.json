@@ -1,0 +1,14 @@
+{
+  "v": 2,
+  "t": "maryjane-market-metadata",
+  "question": "Will the winning team score more than 2 goals in the 2027 UEFA Champions League final?",
+  "description": "Resolve from UEFA's official match report. Penalty-shootout kicks do not count.",
+  "source": "UEFA official match report",
+  "category": "Sports",
+  "yesLabel": "3+ goals",
+  "noLabel": "0–2 goals",
+  "coverImageUrl": "/demo/football.svg",
+  "yesImageUrl": "/demo/up.svg",
+  "noImageUrl": "/demo/down.svg",
+  "createdAt": "2026-09-22T10:45:00.000Z"
+}
