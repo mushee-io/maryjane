@@ -10,7 +10,9 @@ type Market = {
   title: string;
   description?: string;
   category: string;
-  outcomes: Array<{ id: string; label: string; probability: number }>;
+  outcomes: Array<{ id: string; label: string; probability: number; imageUrl?: string }>;
+  coverImageUrl?: string;
+  metadataUrl?: string;
   volume24h?: number;
   volumeTotal?: number;
   traders?: number;
@@ -93,6 +95,13 @@ export function MarketHomeScreen() {
             description: meta.description || market.description,
             category: meta.category || market.category,
             createdAt: meta.createdAt || market.createdAt,
+            coverImageUrl: meta.coverImageUrl || market.coverImageUrl,
+            metadataUrl: meta.metadataUrl || market.metadataUrl,
+            outcomes: market.outcomes.map((outcome) => ({
+              ...outcome,
+              label: outcome.id === "yes" ? (meta.yesLabel || outcome.label) : outcome.id === "no" ? (meta.noLabel || outcome.label) : outcome.label,
+              imageUrl: outcome.id === "yes" ? (meta.yesImageUrl || outcome.imageUrl) : outcome.id === "no" ? (meta.noImageUrl || outcome.imageUrl) : outcome.imageUrl,
+            })),
           };
         } catch {
           return market;
@@ -266,8 +275,10 @@ export function MarketHomeScreen() {
           ) : (
             <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {visible.map((market) => {
-                const yes = market.outcomes.find((outcome) => outcome.label === "YES")?.probability ?? 0.5;
-                const no = market.outcomes.find((outcome) => outcome.label === "NO")?.probability ?? 1 - yes;
+                const yesOutcome = market.outcomes.find((outcome) => outcome.id === "yes") || market.outcomes[0];
+                const noOutcome = market.outcomes.find((outcome) => outcome.id === "no") || market.outcomes[1];
+                const yes = yesOutcome?.probability ?? 0.5;
+                const no = noOutcome?.probability ?? 1 - yes;
 
                 return (
                   <button
@@ -288,18 +299,34 @@ export function MarketHomeScreen() {
                       <span className="text-[10px] uppercase tracking-wider text-white/28">{market.category}</span>
                     </div>
 
+                    {market.coverImageUrl && (
+                      <div className="mt-4 overflow-hidden rounded-2xl border border-white/[.07] bg-white/[.02]">
+                        <img src={market.coverImageUrl} alt="" className="h-28 w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
+                      </div>
+                    )}
+
                     <h3 className="mt-5 min-h-[72px] text-xl font-semibold leading-6 tracking-[-.025em] text-white/90">
                       {market.title}
                     </h3>
 
                     <div className="mt-6 grid grid-cols-2 gap-2">
                       <div className="rounded-xl bg-emerald-400/[.10] px-3 py-3">
-                        <div className="text-[10px] text-emerald-300/55">YES</div>
-                        <div className="mt-1 text-xl font-semibold text-emerald-300">{Math.round(yes * 100)}¢</div>
+                        <div className="flex items-center gap-2">
+                          {yesOutcome?.imageUrl && <img src={yesOutcome.imageUrl} alt="" className="h-8 w-8 rounded-full border border-white/10 bg-white object-cover" />}
+                          <div className="min-w-0">
+                            <div className="truncate text-[10px] font-medium text-emerald-300/70">{yesOutcome?.label || "YES"}</div>
+                            <div className="mt-1 text-xl font-semibold text-emerald-300">{Math.round(yes * 100)}¢</div>
+                          </div>
+                        </div>
                       </div>
                       <div className="rounded-xl bg-rose-400/[.10] px-3 py-3">
-                        <div className="text-[10px] text-rose-300/55">NO</div>
-                        <div className="mt-1 text-xl font-semibold text-rose-300">{Math.round(no * 100)}¢</div>
+                        <div className="flex items-center gap-2">
+                          {noOutcome?.imageUrl && <img src={noOutcome.imageUrl} alt="" className="h-8 w-8 rounded-full border border-white/10 bg-white object-cover" />}
+                          <div className="min-w-0">
+                            <div className="truncate text-[10px] font-medium text-rose-300/70">{noOutcome?.label || "NO"}</div>
+                            <div className="mt-1 text-xl font-semibold text-rose-300">{Math.round(no * 100)}¢</div>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -352,6 +379,7 @@ export function MarketHomeScreen() {
               </span>
               <span className="text-xs text-white/28">{selected.category}</span>
             </div>
+            {selected.coverImageUrl && <img src={selected.coverImageUrl} alt="" className="mt-5 h-44 w-full rounded-2xl border border-white/[.08] object-cover" />}
             <h2 className="mt-4 text-3xl font-semibold leading-9 tracking-[-.045em]">{selected.title}</h2>
             {selected.description && (
               <p className="mt-4 text-sm leading-6 text-white/40">{selected.description.slice(0, 700)}</p>
