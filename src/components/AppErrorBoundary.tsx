@@ -1,15 +1,15 @@
-import React from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
-type Props={children?:React.ReactNode};
+type Props={children?:ReactNode};
 type State={error:Error|null};
 
-export class AppErrorBoundary extends React.Component<Props,State>{
+export class AppErrorBoundary extends Component<Props,State>{
   state:State={error:null};
 
   static getDerivedStateFromError(error:Error):State{return{error};}
 
-  componentDidCatch(error:Error,info:React.ErrorInfo){
+  componentDidCatch(error:Error,info:ErrorInfo){
     console.error("[MaryJane UI crash]",error,info);
   }
 
