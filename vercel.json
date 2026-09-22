@@ -22,8 +22,8 @@
     "api/order-fill.ts": {
       "maxDuration": 30
     },
-    "api/order-cancel.ts": {
-      "maxDuration": 30
+    "api/cloudinary-signature.ts": {
+      "maxDuration": 10
     },
     "api/trader-state.ts": {
       "maxDuration": 30
@@ -56,8 +56,12 @@
       "dest": "/api/trader-state"
     },
     {
+      "src": "/api/cloudinary-signature",
+      "dest": "/api/cloudinary-signature"
+    },
+    {
       "src": "/api/order-cancel",
-      "dest": "/api/order-cancel"
+      "dest": "/api/index?path=order-cancel"
     },
     {
       "src": "/api/native-market-state",
