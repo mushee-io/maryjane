@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, BarChart3, Wallet } from "lucide-react";
+import { ArrowUpRight, BarChart3, Trash2, Wallet } from "lucide-react";
 import { Connection, Transaction } from "@solana/web3.js";
 
 type Market = {
@@ -271,6 +271,12 @@ export default function NativeMarketTerminal({
     requiredForOrder > 0 &&
     (availableForOrder ?? 0) + 1e-9 < requiredForOrder
   );
+  const connectedIsCreator = Boolean(
+    wallet &&
+    resolutionState?.market?.authority &&
+    wallet === resolutionState.market.authority
+  );
+  const canCreatorCancel = connectedIsCreator && (state?.market.status || market.status || "OPEN") === "OPEN";
 
   useEffect(() => {
     setPrice((selectedBps / 100).toFixed(0));
@@ -380,6 +386,7 @@ export default function NativeMarketTerminal({
       setNotice("Waiting for Solana confirmation…");
       const signature = await signBuiltTransaction(data.transactionBase64, data.lastValidBlockHeight);
       const labels: Record<string,string> = {
+        CANCEL_MARKET: "Market cancelled",
         CLOSE: "Market closed",
         PROPOSE: "Resolution proposed",
         DISPUTE: "Resolution disputed",
@@ -396,6 +403,28 @@ export default function NativeMarketTerminal({
     } finally {
       setBusy(false);
     }
+  };
+
+  const cancelCreatedMarket = async () => {
+    if (!wallet) {
+      await onConnect();
+      return;
+    }
+    if (!connectedIsCreator) {
+      setNotice("Only the wallet that created this market can cancel it.");
+      return;
+    }
+    if ((state?.market.status || market.status || "OPEN") !== "OPEN") {
+      setNotice("Only an OPEN market can be cancelled by its creator.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Cancel this market?\n\nThis is only allowed while the market is unused: no positions, liquidity, collateral or completed trades. Once cancelled it cannot be reopened. The onchain account remains as a transparent CANCELLED record."
+    );
+    if (!confirmed) return;
+
+    await executeMarketAction("CANCEL_MARKET");
   };
 
   const completeSetAction = async (action: "SPLIT" | "MERGE") => {
@@ -452,6 +481,17 @@ export default function NativeMarketTerminal({
             <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[.06] px-3 py-1.5 text-xs text-emerald-300">
               {state?.market.status || market.status || "OPEN"} · DEVNET
             </span>
+            {canCreatorCancel && (
+              <button
+                onClick={() => void cancelCreatedMarket()}
+                disabled={busy}
+                title="Cancel an unused market created by this wallet"
+                className="flex items-center gap-2 rounded-xl border border-rose-400/25 bg-rose-400/[.08] px-3 py-2 text-xs font-semibold text-rose-200 transition hover:bg-rose-400/[.14] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Cancel market
+              </button>
+            )}
             <button onClick={onConnect} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black">
               <Wallet className="h-3.5 w-3.5" />{wallet ? short(wallet, 4, 4) : "Connect"}
             </button>
