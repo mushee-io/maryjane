@@ -1,0 +1,14 @@
+{
+  "v": 2,
+  "t": "maryjane-market-metadata",
+  "question": "Will Avatar: Fire and Ash worldwide box office exceed $2 billion by 31 December 2026?",
+  "description": "Resolve from Box Office Mojo worldwide cumulative box office.",
+  "source": "Box Office Mojo worldwide box office",
+  "category": "Culture",
+  "yesLabel": "Above $2B",
+  "noLabel": "$2B or below",
+  "coverImageUrl": "/demo/cinema.svg",
+  "yesImageUrl": "/demo/up.svg",
+  "noImageUrl": "/demo/down.svg",
+  "createdAt": "2026-09-22T10:45:00.000Z"
+}

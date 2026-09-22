@@ -1,0 +1,14 @@
+{
+  "v": 2,
+  "t": "maryjane-market-metadata",
+  "question": "Will NVIDIA close above $220 on 30 October 2026?",
+  "description": "Resolve from Nasdaq's official regular-session closing price.",
+  "source": "Nasdaq official closing price",
+  "category": "Tech",
+  "yesLabel": "Above $220",
+  "noLabel": "$220 or below",
+  "coverImageUrl": "/demo/nvda.svg",
+  "yesImageUrl": "/demo/up.svg",
+  "noImageUrl": "/demo/down.svg",
+  "createdAt": "2026-09-22T10:45:00.000Z"
+}

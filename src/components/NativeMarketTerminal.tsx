@@ -258,6 +258,9 @@ export default function NativeMarketTerminal({
   const book = state?.book[side.toLowerCase() as "yes" | "no"];
   const spread = book?.bestBidBps != null && book?.bestAskBps != null ? book.bestAskBps - book.bestBidBps : null;
   const estimatedCost = (Number(shares) || 0) * (Number(price) || 0) / 100;
+  const potentialPayout = Number(shares) || 0;
+  const maxProfit = kind === "BUY" ? Math.max(0, potentialPayout - estimatedCost) : estimatedCost;
+  const impliedProbability = Math.min(99.99, Math.max(0.01, Number(price) || 0));
   const selectedOutcomeBalance = side === "YES" ? traderState?.yes.uiAmount : traderState?.no.uiAmount;
   const availableForOrder = kind === "BUY" ? traderState?.collateral.uiAmount : selectedOutcomeBalance;
   const requiredForOrder = kind === "BUY" ? estimatedCost : (Number(shares) || 0);
@@ -704,8 +707,20 @@ export default function NativeMarketTerminal({
             </label>
 
             <div className="mt-4 space-y-2 rounded-xl bg-white/[.025] p-3 text-xs">
-              <div className="flex justify-between text-white/35"><span>{kind === "BUY" ? "Max cost" : "Order value"}</span><span className="text-white/70">${estimatedCost.toFixed(2)}</span></div>
-              <div className="flex justify-between text-white/35"><span>Potential payout</span><span className="text-white/70">${(Number(shares) || 0).toFixed(2)}</span></div>
+              <div className="flex justify-between text-white/35">
+                <span>{kind === "BUY" ? "Max cost" : "Proceeds if filled"}</span>
+                <span className="font-medium text-white/80">${estimatedCost.toFixed(2)} USDG</span>
+              </div>
+              <div className="flex justify-between text-white/35">
+                <span>{kind === "BUY" ? "Winning payout" : "Shares committed"}</span>
+                <span className="text-white/70">{kind === "BUY" ? `${potentialPayout.toFixed(2)} USDG` : `${potentialPayout.toFixed(2)} ${labelFor(side)}`}</span>
+              </div>
+              <div className="flex justify-between text-white/35">
+                <span>{kind === "BUY" ? "Max profit if correct" : "Order proceeds"}</span>
+                <span className={kind === "BUY" ? "text-[#b7ff3c]" : "text-white/70"}>${maxProfit.toFixed(2)} USDG</span>
+              </div>
+              <div className="flex justify-between text-white/35"><span>Implied probability</span><span className="text-white/70">{impliedProbability.toFixed(2)}%</span></div>
+              <div className="my-2 border-t border-white/[.06]" />
               <div className="flex justify-between text-white/35"><span>Devnet SOL</span><span className="text-white/70">{wallet ? traderState ? traderState.sol.uiAmount.toFixed(4) : "Loading…" : "—"}</span></div>
               <div className="flex justify-between text-white/35"><span>USDG balance</span><span className="text-white/70">{wallet ? traderState ? traderState.collateral.uiAmount.toFixed(2) : "Loading…" : "—"}</span></div>
               <div className="flex justify-between text-white/35"><span>{labelFor(side)} balance</span><span className="text-white/70">{wallet ? traderState ? (side === "YES" ? traderState.yes.uiAmount : traderState.no.uiAmount).toFixed(2) : "Loading…" : "—"}</span></div>

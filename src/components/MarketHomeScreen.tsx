@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Clock3, ExternalLink, Flame, Globe2, Search, Sparkles, Trophy, Wallet, Zap } from "lucide-react";
+import { Clock3, ExternalLink, Film, Flame, Globe2, Search, Sparkles, Trophy, Wallet, Zap } from "lucide-react";
 import NativeMarketTerminal from "./NativeMarketTerminal";
 
 type Source = "maryjane" | "polymarket" | "manifold";
@@ -35,6 +35,7 @@ const categories = [
   ["Crypto", Zap],
   ["Sports", Trophy],
   ["Tech", Sparkles],
+  ["Culture", Film],
   ["World", Globe2],
 ] as const;
 
@@ -52,6 +53,18 @@ function money(value?: number) {
     notation: value >= 1000 ? "compact" : "standard",
     maximumFractionDigits: 1,
   }).format(value);
+}
+function timeLeft(value?: string) {
+  if (!value) return "No close time";
+  const ms = new Date(value).getTime() - Date.now();
+  if (!Number.isFinite(ms)) return "Close time unavailable";
+  if (ms <= 0) return "Closed";
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 60) return `${Math.max(1, minutes)}m left`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours}h left`;
+  const days = Math.floor(hours / 24);
+  return `${days}d left`;
 }
 async function jsonOrThrow(response: Response) {
   const text = await response.text();
@@ -214,6 +227,10 @@ export function MarketHomeScreen() {
                 Create permissionless Solana markets and trade native markets through
                 an onchain order book.
               </p>
+              <div className="mt-6 flex flex-wrap gap-2">
+                <a href="/create" className="rounded-xl bg-[#b7ff3c] px-4 py-2.5 text-sm font-semibold text-black">Create a market</a>
+                <a href="/portfolio" className="rounded-xl border border-white/[.1] bg-white/[.03] px-4 py-2.5 text-sm text-white/60 hover:text-white">View portfolio</a>
+              </div>
             </div>
 
             <div className="grid min-w-[310px] grid-cols-3 gap-2">
@@ -331,15 +348,21 @@ export function MarketHomeScreen() {
                       </div>
                     </div>
 
-                    <div className="mt-5 flex items-center justify-between border-t border-white/[.06] pt-4 text-xs text-white/30">
-                      <span>{money(market.volume24h || market.volumeTotal)} vol</span>
-                      <span>
-                        {market.probabilitySource === "last-match"
-                          ? "Last matched"
-                          : market.source === "maryjane"
-                            ? "Onchain native"
-                            : "External probability"}
-                      </span>
+                    <div className="mt-5 grid grid-cols-3 gap-2 border-t border-white/[.06] pt-4 text-xs text-white/30">
+                      <div>
+                        <div className="text-[9px] uppercase tracking-wider text-white/18">Volume</div>
+                        <div className="mt-1 text-white/45">{money(market.volume24h || market.volumeTotal)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[9px] uppercase tracking-wider text-white/18">Closes</div>
+                        <div className="mt-1 text-white/45">{timeLeft(market.closesAt)}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[9px] uppercase tracking-wider text-white/18">Activity</div>
+                        <div className="mt-1 text-white/45">
+                          {market.tradeCount ? `${market.tradeCount} trades` : market.traders ? `${market.traders} traders` : market.source === "maryjane" ? "Onchain" : "Indexed"}
+                        </div>
+                      </div>
                     </div>
                   </button>
                 );
