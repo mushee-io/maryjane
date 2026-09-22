@@ -178,6 +178,7 @@ export function MarketHomeScreen() {
 
           <nav className="hidden items-center gap-1 lg:flex">
             <a href="/" className="rounded-full bg-white/[0.08] px-4 py-2 text-sm">Markets</a>
+            <a href="/portfolio" className="rounded-full px-4 py-2 text-sm text-white/50 hover:text-white">Portfolio</a>
             <a href="/create" className="rounded-full px-4 py-2 text-sm text-white/50 hover:text-white">Create</a>
             <a href="/beta" className="rounded-full px-4 py-2 text-sm text-white/50 hover:text-white">Beta</a>
             <a href="/analytics" className="rounded-full px-4 py-2 text-sm text-white/50 hover:text-white">Analytics</a>

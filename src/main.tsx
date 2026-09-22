@@ -6,6 +6,7 @@ import { MarketHomeScreen } from './components/MarketHomeScreen';
 import { MarketLintScreen } from './components/MarketLintScreen';
 import { CreateMarketScreen } from './components/CreateMarketScreen';
 import { LaunchReadinessScreen } from './components/LaunchReadinessScreen';
+import { PortfolioScreen } from './components/PortfolioScreen';
 import './index.css';
 
 const pathname = window.location.pathname;
@@ -15,6 +16,7 @@ const isMarketsExplorer = pathname === '/analytics';
 const isMarketLint = pathname === '/marketlint';
 const isCreateMarket = pathname === '/create';
 const isLaunchReadiness = pathname === '/launch';
+const isPortfolio = pathname === '/portfolio' || pathname === '/positions';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -24,6 +26,8 @@ createRoot(document.getElementById('root')!).render(
       <CreateMarketScreen />
     ) : isLaunchReadiness ? (
       <LaunchReadinessScreen />
+    ) : isPortfolio ? (
+      <PortfolioScreen />
     ) : isMarketLint ? (
       <MarketLintScreen />
     ) : isMarketsExplorer ? (
