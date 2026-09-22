@@ -102,7 +102,7 @@ export default async function handler(req:any,res:any){
 
     const body=typeof req.body==="string"?JSON.parse(req.body):req.body||{};
     const action=String(body.action||"").toUpperCase();
-    const allowed=new Set(["CLOSE","PROPOSE","DISPUTE","FINALIZE","RESOLVE_DISPUTE","CANCEL_STALLED","REDEEM","REFUND"]);
+    const allowed=new Set(["CANCEL_MARKET","CLOSE","PROPOSE","DISPUTE","FINALIZE","RESOLVE_DISPUTE","CANCEL_STALLED","REDEEM","REFUND"]);
     if(!allowed.has(action))throw new Error("Unsupported market action");
     const wallet=new PublicKey(String(body.wallet||""));
     const now=Math.floor(Date.now()/1000);
@@ -117,7 +117,18 @@ export default async function handler(req:any,res:any){
       return address;
     };
 
-    if(action==="CLOSE"){
+    if(action==="CANCEL_MARKET"){
+      if(market.status!=="OPEN")throw new Error("Only an OPEN market can be creator-cancelled");
+      if(wallet.toBase58()!==market.authority.toBase58())throw new Error("Only the market creator can cancel this market");
+      ix=new TransactionInstruction({programId:PROGRAM_ID,keys:[
+        {pubkey:wallet,isSigner:true,isWritable:false},
+        {pubkey:market.config,isSigner:false,isWritable:false},
+        {pubkey:marketAddress,isSigner:false,isWritable:true},
+        {pubkey:market.collateralVault,isSigner:false,isWritable:false},
+        {pubkey:market.yesMint,isSigner:false,isWritable:false},
+        {pubkey:market.noMint,isSigner:false,isWritable:false},
+      ],data:disc("cancel_unused_market")});
+    }else if(action==="CLOSE"){
       if(market.status!=="OPEN")throw new Error("Only an OPEN market can be closed");
       if(now<market.closeTs)throw new Error("Trading is still open; wait until the market close time");
       ix=new TransactionInstruction({programId:PROGRAM_ID,keys:[
