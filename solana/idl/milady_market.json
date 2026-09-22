@@ -1,0 +1,5105 @@
+{
+  "address": "HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL",
+  "metadata": {
+    "name": "milady_market",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "33milady Solana prediction market core"
+  },
+  "instructions": [
+    {
+      "name": "add_liquidity",
+      "discriminator": [
+        181,
+        157,
+        89,
+        67,
+        143,
+        182,
+        52,
+        72
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "lp_position",
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "user_collateral",
+          "writable": true
+        },
+        {
+          "name": "collateral_vault",
+          "writable": true
+        },
+        {
+          "name": "yes_mint",
+          "writable": true
+        },
+        {
+          "name": "no_mint",
+          "writable": true
+        },
+        {
+          "name": "yes_reserve_vault",
+          "writable": true
+        },
+        {
+          "name": "no_reserve_vault",
+          "writable": true
+        },
+        {
+          "name": "user_yes",
+          "writable": true
+        },
+        {
+          "name": "user_no",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "buy_no",
+      "discriminator": [
+        89,
+        240,
+        244,
+        16,
+        196,
+        201,
+        190,
+        163
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "user_collateral",
+          "writable": true
+        },
+        {
+          "name": "collateral_vault",
+          "writable": true
+        },
+        {
+          "name": "yes_mint",
+          "writable": true
+        },
+        {
+          "name": "no_mint",
+          "writable": true
+        },
+        {
+          "name": "yes_reserve_vault",
+          "writable": true
+        },
+        {
+          "name": "no_reserve_vault",
+          "writable": true
+        },
+        {
+          "name": "user_yes",
+          "writable": true
+        },
+        {
+          "name": "user_no",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "collateral_in",
+          "type": "u64"
+        },
+        {
+          "name": "min_no_out",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "buy_yes",
+      "discriminator": [
+        124,
+        76,
+        113,
+        130,
+        177,
+        112,
+        187,
+        104
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "user_collateral",
+          "writable": true
+        },
+        {
+          "name": "collateral_vault",
+          "writable": true
+        },
+        {
+          "name": "yes_mint",
+          "writable": true
+        },
+        {
+          "name": "no_mint",
+          "writable": true
+        },
+        {
+          "name": "yes_reserve_vault",
+          "writable": true
+        },
+        {
+          "name": "no_reserve_vault",
+          "writable": true
+        },
+        {
+          "name": "user_yes",
+          "writable": true
+        },
+        {
+          "name": "user_no",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "collateral_in",
+          "type": "u64"
+        },
+        {
+          "name": "min_yes_out",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "cancel_limit_order",
+      "discriminator": [
+        132,
+        156,
+        132,
+        31,
+        67,
+        40,
+        232,
+        97
+      ],
+      "accounts": [
+        {
+          "name": "maker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "escrow_mint"
+        },
+        {
+          "name": "escrow_vault",
+          "writable": true
+        },
+        {
+          "name": "maker_destination",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_stalled_dispute",
+      "discriminator": [
+        190,
+        219,
+        69,
+        44,
+        142,
+        202,
+        69,
+        101
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "protocol_config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "resolution_state",
+          "writable": true
+        },
+        {
+          "name": "proposer"
+        },
+        {
+          "name": "challenger"
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "proposer_collateral",
+          "writable": true
+        },
+        {
+          "name": "challenger_collateral",
+          "writable": true
+        },
+        {
+          "name": "bond_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "certify_market",
+      "discriminator": [
+        42,
+        84,
+        9,
+        189,
+        223,
+        85,
+        207,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "attestor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "marketlint_config"
+        },
+        {
+          "name": "certification",
+          "writable": true
+        },
+        {
+          "name": "system_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "CertifyMarketArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "claim_beta_round",
+      "discriminator": [
+        93,
+        180,
+        248,
+        247,
+        97,
+        75,
+        111,
+        85
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol_config"
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "round"
+        },
+        {
+          "name": "round_vault",
+          "writable": true
+        },
+        {
+          "name": "position",
+          "writable": true
+        },
+        {
+          "name": "user_collateral",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_market",
+      "discriminator": [
+        88,
+        154,
+        248,
+        186,
+        48,
+        14,
+        123,
+        244
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_market",
+      "discriminator": [
+        103,
+        226,
+        97,
+        235,
+        200,
+        188,
+        251,
+        254
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "marketlint_config"
+        },
+        {
+          "name": "marketlint_certification",
+          "writable": true
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "collateral_vault",
+          "writable": true
+        },
+        {
+          "name": "yes_mint",
+          "writable": true
+        },
+        {
+          "name": "no_mint",
+          "writable": true
+        },
+        {
+          "name": "yes_reserve_vault",
+          "writable": true
+        },
+        {
+          "name": "no_reserve_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "CreateMarketArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "dispute_resolution",
+      "discriminator": [
+        89,
+        169,
+        106,
+        71,
+        131,
+        77,
+        122,
+        232
+      ],
+      "accounts": [
+        {
+          "name": "challenger",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol_config"
+        },
+        {
+          "name": "resolution_config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "resolution_state",
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "challenger_collateral",
+          "writable": true
+        },
+        {
+          "name": "bond_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "dispute_evidence_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "enter_beta_round",
+      "discriminator": [
+        64,
+        76,
+        44,
+        30,
+        120,
+        216,
+        238,
+        202
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "beta_config"
+        },
+        {
+          "name": "protocol_config"
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "round",
+          "writable": true
+        },
+        {
+          "name": "round_vault",
+          "writable": true
+        },
+        {
+          "name": "user_collateral",
+          "writable": true
+        },
+        {
+          "name": "position",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "side",
+          "type": {
+            "defined": {
+              "name": "BetaSide"
+            }
+          }
+        },
+        {
+          "name": "collateral_in",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "fill_limit_order",
+      "discriminator": [
+        83,
+        74,
+        211,
+        114,
+        227,
+        230,
+        105,
+        177
+      ],
+      "accounts": [
+        {
+          "name": "taker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "maker"
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "outcome_mint"
+        },
+        {
+          "name": "escrow_mint"
+        },
+        {
+          "name": "escrow_vault",
+          "writable": true
+        },
+        {
+          "name": "taker_collateral",
+          "writable": true
+        },
+        {
+          "name": "taker_outcome",
+          "writable": true
+        },
+        {
+          "name": "maker_collateral",
+          "writable": true
+        },
+        {
+          "name": "maker_outcome",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "shares",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "finalize_uncontested",
+      "discriminator": [
+        138,
+        223,
+        220,
+        56,
+        147,
+        230,
+        176,
+        232
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "protocol_config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "resolution_state",
+          "writable": true
+        },
+        {
+          "name": "proposer"
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "proposer_collateral",
+          "writable": true
+        },
+        {
+          "name": "bond_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_beta_config",
+      "discriminator": [
+        243,
+        110,
+        218,
+        125,
+        63,
+        14,
+        1,
+        1
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol_config"
+        },
+        {
+          "name": "beta_config",
+          "writable": true
+        },
+        {
+          "name": "system_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "oracle",
+          "type": "pubkey"
+        },
+        {
+          "name": "lock_buffer_secs",
+          "type": "i64"
+        },
+        {
+          "name": "max_oracle_delay_secs",
+          "type": "i64"
+        },
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "initialize_config",
+      "discriminator": [
+        208,
+        127,
+        21,
+        1,
+        194,
+        190,
+        196,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "system_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "initialize_marketlint_config",
+      "discriminator": [
+        48,
+        251,
+        203,
+        182,
+        77,
+        214,
+        146,
+        115
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol_config"
+        },
+        {
+          "name": "marketlint_config",
+          "writable": true
+        },
+        {
+          "name": "system_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "attestor",
+          "type": "pubkey"
+        },
+        {
+          "name": "min_score",
+          "type": "u8"
+        },
+        {
+          "name": "max_duplicate_probability",
+          "type": "u8"
+        },
+        {
+          "name": "min_resolution_clarity_score",
+          "type": "u8"
+        },
+        {
+          "name": "require_green",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "initialize_resolution_config",
+      "discriminator": [
+        117,
+        214,
+        223,
+        65,
+        172,
+        220,
+        164,
+        192
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol_config"
+        },
+        {
+          "name": "resolution_config",
+          "writable": true
+        },
+        {
+          "name": "system_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "proposal_bond",
+          "type": "u64"
+        },
+        {
+          "name": "dispute_bond",
+          "type": "u64"
+        },
+        {
+          "name": "challenge_period_secs",
+          "type": "i64"
+        },
+        {
+          "name": "escalation_period_secs",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "lock_beta_round",
+      "discriminator": [
+        254,
+        131,
+        171,
+        230,
+        250,
+        164,
+        57,
+        207
+      ],
+      "accounts": [
+        {
+          "name": "round",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "merge_complete_set",
+      "discriminator": [
+        245,
+        171,
+        74,
+        49,
+        59,
+        192,
+        150,
+        216
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "user_collateral",
+          "writable": true
+        },
+        {
+          "name": "collateral_vault",
+          "writable": true
+        },
+        {
+          "name": "yes_mint",
+          "writable": true
+        },
+        {
+          "name": "no_mint",
+          "writable": true
+        },
+        {
+          "name": "user_yes",
+          "writable": true
+        },
+        {
+          "name": "user_no",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "open_beta_round",
+      "discriminator": [
+        70,
+        215,
+        78,
+        202,
+        14,
+        243,
+        199,
+        133
+      ],
+      "accounts": [
+        {
+          "name": "oracle",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "beta_config"
+        },
+        {
+          "name": "protocol_config"
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "round",
+          "writable": true
+        },
+        {
+          "name": "round_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "OpenBetaRoundArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "place_limit_order",
+      "discriminator": [
+        108,
+        176,
+        33,
+        186,
+        146,
+        229,
+        1,
+        197
+      ],
+      "accounts": [
+        {
+          "name": "maker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "market"
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "yes_mint"
+        },
+        {
+          "name": "no_mint"
+        },
+        {
+          "name": "escrow_mint"
+        },
+        {
+          "name": "maker_source",
+          "writable": true
+        },
+        {
+          "name": "order",
+          "writable": true
+        },
+        {
+          "name": "escrow_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "PlaceOrderArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "propose_resolution",
+      "discriminator": [
+        19,
+        68,
+        181,
+        23,
+        194,
+        146,
+        152,
+        252
+      ],
+      "accounts": [
+        {
+          "name": "proposer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol_config"
+        },
+        {
+          "name": "resolution_config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "proposer_collateral",
+          "writable": true
+        },
+        {
+          "name": "resolution_state",
+          "writable": true
+        },
+        {
+          "name": "bond_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "ResolutionProposalArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "redeem_winnings",
+      "discriminator": [
+        209,
+        5,
+        204,
+        87,
+        134,
+        122,
+        239,
+        185
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "collateral_vault",
+          "writable": true
+        },
+        {
+          "name": "winning_mint",
+          "writable": true
+        },
+        {
+          "name": "user_winning",
+          "writable": true
+        },
+        {
+          "name": "user_collateral",
+          "writable": true
+        },
+        {
+          "name": "receipt",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "refund_invalid",
+      "discriminator": [
+        175,
+        108,
+        214,
+        95,
+        128,
+        133,
+        200,
+        146
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "collateral_vault",
+          "writable": true
+        },
+        {
+          "name": "yes_mint",
+          "writable": true
+        },
+        {
+          "name": "no_mint",
+          "writable": true
+        },
+        {
+          "name": "user_yes",
+          "writable": true
+        },
+        {
+          "name": "user_no",
+          "writable": true
+        },
+        {
+          "name": "user_collateral",
+          "writable": true
+        },
+        {
+          "name": "receipt",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "yes_amount",
+          "type": "u64"
+        },
+        {
+          "name": "no_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "remove_liquidity",
+      "discriminator": [
+        80,
+        85,
+        209,
+        72,
+        24,
+        206,
+        177,
+        108
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "lp_position",
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "user_collateral",
+          "writable": true
+        },
+        {
+          "name": "collateral_vault",
+          "writable": true
+        },
+        {
+          "name": "yes_mint",
+          "writable": true
+        },
+        {
+          "name": "no_mint",
+          "writable": true
+        },
+        {
+          "name": "yes_reserve_vault",
+          "writable": true
+        },
+        {
+          "name": "no_reserve_vault",
+          "writable": true
+        },
+        {
+          "name": "user_yes",
+          "writable": true
+        },
+        {
+          "name": "user_no",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "lp_shares",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "resolve_dispute",
+      "discriminator": [
+        231,
+        6,
+        202,
+        6,
+        96,
+        103,
+        12,
+        230
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "resolution_config"
+        },
+        {
+          "name": "protocol_config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "resolution_state",
+          "writable": true
+        },
+        {
+          "name": "proposer"
+        },
+        {
+          "name": "challenger"
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "proposer_collateral",
+          "writable": true
+        },
+        {
+          "name": "challenger_collateral",
+          "writable": true
+        },
+        {
+          "name": "bond_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "final_outcome",
+          "type": {
+            "defined": {
+              "name": "Outcome"
+            }
+          }
+        },
+        {
+          "name": "adjudication_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "sell_no",
+      "discriminator": [
+        189,
+        194,
+        132,
+        42,
+        80,
+        249,
+        154,
+        103
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "user_collateral",
+          "writable": true
+        },
+        {
+          "name": "collateral_vault",
+          "writable": true
+        },
+        {
+          "name": "yes_mint",
+          "writable": true
+        },
+        {
+          "name": "no_mint",
+          "writable": true
+        },
+        {
+          "name": "yes_reserve_vault",
+          "writable": true
+        },
+        {
+          "name": "no_reserve_vault",
+          "writable": true
+        },
+        {
+          "name": "user_yes",
+          "writable": true
+        },
+        {
+          "name": "user_no",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "no_in",
+          "type": "u64"
+        },
+        {
+          "name": "min_collateral_out",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "sell_yes",
+      "discriminator": [
+        128,
+        214,
+        65,
+        190,
+        69,
+        69,
+        53,
+        8
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "user_collateral",
+          "writable": true
+        },
+        {
+          "name": "collateral_vault",
+          "writable": true
+        },
+        {
+          "name": "yes_mint",
+          "writable": true
+        },
+        {
+          "name": "no_mint",
+          "writable": true
+        },
+        {
+          "name": "yes_reserve_vault",
+          "writable": true
+        },
+        {
+          "name": "no_reserve_vault",
+          "writable": true
+        },
+        {
+          "name": "user_yes",
+          "writable": true
+        },
+        {
+          "name": "user_no",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "yes_in",
+          "type": "u64"
+        },
+        {
+          "name": "min_collateral_out",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "set_paused",
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "settle_beta_round",
+      "discriminator": [
+        46,
+        88,
+        35,
+        91,
+        48,
+        93,
+        154,
+        59
+      ],
+      "accounts": [
+        {
+          "name": "oracle",
+          "signer": true
+        },
+        {
+          "name": "beta_config"
+        },
+        {
+          "name": "round",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "end_price",
+          "type": "i64"
+        },
+        {
+          "name": "observed_ts",
+          "type": "i64"
+        },
+        {
+          "name": "observation_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "split_complete_set",
+      "discriminator": [
+        80,
+        128,
+        13,
+        113,
+        196,
+        203,
+        157,
+        247
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "market",
+          "writable": true
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "user_collateral",
+          "writable": true
+        },
+        {
+          "name": "collateral_vault",
+          "writable": true
+        },
+        {
+          "name": "yes_mint",
+          "writable": true
+        },
+        {
+          "name": "no_mint",
+          "writable": true
+        },
+        {
+          "name": "user_yes",
+          "writable": true
+        },
+        {
+          "name": "user_no",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "sweep_beta_fees",
+      "discriminator": [
+        191,
+        210,
+        86,
+        59,
+        19,
+        84,
+        125,
+        62
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "beta_config"
+        },
+        {
+          "name": "protocol_config"
+        },
+        {
+          "name": "collateral_mint"
+        },
+        {
+          "name": "round",
+          "writable": true
+        },
+        {
+          "name": "round_vault",
+          "writable": true
+        },
+        {
+          "name": "fee_destination",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_beta_config",
+      "discriminator": [
+        49,
+        93,
+        41,
+        104,
+        22,
+        44,
+        128,
+        95
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "beta_config",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "oracle",
+          "type": "pubkey"
+        },
+        {
+          "name": "lock_buffer_secs",
+          "type": "i64"
+        },
+        {
+          "name": "max_oracle_delay_secs",
+          "type": "i64"
+        },
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        },
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "update_marketlint_config",
+      "discriminator": [
+        95,
+        211,
+        250,
+        47,
+        138,
+        236,
+        174,
+        202
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "marketlint_config",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "attestor",
+          "type": "pubkey"
+        },
+        {
+          "name": "min_score",
+          "type": "u8"
+        },
+        {
+          "name": "max_duplicate_probability",
+          "type": "u8"
+        },
+        {
+          "name": "min_resolution_clarity_score",
+          "type": "u8"
+        },
+        {
+          "name": "require_green",
+          "type": "bool"
+        },
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "update_resolution_config",
+      "discriminator": [
+        118,
+        151,
+        47,
+        123,
+        119,
+        68,
+        249,
+        113
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "resolution_config",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "proposal_bond",
+          "type": "u64"
+        },
+        {
+          "name": "dispute_bond",
+          "type": "u64"
+        },
+        {
+          "name": "challenge_period_secs",
+          "type": "i64"
+        },
+        {
+          "name": "escalation_period_secs",
+          "type": "i64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "BetaConfig",
+      "discriminator": [
+        89,
+        87,
+        254,
+        44,
+        142,
+        118,
+        57,
+        243
+      ]
+    },
+    {
+      "name": "BetaPosition",
+      "discriminator": [
+        90,
+        105,
+        143,
+        64,
+        124,
+        35,
+        176,
+        251
+      ]
+    },
+    {
+      "name": "BetaRound",
+      "discriminator": [
+        205,
+        227,
+        127,
+        100,
+        246,
+        113,
+        224,
+        61
+      ]
+    },
+    {
+      "name": "LimitOrder",
+      "discriminator": [
+        137,
+        183,
+        212,
+        91,
+        115,
+        29,
+        141,
+        227
+      ]
+    },
+    {
+      "name": "Market",
+      "discriminator": [
+        219,
+        190,
+        213,
+        55,
+        0,
+        227,
+        198,
+        154
+      ]
+    },
+    {
+      "name": "MarketLintCertification",
+      "discriminator": [
+        141,
+        11,
+        247,
+        172,
+        213,
+        108,
+        70,
+        164
+      ]
+    },
+    {
+      "name": "MarketLintConfig",
+      "discriminator": [
+        32,
+        55,
+        239,
+        26,
+        136,
+        42,
+        144,
+        119
+      ]
+    },
+    {
+      "name": "ProtocolConfig",
+      "discriminator": [
+        207,
+        91,
+        250,
+        28,
+        152,
+        179,
+        215,
+        209
+      ]
+    },
+    {
+      "name": "ResolutionConfig",
+      "discriminator": [
+        247,
+        168,
+        140,
+        175,
+        240,
+        234,
+        206,
+        165
+      ]
+    },
+    {
+      "name": "ResolutionState",
+      "discriminator": [
+        79,
+        128,
+        50,
+        21,
+        72,
+        199,
+        254,
+        128
+      ]
+    },
+    {
+      "name": "SettlementReceipt",
+      "discriminator": [
+        52,
+        249,
+        252,
+        121,
+        4,
+        232,
+        187,
+        4
+      ]
+    },
+    {
+      "name": "UserLiquidity",
+      "discriminator": [
+        231,
+        187,
+        233,
+        254,
+        66,
+        35,
+        139,
+        26
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "BetaConfigInitialized",
+      "discriminator": [
+        180,
+        43,
+        148,
+        79,
+        168,
+        46,
+        132,
+        162
+      ]
+    },
+    {
+      "name": "BetaFeesSwept",
+      "discriminator": [
+        135,
+        22,
+        31,
+        23,
+        141,
+        68,
+        158,
+        94
+      ]
+    },
+    {
+      "name": "BetaPositionEntered",
+      "discriminator": [
+        98,
+        79,
+        119,
+        50,
+        254,
+        10,
+        64,
+        67
+      ]
+    },
+    {
+      "name": "BetaRoundClaimed",
+      "discriminator": [
+        1,
+        154,
+        198,
+        208,
+        224,
+        31,
+        163,
+        5
+      ]
+    },
+    {
+      "name": "BetaRoundLockedEvent",
+      "discriminator": [
+        205,
+        100,
+        95,
+        168,
+        136,
+        54,
+        82,
+        115
+      ]
+    },
+    {
+      "name": "BetaRoundOpened",
+      "discriminator": [
+        231,
+        228,
+        239,
+        5,
+        36,
+        43,
+        0,
+        34
+      ]
+    },
+    {
+      "name": "BetaRoundSettled",
+      "discriminator": [
+        2,
+        49,
+        86,
+        143,
+        140,
+        200,
+        89,
+        12
+      ]
+    },
+    {
+      "name": "CompleteSetMerged",
+      "discriminator": [
+        191,
+        93,
+        106,
+        227,
+        82,
+        141,
+        252,
+        156
+      ]
+    },
+    {
+      "name": "CompleteSetSplit",
+      "discriminator": [
+        162,
+        226,
+        212,
+        219,
+        61,
+        252,
+        50,
+        87
+      ]
+    },
+    {
+      "name": "ConfigInitialized",
+      "discriminator": [
+        181,
+        49,
+        200,
+        156,
+        19,
+        167,
+        178,
+        91
+      ]
+    },
+    {
+      "name": "InvalidMarketRefunded",
+      "discriminator": [
+        203,
+        113,
+        215,
+        53,
+        22,
+        77,
+        183,
+        60
+      ]
+    },
+    {
+      "name": "LimitOrderCancelled",
+      "discriminator": [
+        244,
+        219,
+        115,
+        91,
+        20,
+        209,
+        47,
+        209
+      ]
+    },
+    {
+      "name": "LimitOrderFilled",
+      "discriminator": [
+        47,
+        24,
+        246,
+        214,
+        176,
+        226,
+        158,
+        0
+      ]
+    },
+    {
+      "name": "LimitOrderPlaced",
+      "discriminator": [
+        104,
+        46,
+        231,
+        29,
+        78,
+        174,
+        107,
+        112
+      ]
+    },
+    {
+      "name": "LiquidityAdded",
+      "discriminator": [
+        154,
+        26,
+        221,
+        108,
+        238,
+        64,
+        217,
+        161
+      ]
+    },
+    {
+      "name": "LiquidityRemoved",
+      "discriminator": [
+        225,
+        105,
+        216,
+        39,
+        124,
+        116,
+        169,
+        189
+      ]
+    },
+    {
+      "name": "MarketClosedForResolution",
+      "discriminator": [
+        103,
+        240,
+        194,
+        229,
+        12,
+        67,
+        215,
+        36
+      ]
+    },
+    {
+      "name": "MarketCreated",
+      "discriminator": [
+        88,
+        184,
+        130,
+        231,
+        226,
+        84,
+        6,
+        58
+      ]
+    },
+    {
+      "name": "MarketLintCertificationConsumed",
+      "discriminator": [
+        104,
+        6,
+        8,
+        88,
+        112,
+        164,
+        30,
+        57
+      ]
+    },
+    {
+      "name": "MarketLintCertificationIssued",
+      "discriminator": [
+        51,
+        124,
+        171,
+        153,
+        142,
+        250,
+        81,
+        85
+      ]
+    },
+    {
+      "name": "MarketLintConfigInitialized",
+      "discriminator": [
+        222,
+        92,
+        138,
+        232,
+        131,
+        129,
+        56,
+        246
+      ]
+    },
+    {
+      "name": "MarketLintConfigUpdated",
+      "discriminator": [
+        54,
+        203,
+        96,
+        57,
+        234,
+        42,
+        234,
+        61
+      ]
+    },
+    {
+      "name": "ResolutionConfigInitialized",
+      "discriminator": [
+        62,
+        228,
+        127,
+        62,
+        125,
+        125,
+        71,
+        146
+      ]
+    },
+    {
+      "name": "ResolutionDisputed",
+      "discriminator": [
+        209,
+        249,
+        106,
+        201,
+        166,
+        82,
+        67,
+        14
+      ]
+    },
+    {
+      "name": "ResolutionFinalized",
+      "discriminator": [
+        149,
+        12,
+        63,
+        110,
+        234,
+        46,
+        241,
+        202
+      ]
+    },
+    {
+      "name": "ResolutionProposed",
+      "discriminator": [
+        209,
+        21,
+        193,
+        193,
+        218,
+        234,
+        131,
+        108
+      ]
+    },
+    {
+      "name": "ResolutionTimedOut",
+      "discriminator": [
+        144,
+        194,
+        91,
+        196,
+        56,
+        57,
+        38,
+        164
+      ]
+    },
+    {
+      "name": "TradeExecuted",
+      "discriminator": [
+        41,
+        110,
+        64,
+        129,
+        60,
+        79,
+        179,
+        80
+      ]
+    },
+    {
+      "name": "WinningsRedeemed",
+      "discriminator": [
+        165,
+        63,
+        125,
+        179,
+        230,
+        236,
+        63,
+        99
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "ProtocolPaused",
+      "msg": "Protocol is paused"
+    },
+    {
+      "code": 6001,
+      "name": "FeeTooHigh",
+      "msg": "Fee exceeds the protocol maximum"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidCloseTime",
+      "msg": "Market close time must be in the future"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidResolutionTime",
+      "msg": "Resolution time must be at or after close time"
+    },
+    {
+      "code": 6004,
+      "name": "MarketNotOpen",
+      "msg": "Market is not open"
+    },
+    {
+      "code": 6005,
+      "name": "MarketClosed",
+      "msg": "Market is already closed"
+    },
+    {
+      "code": 6006,
+      "name": "ZeroAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6007,
+      "name": "AmountAfterFeeTooSmall",
+      "msg": "Amount is too small after fees"
+    },
+    {
+      "code": 6008,
+      "name": "NoLiquidity",
+      "msg": "Pool has no usable liquidity"
+    },
+    {
+      "code": 6009,
+      "name": "InsufficientLiquidity",
+      "msg": "Insufficient liquidity"
+    },
+    {
+      "code": 6010,
+      "name": "LiquidityTooSmall",
+      "msg": "Liquidity amount is too small"
+    },
+    {
+      "code": 6011,
+      "name": "InsufficientLpShares",
+      "msg": "Insufficient LP shares"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidPoolState",
+      "msg": "Invalid pool state"
+    },
+    {
+      "code": 6013,
+      "name": "SlippageExceeded",
+      "msg": "Slippage limit exceeded"
+    },
+    {
+      "code": 6014,
+      "name": "MathOverflow",
+      "msg": "Checked arithmetic overflow"
+    },
+    {
+      "code": 6015,
+      "name": "DivisionByZero",
+      "msg": "Division by zero"
+    },
+    {
+      "code": 6016,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6017,
+      "name": "InvalidOrderPrice",
+      "msg": "Limit order price must be between 1 and 9,999 basis points"
+    },
+    {
+      "code": 6018,
+      "name": "OrderTooSmall",
+      "msg": "Limit order amount is too small at the selected price"
+    },
+    {
+      "code": 6019,
+      "name": "OrderNotActive",
+      "msg": "Limit order is not active"
+    },
+    {
+      "code": 6020,
+      "name": "OrderOverfill",
+      "msg": "Fill amount exceeds the order's remaining shares"
+    },
+    {
+      "code": 6021,
+      "name": "InvalidOrderMint",
+      "msg": "Order escrow mint does not match the selected side/order kind"
+    },
+    {
+      "code": 6022,
+      "name": "InvalidOrderMarket",
+      "msg": "Order does not belong to this market"
+    },
+    {
+      "code": 6023,
+      "name": "MarketStillOpen",
+      "msg": "Market close timestamp has not been reached"
+    },
+    {
+      "code": 6024,
+      "name": "MarketNotClosed",
+      "msg": "Market must be closed before resolution"
+    },
+    {
+      "code": 6025,
+      "name": "ResolutionTooEarly",
+      "msg": "Resolution proposal is too early"
+    },
+    {
+      "code": 6026,
+      "name": "InvalidOutcome",
+      "msg": "Resolution outcome is invalid"
+    },
+    {
+      "code": 6027,
+      "name": "ResolutionNotPending",
+      "msg": "Resolution is not awaiting challenge"
+    },
+    {
+      "code": 6028,
+      "name": "ChallengeWindowClosed",
+      "msg": "Challenge window has already closed"
+    },
+    {
+      "code": 6029,
+      "name": "ChallengeWindowOpen",
+      "msg": "Challenge window is still open"
+    },
+    {
+      "code": 6030,
+      "name": "SelfDisputeNotAllowed",
+      "msg": "Proposer cannot dispute their own proposal"
+    },
+    {
+      "code": 6031,
+      "name": "DisputeBondTooSmall",
+      "msg": "Dispute bond must be greater than or equal to proposal bond"
+    },
+    {
+      "code": 6032,
+      "name": "InvalidChallengePeriod",
+      "msg": "Challenge/escalation period must be positive"
+    },
+    {
+      "code": 6033,
+      "name": "InvalidResolutionParty",
+      "msg": "Resolution party account does not match state"
+    },
+    {
+      "code": 6034,
+      "name": "MarketNotDisputed",
+      "msg": "Market is not disputed"
+    },
+    {
+      "code": 6035,
+      "name": "EscalationWindowOpen",
+      "msg": "Escalation window is still open"
+    },
+    {
+      "code": 6036,
+      "name": "MarketNotResolved",
+      "msg": "Market has not finalized to a YES or NO outcome"
+    },
+    {
+      "code": 6037,
+      "name": "InvalidWinningMint",
+      "msg": "Provided outcome mint is not the winning mint"
+    },
+    {
+      "code": 6038,
+      "name": "MarketNotCancelled",
+      "msg": "Market is not in the cancelled/invalid state"
+    },
+    {
+      "code": 6039,
+      "name": "RefundTooSmall",
+      "msg": "Invalid-market refund is below one collateral base unit"
+    },
+    {
+      "code": 6040,
+      "name": "InsufficientSettlementCollateral",
+      "msg": "Market collateral vault cannot cover this settlement"
+    },
+    {
+      "code": 6041,
+      "name": "BetaPaused",
+      "msg": "33 Beta is paused"
+    },
+    {
+      "code": 6042,
+      "name": "InvalidBetaOracle",
+      "msg": "33 Beta oracle signer is invalid"
+    },
+    {
+      "code": 6043,
+      "name": "InvalidBetaDuration",
+      "msg": "33 Beta duration must be 5, 10, 15, or 60 minutes"
+    },
+    {
+      "code": 6044,
+      "name": "InvalidBetaPrice",
+      "msg": "33 Beta price must be positive"
+    },
+    {
+      "code": 6045,
+      "name": "StaleBetaOracle",
+      "msg": "33 Beta oracle observation is outside the allowed freshness window"
+    },
+    {
+      "code": 6046,
+      "name": "InvalidBetaLockBuffer",
+      "msg": "33 Beta lock buffer is invalid"
+    },
+    {
+      "code": 6047,
+      "name": "InvalidBetaOracleDelay",
+      "msg": "33 Beta oracle-delay configuration is invalid"
+    },
+    {
+      "code": 6048,
+      "name": "BetaRoundNotOpen",
+      "msg": "33 Beta round is not open"
+    },
+    {
+      "code": 6049,
+      "name": "BetaRoundLocked",
+      "msg": "33 Beta round is locked"
+    },
+    {
+      "code": 6050,
+      "name": "BetaRoundStillOpen",
+      "msg": "33 Beta round is still open"
+    },
+    {
+      "code": 6051,
+      "name": "BetaRoundAlreadySettled",
+      "msg": "33 Beta round has already settled"
+    },
+    {
+      "code": 6052,
+      "name": "BetaRoundNotEnded",
+      "msg": "33 Beta round has not ended"
+    },
+    {
+      "code": 6053,
+      "name": "BetaRoundNotSettled",
+      "msg": "33 Beta round has not settled"
+    },
+    {
+      "code": 6054,
+      "name": "BetaPositionAlreadyClaimed",
+      "msg": "33 Beta position has already been claimed"
+    },
+    {
+      "code": 6055,
+      "name": "NothingToClaim",
+      "msg": "There is nothing to claim"
+    },
+    {
+      "code": 6056,
+      "name": "MarketLintDisabled",
+      "msg": "MarketLint certification is disabled"
+    },
+    {
+      "code": 6057,
+      "name": "InvalidMarketLintAttestor",
+      "msg": "MarketLint attestor signer is invalid"
+    },
+    {
+      "code": 6058,
+      "name": "InvalidMarketLintScore",
+      "msg": "MarketLint score or threshold must be between 0 and 100"
+    },
+    {
+      "code": 6059,
+      "name": "MarketLintCertificationExpired",
+      "msg": "MarketLint certification has expired"
+    },
+    {
+      "code": 6060,
+      "name": "MarketLintCertificationTtlTooLong",
+      "msg": "MarketLint certification TTL exceeds protocol maximum"
+    },
+    {
+      "code": 6061,
+      "name": "MarketLintCertificationConsumed",
+      "msg": "MarketLint certification has already been consumed"
+    },
+    {
+      "code": 6062,
+      "name": "MarketLintCreatorMismatch",
+      "msg": "MarketLint certification creator does not match market creator"
+    },
+    {
+      "code": 6063,
+      "name": "MarketLintAttestorRotated",
+      "msg": "MarketLint certification was issued by a rotated/obsolete attestor"
+    },
+    {
+      "code": 6064,
+      "name": "MarketLintMarketSeedMismatch",
+      "msg": "MarketLint certification market seed does not match"
+    },
+    {
+      "code": 6065,
+      "name": "MarketLintQuestionHashMismatch",
+      "msg": "MarketLint certification question hash does not match"
+    },
+    {
+      "code": 6066,
+      "name": "MarketLintMetadataHashMismatch",
+      "msg": "MarketLint certification metadata hash does not match"
+    },
+    {
+      "code": 6067,
+      "name": "MarketLintCloseTimeMismatch",
+      "msg": "MarketLint certification close time does not match"
+    },
+    {
+      "code": 6068,
+      "name": "MarketLintResolutionTimeMismatch",
+      "msg": "MarketLint certification resolution time does not match"
+    },
+    {
+      "code": 6069,
+      "name": "MarketLintScoreTooLow",
+      "msg": "MarketLint overall score is below protocol threshold"
+    },
+    {
+      "code": 6070,
+      "name": "MarketLintDuplicateRiskTooHigh",
+      "msg": "MarketLint duplicate probability exceeds protocol threshold"
+    },
+    {
+      "code": 6071,
+      "name": "MarketLintResolutionClarityTooLow",
+      "msg": "MarketLint resolution clarity is below protocol threshold"
+    },
+    {
+      "code": 6072,
+      "name": "MarketLintVerdictRejected",
+      "msg": "MarketLint verdict does not satisfy protocol policy"
+    }
+  ],
+  "types": [
+    {
+      "name": "BetaConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "oracle",
+            "type": "pubkey"
+          },
+          {
+            "name": "lock_buffer_secs",
+            "type": "i64"
+          },
+          {
+            "name": "max_oracle_delay_secs",
+            "type": "i64"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BetaConfigInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "oracle",
+            "type": "pubkey"
+          },
+          {
+            "name": "lock_buffer_secs",
+            "type": "i64"
+          },
+          {
+            "name": "max_oracle_delay_secs",
+            "type": "i64"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BetaFeesSwept",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BetaOutcome",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Unresolved"
+          },
+          {
+            "name": "Up"
+          },
+          {
+            "name": "Down"
+          },
+          {
+            "name": "Push"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BetaPosition",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "up_stake",
+            "type": "u64"
+          },
+          {
+            "name": "down_stake",
+            "type": "u64"
+          },
+          {
+            "name": "collateral_paid",
+            "type": "u64"
+          },
+          {
+            "name": "claimed",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BetaPositionEntered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "BetaSide"
+              }
+            }
+          },
+          {
+            "name": "collateral_in",
+            "type": "u64"
+          },
+          {
+            "name": "net_stake",
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          },
+          {
+            "name": "up_pool",
+            "type": "u64"
+          },
+          {
+            "name": "down_pool",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BetaRound",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "asset_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "round_id",
+            "type": "u64"
+          },
+          {
+            "name": "collateral_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "start_price",
+            "type": "i64"
+          },
+          {
+            "name": "end_price",
+            "type": "i64"
+          },
+          {
+            "name": "price_exponent",
+            "type": "i32"
+          },
+          {
+            "name": "start_observed_ts",
+            "type": "i64"
+          },
+          {
+            "name": "end_observed_ts",
+            "type": "i64"
+          },
+          {
+            "name": "open_observation_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "close_observation_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "open_ts",
+            "type": "i64"
+          },
+          {
+            "name": "lock_ts",
+            "type": "i64"
+          },
+          {
+            "name": "close_ts",
+            "type": "i64"
+          },
+          {
+            "name": "up_pool",
+            "type": "u64"
+          },
+          {
+            "name": "down_pool",
+            "type": "u64"
+          },
+          {
+            "name": "protocol_fees",
+            "type": "u64"
+          },
+          {
+            "name": "outcome",
+            "type": {
+              "defined": {
+                "name": "BetaOutcome"
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "BetaRoundStatus"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BetaRoundClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "outcome",
+            "type": {
+              "defined": {
+                "name": "BetaOutcome"
+              }
+            }
+          },
+          {
+            "name": "up_stake",
+            "type": "u64"
+          },
+          {
+            "name": "down_stake",
+            "type": "u64"
+          },
+          {
+            "name": "collateral_paid",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BetaRoundLockedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "locked_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BetaRoundOpened",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "asset_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "round_id",
+            "type": "u64"
+          },
+          {
+            "name": "start_price",
+            "type": "i64"
+          },
+          {
+            "name": "price_exponent",
+            "type": "i32"
+          },
+          {
+            "name": "open_ts",
+            "type": "i64"
+          },
+          {
+            "name": "lock_ts",
+            "type": "i64"
+          },
+          {
+            "name": "close_ts",
+            "type": "i64"
+          },
+          {
+            "name": "observation_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "BetaRoundSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "round",
+            "type": "pubkey"
+          },
+          {
+            "name": "start_price",
+            "type": "i64"
+          },
+          {
+            "name": "end_price",
+            "type": "i64"
+          },
+          {
+            "name": "outcome",
+            "type": {
+              "defined": {
+                "name": "BetaOutcome"
+              }
+            }
+          },
+          {
+            "name": "observed_ts",
+            "type": "i64"
+          },
+          {
+            "name": "observation_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "up_pool",
+            "type": "u64"
+          },
+          {
+            "name": "down_pool",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BetaRoundStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Open"
+          },
+          {
+            "name": "Locked"
+          },
+          {
+            "name": "Settled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BetaSide",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Up"
+          },
+          {
+            "name": "Down"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CertifyMarketArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market_seed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "question_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "metadata_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "spec_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "report_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "source_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "close_ts",
+            "type": "i64"
+          },
+          {
+            "name": "resolution_ts",
+            "type": "i64"
+          },
+          {
+            "name": "overall_score",
+            "type": "u8"
+          },
+          {
+            "name": "verdict",
+            "type": {
+              "defined": {
+                "name": "MarketLintVerdict"
+              }
+            }
+          },
+          {
+            "name": "ambiguity_score",
+            "type": "u8"
+          },
+          {
+            "name": "duplicate_probability",
+            "type": "u8"
+          },
+          {
+            "name": "resolution_clarity_score",
+            "type": "u8"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompleteSetMerged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompleteSetSplit",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConfigInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "collateral_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateMarketArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market_seed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "question_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "metadata_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "close_ts",
+            "type": "i64"
+          },
+          {
+            "name": "resolution_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InvalidMarketRefunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "yes_burned",
+            "type": "u64"
+          },
+          {
+            "name": "no_burned",
+            "type": "u64"
+          },
+          {
+            "name": "collateral_paid",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LimitOrder",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "order_seed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "Side"
+              }
+            }
+          },
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "OrderKind"
+              }
+            }
+          },
+          {
+            "name": "price_bps",
+            "type": "u16"
+          },
+          {
+            "name": "original_shares",
+            "type": "u64"
+          },
+          {
+            "name": "remaining_shares",
+            "type": "u64"
+          },
+          {
+            "name": "escrow_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "escrow_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "OrderStatus"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LimitOrderCancelled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "order",
+            "type": "pubkey"
+          },
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "returned_amount",
+            "type": "u64"
+          },
+          {
+            "name": "unfilled_shares",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LimitOrderFilled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "order",
+            "type": "pubkey"
+          },
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "taker",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "Side"
+              }
+            }
+          },
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "OrderKind"
+              }
+            }
+          },
+          {
+            "name": "price_bps",
+            "type": "u16"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          },
+          {
+            "name": "quote_amount",
+            "type": "u64"
+          },
+          {
+            "name": "remaining_shares",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LimitOrderPlaced",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "order",
+            "type": "pubkey"
+          },
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "maker",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "Side"
+              }
+            }
+          },
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "OrderKind"
+              }
+            }
+          },
+          {
+            "name": "price_bps",
+            "type": "u16"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          },
+          {
+            "name": "escrow_amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LiquidityAdded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "provider",
+            "type": "pubkey"
+          },
+          {
+            "name": "collateral_in",
+            "type": "u64"
+          },
+          {
+            "name": "lp_shares",
+            "type": "u64"
+          },
+          {
+            "name": "yes_reserve",
+            "type": "u64"
+          },
+          {
+            "name": "no_reserve",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LiquidityRemoved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "provider",
+            "type": "pubkey"
+          },
+          {
+            "name": "lp_shares",
+            "type": "u64"
+          },
+          {
+            "name": "collateral_out",
+            "type": "u64"
+          },
+          {
+            "name": "yes_out",
+            "type": "u64"
+          },
+          {
+            "name": "no_out",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Market",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "collateral_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "market_seed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "question_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "metadata_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "close_ts",
+            "type": "i64"
+          },
+          {
+            "name": "resolution_ts",
+            "type": "i64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "MarketStatus"
+              }
+            }
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "collateral_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "yes_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "no_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "yes_reserve_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "no_reserve_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "yes_reserve",
+            "type": "u64"
+          },
+          {
+            "name": "no_reserve",
+            "type": "u64"
+          },
+          {
+            "name": "lp_supply",
+            "type": "u64"
+          },
+          {
+            "name": "volume",
+            "type": "u64"
+          },
+          {
+            "name": "protocol_fees",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketClosedForResolution",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "closed_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "collateral_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "yes_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "no_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "close_ts",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketLintCertification",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market_seed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "attestor",
+            "type": "pubkey"
+          },
+          {
+            "name": "question_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "metadata_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "spec_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "report_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "source_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "close_ts",
+            "type": "i64"
+          },
+          {
+            "name": "resolution_ts",
+            "type": "i64"
+          },
+          {
+            "name": "overall_score",
+            "type": "u8"
+          },
+          {
+            "name": "verdict",
+            "type": {
+              "defined": {
+                "name": "MarketLintVerdict"
+              }
+            }
+          },
+          {
+            "name": "ambiguity_score",
+            "type": "u8"
+          },
+          {
+            "name": "duplicate_probability",
+            "type": "u8"
+          },
+          {
+            "name": "resolution_clarity_score",
+            "type": "u8"
+          },
+          {
+            "name": "issued_at",
+            "type": "i64"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "consumed",
+            "type": "bool"
+          },
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketLintCertificationConsumed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "certification",
+            "type": "pubkey"
+          },
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "report_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "spec_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "overall_score",
+            "type": "u8"
+          },
+          {
+            "name": "verdict",
+            "type": {
+              "defined": {
+                "name": "MarketLintVerdict"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketLintCertificationIssued",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "certification",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "attestor",
+            "type": "pubkey"
+          },
+          {
+            "name": "market_seed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "report_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "spec_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "source_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "close_ts",
+            "type": "i64"
+          },
+          {
+            "name": "resolution_ts",
+            "type": "i64"
+          },
+          {
+            "name": "overall_score",
+            "type": "u8"
+          },
+          {
+            "name": "verdict",
+            "type": {
+              "defined": {
+                "name": "MarketLintVerdict"
+              }
+            }
+          },
+          {
+            "name": "duplicate_probability",
+            "type": "u8"
+          },
+          {
+            "name": "resolution_clarity_score",
+            "type": "u8"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketLintConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "attestor",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_score",
+            "type": "u8"
+          },
+          {
+            "name": "max_duplicate_probability",
+            "type": "u8"
+          },
+          {
+            "name": "min_resolution_clarity_score",
+            "type": "u8"
+          },
+          {
+            "name": "require_green",
+            "type": "bool"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketLintConfigInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "attestor",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_score",
+            "type": "u8"
+          },
+          {
+            "name": "max_duplicate_probability",
+            "type": "u8"
+          },
+          {
+            "name": "min_resolution_clarity_score",
+            "type": "u8"
+          },
+          {
+            "name": "require_green",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketLintConfigUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "attestor",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_score",
+            "type": "u8"
+          },
+          {
+            "name": "max_duplicate_probability",
+            "type": "u8"
+          },
+          {
+            "name": "min_resolution_clarity_score",
+            "type": "u8"
+          },
+          {
+            "name": "require_green",
+            "type": "bool"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketLintVerdict",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Green"
+          },
+          {
+            "name": "Yellow"
+          },
+          {
+            "name": "Red"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MarketStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Open"
+          },
+          {
+            "name": "Closed"
+          },
+          {
+            "name": "ResolutionPending"
+          },
+          {
+            "name": "Disputed"
+          },
+          {
+            "name": "ResolvedYes"
+          },
+          {
+            "name": "ResolvedNo"
+          },
+          {
+            "name": "Cancelled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OpenBetaRoundArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "asset_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "round_id",
+            "type": "u64"
+          },
+          {
+            "name": "duration_secs",
+            "type": "i64"
+          },
+          {
+            "name": "start_price",
+            "type": "i64"
+          },
+          {
+            "name": "price_exponent",
+            "type": "i32"
+          },
+          {
+            "name": "observed_ts",
+            "type": "i64"
+          },
+          {
+            "name": "observation_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "OrderKind",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Buy"
+          },
+          {
+            "name": "Sell"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OrderStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Filled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Outcome",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Unresolved"
+          },
+          {
+            "name": "Yes"
+          },
+          {
+            "name": "No"
+          },
+          {
+            "name": "Invalid"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlaceOrderArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "order_seed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "Side"
+              }
+            }
+          },
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "OrderKind"
+              }
+            }
+          },
+          {
+            "name": "price_bps",
+            "type": "u16"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "collateral_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ResolutionConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "proposal_bond",
+            "type": "u64"
+          },
+          {
+            "name": "dispute_bond",
+            "type": "u64"
+          },
+          {
+            "name": "challenge_period_secs",
+            "type": "i64"
+          },
+          {
+            "name": "escalation_period_secs",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ResolutionConfigInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "proposal_bond",
+            "type": "u64"
+          },
+          {
+            "name": "dispute_bond",
+            "type": "u64"
+          },
+          {
+            "name": "challenge_period_secs",
+            "type": "i64"
+          },
+          {
+            "name": "escalation_period_secs",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ResolutionDisputed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "challenger",
+            "type": "pubkey"
+          },
+          {
+            "name": "dispute_evidence_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "escalation_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "bond",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ResolutionFinalized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "outcome",
+            "type": {
+              "defined": {
+                "name": "Outcome"
+              }
+            }
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "bond_payout",
+            "type": "u64"
+          },
+          {
+            "name": "adjudication_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ResolutionProposalArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "outcome",
+            "type": {
+              "defined": {
+                "name": "Outcome"
+              }
+            }
+          },
+          {
+            "name": "evidence_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "source_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "observation_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ResolutionProposed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "proposer",
+            "type": "pubkey"
+          },
+          {
+            "name": "outcome",
+            "type": {
+              "defined": {
+                "name": "Outcome"
+              }
+            }
+          },
+          {
+            "name": "evidence_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "source_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "observation_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "challenge_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "bond",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ResolutionState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "proposer",
+            "type": "pubkey"
+          },
+          {
+            "name": "challenger",
+            "type": "pubkey"
+          },
+          {
+            "name": "proposed_outcome",
+            "type": {
+              "defined": {
+                "name": "Outcome"
+              }
+            }
+          },
+          {
+            "name": "final_outcome",
+            "type": {
+              "defined": {
+                "name": "Outcome"
+              }
+            }
+          },
+          {
+            "name": "evidence_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "source_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "observation_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "dispute_evidence_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "adjudication_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "proposed_at",
+            "type": "i64"
+          },
+          {
+            "name": "challenge_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "escalation_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "proposal_bond",
+            "type": "u64"
+          },
+          {
+            "name": "dispute_bond",
+            "type": "u64"
+          },
+          {
+            "name": "bond_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ResolutionTimedOut",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "proposal_refund",
+            "type": "u64"
+          },
+          {
+            "name": "dispute_refund",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SettlementReceipt",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "winning_tokens_burned",
+            "type": "u64"
+          },
+          {
+            "name": "invalid_yes_burned",
+            "type": "u64"
+          },
+          {
+            "name": "invalid_no_burned",
+            "type": "u64"
+          },
+          {
+            "name": "collateral_paid",
+            "type": "u64"
+          },
+          {
+            "name": "last_claim_ts",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Side",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Yes"
+          },
+          {
+            "name": "No"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TradeExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "trader",
+            "type": "pubkey"
+          },
+          {
+            "name": "side",
+            "type": {
+              "defined": {
+                "name": "Side"
+              }
+            }
+          },
+          {
+            "name": "is_buy",
+            "type": "bool"
+          },
+          {
+            "name": "amount_in",
+            "type": "u64"
+          },
+          {
+            "name": "amount_out",
+            "type": "u64"
+          },
+          {
+            "name": "fee",
+            "type": "u64"
+          },
+          {
+            "name": "yes_reserve",
+            "type": "u64"
+          },
+          {
+            "name": "no_reserve",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserLiquidity",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "shares",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WinningsRedeemed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "market",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "winning_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "tokens_burned",
+            "type": "u64"
+          },
+          {
+            "name": "collateral_paid",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}
