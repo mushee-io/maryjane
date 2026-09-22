@@ -399,7 +399,14 @@ export default function NativeMarketTerminal({
       setNotice(`${labels[action] || "Market updated"} · ${short(signature)}`);
       await Promise.all([load(), loadTrader(), loadResolution()]);
     } catch (err: any) {
-      setNotice(err?.message || "Unable to execute market action");
+      const message = err?.message || String(err || "");
+      if (/InstructionFallbackNotFound|Fallback functions are not supported|custom program error:\s*0x65/i.test(message)) {
+        setNotice(
+          "This Mary Jane Devnet program is still the older onchain build. The website knows the cancel instruction, but the deployed Solana program does not yet. Upgrade program HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL on Devnet, then retry."
+        );
+      } else {
+        setNotice(message || "Unable to execute market action");
+      }
     } finally {
       setBusy(false);
     }
