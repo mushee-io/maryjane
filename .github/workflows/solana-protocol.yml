@@ -105,3 +105,9 @@ jobs:
       - name: Production discovery smoke
         working-directory: .
         run: npm run test:production-discovery
+
+      - name: Judge readiness production probe
+        working-directory: .
+        env:
+          JUDGE_STRICT: "false"
+        run: npm run test:judge-readiness

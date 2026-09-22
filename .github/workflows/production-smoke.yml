@@ -9,6 +9,7 @@ on:
       - "vercel.json"
       - "package.json"
       - "scripts/production-discovery-smoke.mjs"
+      - "scripts/judge-readiness.mjs"
       - ".github/workflows/production-smoke.yml"
   workflow_dispatch:
 

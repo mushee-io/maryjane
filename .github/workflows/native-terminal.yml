@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - "api/native-market-state.ts"
+      - "src/components/PortfolioScreen.tsx"
+      - "api/trader-state.ts"
+      - "api/market-action.ts"
+      - "api/complete-set.ts"
       - "api/order-*.ts"
       - "src/components/NativeMarketTerminal.tsx"
       - "vercel.json"

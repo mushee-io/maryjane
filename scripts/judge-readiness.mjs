@@ -15,10 +15,13 @@ async function get(path){
   return data;
 }
 
-const [feed,marketLint,prepare]=await Promise.all([
+const quietWallet="4wBqpZM9xaSheZzJSMawUKKwhdpChKbZ5eu5ky4Vigw";
+const [feed,marketLint,prepare,analytics,portfolio]=await Promise.all([
   get("/api/discovery-feed?limit=200"),
   get("/api/marketlint-analyze"),
   get("/api/prepare-create"),
+  get("/api/analytics-feed?limit=100"),
+  get("/api/trader-state?wallet="+quietWallet),
 ]);
 
 const native=(feed.items||[]).filter((market)=>market.source==="maryjane");
@@ -26,6 +29,11 @@ const open=native.filter((market)=>market.status==="OPEN"&&!market.resolved);
 const visual=native.filter((market)=>market.coverImageUrl||market.outcomes?.some((outcome)=>outcome.imageUrl));
 const liquid=native.filter((market)=>Number(market.volumeTotal||0)>0||market.probabilitySource==="pool-reference");
 const categories=[...new Set(native.map((market)=>market.category).filter(Boolean))];
+let lifecycle=null;
+if(native[0]?.nativeAddress){
+  try{lifecycle=await get("/api/market-action?market="+encodeURIComponent(native[0].nativeAddress));}
+  catch(error){lifecycle={error:error?.message||String(error)};}
+}
 
 const terminal=[];
 for(const market of native.slice(0,Math.min(5,native.length))){
@@ -58,6 +66,21 @@ const checks=[
     ok:terminal.length>0&&terminal.every((item)=>!item.error),
     detail:terminal.filter((item)=>!item.error).length+"/"+terminal.length+" healthy"
   },
+  {
+    id:"analytics",
+    ok:Number(analytics?.analytics?.totalMarkets||0)>=native.length&&Array.isArray(analytics?.markets),
+    detail:String(analytics?.analytics?.totalMarkets||0)+" indexed native accounts"
+  },
+  {
+    id:"portfolio",
+    ok:portfolio?.wallet===quietWallet&&Array.isArray(portfolio?.positions)&&Array.isArray(portfolio?.openOrders)&&Array.isArray(portfolio?.history),
+    detail:"stateless wallet portfolio healthy"
+  },
+  {
+    id:"lifecycle",
+    ok:Boolean(lifecycle?.market?.address)&&Boolean(lifecycle?.resolutionConfig?.address)&&!lifecycle?.error,
+    detail:lifecycle?.error||String(lifecycle?.market?.status||"unavailable")
+  },
 ];
 
 console.log(JSON.stringify({
@@ -66,6 +89,8 @@ console.log(JSON.stringify({
   summary:{native:native.length,open:open.length,visual:visual.length,liquid:liquid.length,categories},
   checks,
   terminal,
+  lifecycle:lifecycle?.market?{status:lifecycle.market.status,resolutionConfig:lifecycle.resolutionConfig?.address}:lifecycle,
+  portfolio:{positions:portfolio?.positions?.length||0,openOrders:portfolio?.openOrders?.length||0},
 },null,2));
 
 if(!checks.every((check)=>check.ok))process.exitCode=1;
