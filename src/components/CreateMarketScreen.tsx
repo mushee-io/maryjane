@@ -117,7 +117,22 @@ async function signedCloudinaryForm(file: File, resourceType: "image" | "raw") {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ resourceType }),
   });
-  if (!signatureResponse.ok) return null;
+
+  if (!signatureResponse.ok) {
+    let detail = "";
+    try {
+      const payload = await signatureResponse.json();
+      detail = responseErrorMessage(payload, signatureResponse.status);
+    } catch {}
+
+    if (signatureResponse.status === 503) {
+      throw new Error(
+        "Cloudinary is blocking unsigned browser uploads and the secure signed-upload fallback is not configured in Vercel. Add CLOUDINARY_URL (recommended) or CLOUDINARY_API_KEY + CLOUDINARY_API_SECRET, then redeploy.",
+      );
+    }
+    throw new Error(detail || `Unable to prepare signed Cloudinary upload (${signatureResponse.status}).`);
+  }
+
   const signed = await readJsonResponse(signatureResponse);
   const form = new FormData();
   form.append("file", file);
