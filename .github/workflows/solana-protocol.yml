@@ -41,6 +41,7 @@ jobs:
         run: npm install
 
       - name: Limit-order instruction contract check
+        working-directory: .
         run: node scripts/check-limit-order-contract.mjs
 
       - name: TypeScript check
