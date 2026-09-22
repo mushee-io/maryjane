@@ -137,49 +137,7 @@ function ago(ts?: number | null) {
 function PriceHistory({ trades, fallback }: { trades: Trade[]; fallback: number }) {
   const values = [...trades].reverse().slice(-24).map((trade) => trade.yesPriceBps);
   if (values.length < 2) {
-    const completeSetAction = async (action: "SPLIT" | "MERGE") => {
-    if (!market.nativeAddress) return;
-    if (!wallet) { await onConnect(); return; }
-
-    const amount = Number(completeSetAmount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setNotice("Enter a positive complete-set amount.");
-      return;
-    }
-    const decimals = traderState?.collateral.decimals ?? 6;
-    const scale = 10 ** decimals;
-    const amountBaseUnits = String(Math.round(amount * scale));
-
-    setBusy(true);
-    setNotice("");
-    try {
-      const response = await fetch("/api/complete-set", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          wallet,
-          market: market.nativeAddress,
-          action,
-          amountBaseUnits,
-        }),
-      });
-      const data = await jsonOrThrow(response);
-      setNotice(action === "SPLIT" ? "Creating YES + NO shares…" : "Merging YES + NO back to USDG…");
-      const signature = await signBuiltTransaction(data.transactionBase64, data.lastValidBlockHeight);
-      setNotice(
-        action === "SPLIT"
-          ? `Created ${amount.toFixed(2)} YES + ${amount.toFixed(2)} NO · ${short(signature)}`
-          : `Merged ${amount.toFixed(2)} complete sets · ${short(signature)}`
-      );
-      await Promise.all([load(), loadTrader()]);
-    } catch (err: any) {
-      setNotice(err?.message || `Unable to ${action.toLowerCase()} complete set`);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
+    return (
       <div className="flex h-36 items-center justify-center rounded-2xl border border-dashed border-white/[.08] bg-white/[.015] text-xs text-white/25">
         Price history begins after the first matched trades.
       </div>
@@ -376,6 +334,49 @@ export default function NativeMarketTerminal({
       setBusy(false);
     }
   };
+
+  const completeSetAction = async (action: "SPLIT" | "MERGE") => {
+    if (!market.nativeAddress) return;
+    if (!wallet) { await onConnect(); return; }
+
+    const amount = Number(completeSetAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setNotice("Enter a positive complete-set amount.");
+      return;
+    }
+    const decimals = traderState?.collateral.decimals ?? 6;
+    const scale = 10 ** decimals;
+    const amountBaseUnits = String(Math.round(amount * scale));
+
+    setBusy(true);
+    setNotice("");
+    try {
+      const response = await fetch("/api/complete-set", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet,
+          market: market.nativeAddress,
+          action,
+          amountBaseUnits,
+        }),
+      });
+      const data = await jsonOrThrow(response);
+      setNotice(action === "SPLIT" ? "Creating YES + NO shares…" : "Merging YES + NO back to USDG…");
+      const signature = await signBuiltTransaction(data.transactionBase64, data.lastValidBlockHeight);
+      setNotice(
+        action === "SPLIT"
+          ? `Created ${amount.toFixed(2)} YES + ${amount.toFixed(2)} NO · ${short(signature)}`
+          : `Merged ${amount.toFixed(2)} complete sets · ${short(signature)}`
+      );
+      await Promise.all([load(), loadTrader()]);
+    } catch (err: any) {
+      setNotice(err?.message || `Unable to ${action.toLowerCase()} complete set`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#050505] text-[#f5f5ef]">
