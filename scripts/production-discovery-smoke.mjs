@@ -1,6 +1,7 @@
 const url = "https://maryjane-blue.vercel.app/api/discovery-feed?limit=40";
 const expected = "B76aB9GWZPtFqwuyTPjB33Gys1UgCQXw27mdyPKEMyeF";
 let last = "";
+let discoveryPassed = false;
 
 for (let attempt = 1; attempt <= 18; attempt++) {
   try {
@@ -23,7 +24,8 @@ for (let attempt = 1; attempt <= 18; attempt++) {
           market: item.title,
           address: expected,
         }, null, 2));
-        process.exit(0);
+        discoveryPassed = true;
+        break;
       }
     }
   } catch (error) {
@@ -32,9 +34,11 @@ for (let attempt = 1; attempt <= 18; attempt++) {
   await new Promise((resolve) => setTimeout(resolve, 10_000));
 }
 
-throw new Error(`Production discovery did not expose ${expected}. Last response: ${last.slice(0, 1500)}`);
+if (!discoveryPassed) {
+  throw new Error(`Production discovery did not expose ${expected}. Last response: ${last.slice(0, 1500)}`);
+}
 
-
+let analyticsPassed = false;
 for (let attempt = 1; attempt <= 18; attempt++) {
   const response = await fetch("https://maryjane-blue.vercel.app/api/analytics-feed?limit=100", {
     headers: { "cache-control": "no-cache" },
@@ -47,9 +51,10 @@ for (let attempt = 1; attempt <= 18; attempt++) {
     try { data = JSON.parse(text); } catch {}
     if (data?.analytics?.totalMarkets >= 1 && Array.isArray(data?.markets) && data.markets.length >= 1) {
       console.log(JSON.stringify({ productionAnalytics: "PASS", markets: data.analytics.totalMarkets }));
+      analyticsPassed = true;
       break;
     }
   }
-  if (attempt === 18) throw new Error("production analytics feed did not expose native markets");
   await new Promise((resolve) => setTimeout(resolve, 10000));
 }
+if (!analyticsPassed) throw new Error("production analytics feed did not expose native markets");
