@@ -6,6 +6,12 @@ const PROGRAM_ID=new PublicKey("HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL");
 const USDG_MINT="4F6PM96JJxngmHnZLBh9n58RH4aTVNWvDs2nuwrT5BP7";
 const MEMO_PROGRAM_ID="MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
 const RPC_URL=process.env.SOLANA_RPC_URL||"https://api.devnet.solana.com";
+const PORTFOLIO_HISTORY_LIMIT=Math.max(20,Math.min(100,Number(process.env.PORTFOLIO_HISTORY_LIMIT||60)));
+const METADATA_HOSTS=new Set([
+  "res.cloudinary.com",
+  "maryjane-blue.vercel.app",
+  ...String(process.env.MARY_JANE_METADATA_HOSTS||"").split(",").map(value=>value.trim().toLowerCase()).filter(Boolean),
+]);
 const MARKET_DISC=createHash("sha256").update("account:Market").digest().subarray(0,8);
 const ORDER_DISC=createHash("sha256").update("account:LimitOrder").digest().subarray(0,8);
 const RESOLUTION_DISC=createHash("sha256").update("account:ResolutionState").digest().subarray(0,8);
@@ -26,6 +32,21 @@ function pk(raw:Buffer,o:number){return new PublicKey(raw.subarray(o,o+32));}
 function u64(raw:Buffer,o:number){return raw.readBigUInt64LE(o);}
 function i64(raw:Buffer,o:number){return Number(raw.readBigInt64LE(o));}
 function discEq(raw:Buffer,disc:Buffer){return raw.length>=8&&raw.subarray(0,8).equals(disc);}
+function safeMetadataUrl(value:any){
+  try{
+    const url=new URL(String(value||""));
+    if(url.protocol!=="https:"||!METADATA_HOSTS.has(url.hostname.toLowerCase()))return null;
+    return url.toString();
+  }catch{return null;}
+}
+function safeText(value:any,max:number){return String(value||"").replace(/[\u0000-\u001F\u007F]/g,"").trim().slice(0,max)||undefined;}
+function safeNativeImage(value:any){const url=safeMetadataUrl(value);return url&&/\.(?:png|jpe?g|webp|gif|svg)(?:$|\?)/i.test(url)?url:undefined;}
+async function mapLimit<T,R>(items:T[],limit:number,fn:(item:T,index:number)=>Promise<R>){
+  const out=new Array<R>(items.length);let cursor=0;
+  async function worker(){while(true){const index=cursor++;if(index>=items.length)return;out[index]=await fn(items[index],index);}}
+  await Promise.all(Array.from({length:Math.min(limit,items.length)},()=>worker()));
+  return out;
+}
 
 function decodeMarket(address:string,raw:Buffer){
   if(raw.length<420||!discEq(raw,MARKET_DISC))return null;
@@ -129,11 +150,16 @@ function eventFromPayload(payload:Buffer,signature:string,blockTime:number){
 }
 
 async function walletEvents(connection:Connection,wallet:PublicKey){
-  const signatures=await connection.getSignaturesForAddress(wallet,{limit:100},"confirmed");
+  const signatures=await connection.getSignaturesForAddress(wallet,{limit:PORTFOLIO_HISTORY_LIMIT},"confirmed");
   const events:any[]=[];
-  for(let i=0;i<signatures.length;i+=10){
-    const chunk=signatures.slice(i,i+10);
-    const txs=await Promise.all(chunk.map(sig=>connection.getTransaction(sig.signature,{commitment:"confirmed",maxSupportedTransactionVersion:0}).catch(()=>null)));
+  for(let i=0;i<signatures.length;i+=20){
+    const chunk=signatures.slice(i,i+20);
+    let txs:any[]=[];
+    try{
+      txs=await connection.getTransactions(chunk.map(sig=>sig.signature),{commitment:"confirmed",maxSupportedTransactionVersion:0});
+    }catch{
+      txs=await Promise.all(chunk.map(sig=>connection.getTransaction(sig.signature,{commitment:"confirmed",maxSupportedTransactionVersion:0}).catch(()=>null)));
+    }
     txs.forEach((tx,index)=>{
       for(const log of tx?.meta?.logMessages||[]){
         const marker="Program data: ";const pos=log.indexOf(marker);if(pos<0)continue;
@@ -167,25 +193,25 @@ async function tokenBalances(connection:Connection,wallet:PublicKey){
 async function marketMetadata(connection:Connection,market:string){
   try{
     const signatures=await connection.getSignaturesForAddress(new PublicKey(market),{limit:6},"confirmed");
-    for(const sig of signatures){
-      const tx=await connection.getParsedTransaction(sig.signature,{commitment:"confirmed",maxSupportedTransactionVersion:0}).catch(()=>null);
+    const txs=await connection.getParsedTransactions(signatures.map(sig=>sig.signature),{commitment:"confirmed",maxSupportedTransactionVersion:0}).catch(()=>[] as any[]);
+    for(const tx of txs){
       for(const ix of tx?.transaction.message.instructions||[]){
         const anyIx:any=ix;
         if(String(anyIx.programId)!==MEMO_PROGRAM_ID||typeof anyIx.parsed!=="string")continue;
         try{
           const memo=JSON.parse(anyIx.parsed);
-          if(memo?.t!=="maryjane-market")continue;
+          if(memo?.t!=="maryjane-market"||memo?.m&&memo.m!==market)continue;
           let remote:any={};
-          if(memo?.u&&/^https:\/\//i.test(String(memo.u))){
-            const response=await fetch(String(memo.u),{signal:AbortSignal.timeout(5000)});
-            if(response.ok)remote=await response.json();
+          const metadataUrl=safeMetadataUrl(memo?.u);
+          if(metadataUrl){
+            const response=await fetch(metadataUrl,{signal:AbortSignal.timeout(5000),headers:{"user-agent":"MaryJane-Portfolio/1.0"}});
+            if(response.ok){const candidate=await response.json();if(candidate?.t==="maryjane-market-metadata")remote=candidate;}
           }
           return{
-            title:remote.question||memo.q||`Mary Jane market ${market.slice(0,8)}…`,
-            description:remote.description,
-            category:remote.category||memo.c||"Other",
-            yesLabel:remote.yesLabel||"YES",noLabel:remote.noLabel||"NO",
-            yesImageUrl:remote.yesImageUrl,noImageUrl:remote.noImageUrl,coverImageUrl:remote.coverImageUrl,
+            title:safeText(remote.question||memo.q,220)||`Mary Jane market ${market.slice(0,8)}…`,
+            description:safeText(remote.description,2000),category:safeText(remote.category||memo.c,32)||"Other",
+            yesLabel:safeText(remote.yesLabel,48)||"YES",noLabel:safeText(remote.noLabel,48)||"NO",
+            yesImageUrl:safeNativeImage(remote.yesImageUrl),noImageUrl:safeNativeImage(remote.noImageUrl),coverImageUrl:safeNativeImage(remote.coverImageUrl),
           };
         }catch{}
       }
@@ -197,8 +223,11 @@ async function marketMetadata(connection:Connection,market:string){
 async function latestPrice(connection:Connection,market:string,fallback:number){
   try{
     const signatures=await connection.getSignaturesForAddress(new PublicKey(market),{limit:18},"confirmed");
-    for(const sig of signatures){
-      const tx=await connection.getTransaction(sig.signature,{commitment:"confirmed",maxSupportedTransactionVersion:0}).catch(()=>null);
+    let txs:any[]=[];
+    try{txs=await connection.getTransactions(signatures.map(sig=>sig.signature),{commitment:"confirmed",maxSupportedTransactionVersion:0});}
+    catch{txs=await Promise.all(signatures.map(sig=>connection.getTransaction(sig.signature,{commitment:"confirmed",maxSupportedTransactionVersion:0}).catch(()=>null)));}
+    for(let i=0;i<txs.length;i++){
+      const tx=txs[i];const sig=signatures[i];
       for(const log of tx?.meta?.logMessages||[]){
         const pos=log.indexOf("Program data: ");if(pos<0)continue;
         const ev=eventFromPayload(Buffer.from(log.slice(pos+14).trim(),"base64"),sig.signature,tx?.blockTime||sig.blockTime||0);
@@ -262,9 +291,9 @@ async function portfolio(connection:Connection,wallet:PublicKey){
   const relevant=[...markets.values()].filter(m=>{
     const y=tokens.get(m.yesMint)?.amount||0n;const n=tokens.get(m.noMint)?.amount||0n;
     return y>0n||n>0n||activeOrders.some(o=>o.market===m.address)||events.some(e=>e.market===m.address);
-  }).slice(0,40);
+  }).slice(0,30);
 
-  const results=await Promise.all(relevant.map(async market=>{
+  const results=await mapLimit(relevant,5,async market=>{
     const total=market.yesReserve+market.noReserve;
     const fallback=market.status==="RESOLVED_YES"?10000:market.status==="RESOLVED_NO"?0:market.status==="CANCELLED"?5000:total===0n?5000:Number(market.noReserve*10000n/total);
     const yesPriceBps=await latestPrice(connection,market.address,fallback);
@@ -274,10 +303,19 @@ async function portfolio(connection:Connection,wallet:PublicKey){
     const l=ledgers.get(market.address)||{yes:sideState(),no:sideState()};
     const yesAvg=l.yes.qty>0n?Number(l.yes.cost*10000n/l.yes.qty):0;
     const noAvg=l.no.qty>0n?Number(l.no.cost*10000n/l.no.qty):0;
-    const yesCost=y.amount>0n?y.amount*BigInt(yesAvg)/10000n:0n;
-    const noCost=n.amount>0n?n.amount*BigInt(noAvg)/10000n:0n;
+    const knownYes=y.amount<l.yes.qty?y.amount:l.yes.qty;
+    const knownNo=n.amount<l.no.qty?n.amount:l.no.qty;
+    const unknownYes=y.amount-knownYes;
+    const unknownNo=n.amount-knownNo;
+    const yesKnownCost=yesAvg?knownYes*BigInt(yesAvg)/10000n:0n;
+    const noKnownCost=noAvg?knownNo*BigInt(noAvg)/10000n:0n;
+    const yesUnknownCost=unknownYes*BigInt(yesPriceBps)/10000n;
+    const noUnknownCost=unknownNo*BigInt(10000-yesPriceBps)/10000n;
+    const yesCost=yesKnownCost+yesUnknownCost;
+    const noCost=noKnownCost+noUnknownCost;
     const currentValue=y.amount*BigInt(yesPriceBps)/10000n+n.amount*BigInt(10000-yesPriceBps)/10000n;
     const unrealized=currentValue-yesCost-noCost;
+    const costBasisEstimated=y.amount!==l.yes.qty||n.amount!==l.no.qty;
     let resolution:any=null;
     try{
       const [pda]=PublicKey.findProgramAddressSync([Buffer.from("resolution"),new PublicKey(market.address).toBuffer()],PROGRAM_ID);
@@ -295,9 +333,10 @@ async function portfolio(connection:Connection,wallet:PublicKey){
       unrealizedPnlBaseUnits:unrealized.toString(),
       realizedPnlBaseUnits:(l.yes.realized+l.no.realized).toString(),
       claimableBaseUnits:(winningBalance+invalidRefund).toString(),
+      costBasisEstimated,
       resolution,
     };
-  }));
+  });
 
   let positionValue=0n,unrealized=0n,realized=0n,claimable=0n;
   for(const p of results){positionValue+=BigInt(p.currentValueBaseUnits);unrealized+=BigInt(p.unrealizedPnlBaseUnits);realized+=BigInt(p.realizedPnlBaseUnits);claimable+=BigInt(p.claimableBaseUnits);}
@@ -320,6 +359,7 @@ async function portfolio(connection:Connection,wallet:PublicKey){
       return{...order,reservedBaseUnits:reserved.toString()};
     }).sort((a,b)=>b.createdAt-a.createdAt),
     history:[...events].filter(e=>e.maker===wallet.toBase58()||e.taker===wallet.toBase58()||e.user===wallet.toBase58()).sort((a,b)=>b.blockTime-a.blockTime).slice(0,100),
+    diagnostics:{historyLimit:PORTFOLIO_HISTORY_LIMIT,metadataHosts:[...METADATA_HOSTS]},
     updatedAt:Date.now(),
   };
 }
