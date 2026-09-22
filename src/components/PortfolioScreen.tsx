@@ -7,7 +7,7 @@ type Position = {
   yesLabel:string; noLabel:string; yesImageUrl?:string; noImageUrl?:string; coverImageUrl?:string;
   yesUi:number; noUi:number; yesPriceBps:number; noPriceBps:number; yesAvgEntryBps:number; noAvgEntryBps:number;
   currentValueBaseUnits:string; costBasisBaseUnits:string; unrealizedPnlBaseUnits:string; realizedPnlBaseUnits:string;
-  claimableBaseUnits:string; yesMint:string; noMint:string;
+  claimableBaseUnits:string; yesMint:string; noMint:string; costBasisEstimated?:boolean;
   resolution?:any;
 };
 type OpenOrder={order:string;market:string;side:"YES"|"NO";kind:"BUY"|"SELL";priceBps:number;remainingShares:string;reservedBaseUnits:string;createdAt:number};
@@ -105,9 +105,9 @@ export function PortfolioScreen(){
   return(
     <div className="min-h-screen bg-[#060606] text-[#f5f5ef]">
       <header className="sticky top-0 z-30 border-b border-white/[.08] bg-[#060606]/95 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1450px] items-center gap-4 px-5 py-4">
+        <div className="mx-auto flex max-w-[1450px] flex-wrap items-center gap-4 px-5 py-4 md:flex-nowrap">
           <a href="/" className="flex items-center gap-2.5"><div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#b7ff3c] text-sm font-black text-black">M</div><span className="text-lg font-semibold">Mary Jane</span></a>
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="order-3 flex w-full gap-1 overflow-x-auto pt-2 md:order-none md:w-auto md:overflow-visible md:pt-0">
             <a href="/" className="rounded-full px-4 py-2 text-sm text-white/45">Markets</a>
             <a href="/portfolio" className="rounded-full bg-white/[.08] px-4 py-2 text-sm">Portfolio</a>
             <a href="/create" className="rounded-full px-4 py-2 text-sm text-white/45">Create</a>
@@ -159,6 +159,7 @@ export function PortfolioScreen(){
                         <div className="mt-1 flex justify-between text-[10px] text-white/30"><span>Mark</span><span>{Number(mark/100).toFixed(2)}¢</span></div>
                       </div>)}
                     </div>
+                    {position.costBasisEstimated&&<div className="mt-4 rounded-xl border border-amber-300/15 bg-amber-300/[.05] px-3 py-2 text-[10px] leading-4 text-amber-100/70">Cost basis is estimated because this wallet has outcome-token transfers that were not Mary Jane trades.</div>}
                     <div className="mt-5 grid grid-cols-3 gap-2 border-t border-white/[.06] pt-4 text-xs">
                       <div><div className="text-white/25">Value</div><div className="mt-1 font-semibold">{usd(position.currentValueBaseUnits)}</div></div>
                       <div><div className="text-white/25">Unrealized</div><div className={`mt-1 font-semibold ${base(position.unrealizedPnlBaseUnits)>=0?"text-emerald-300":"text-rose-300"}`}>{signedUsd(position.unrealizedPnlBaseUnits)}</div></div>
