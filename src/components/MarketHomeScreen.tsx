@@ -82,6 +82,14 @@ async function jsonOrThrow(response: Response) {
 function sourceLabel(source: Source) {
   return source === "maryjane" ? "MARY JANE" : source.toUpperCase();
 }
+const CANCELLED_MARKET_PREFIX = "maryjane:cancelled-market:";
+function isMarketCancelledInApp(market: Market) {
+  return Boolean(
+    market.source === "maryjane" &&
+    market.nativeAddress &&
+    localStorage.getItem(`${CANCELLED_MARKET_PREFIX}${market.nativeAddress}`)
+  );
+}
 
 export function MarketHomeScreen() {
   const [markets, setMarkets] = useState<Market[]>([]);
@@ -96,7 +104,9 @@ export function MarketHomeScreen() {
     try {
       const response = await fetch("/api/discovery-feed?limit=180", { cache: "no-store" });
       const data = await jsonOrThrow(response);
-      const hydrated = (data.items || []).map((market: Market) => {
+      const hydrated = (data.items || [])
+        .filter((market: Market) => !isMarketCancelledInApp(market))
+        .map((market: Market) => {
         if (market.source !== "maryjane" || !market.nativeAddress) return market;
         try {
           const raw = localStorage.getItem(`maryjane:market-meta:${market.nativeAddress}`);
@@ -132,7 +142,17 @@ export function MarketHomeScreen() {
   useEffect(() => {
     void load();
     const timer = window.setInterval(() => void load(), 30_000);
-    return () => window.clearInterval(timer);
+    const cancelled = (event: Event) => {
+      const address = (event as CustomEvent<{ address?: string }>).detail?.address;
+      if (!address) return;
+      setMarkets((current) => current.filter((market) => market.nativeAddress !== address));
+      setSelected((current) => current?.nativeAddress === address ? null : current);
+    };
+    window.addEventListener("maryjane:market-cancelled", cancelled);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("maryjane:market-cancelled", cancelled);
+    };
   }, []);
 
   const visible = useMemo(() => {
