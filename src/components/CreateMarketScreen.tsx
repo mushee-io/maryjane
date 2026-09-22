@@ -2,14 +2,21 @@ import React, { useState } from "react";
 import { CheckCircle2, ExternalLink, Image as ImageIcon, Loader2, Rocket, ShieldCheck, UploadCloud, Wallet, X } from "lucide-react";
 import { Connection, Transaction } from "@solana/web3.js";
 
-const CLOUDINARY_CLOUD_NAME = "kbuxvbsa";
-const CLOUDINARY_UPLOAD_PRESET = "ml_default";
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "kbuxvbsa";
+const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "ml_default";
 
 function provider() { return (window as any).solana; }
 function fromBase64(value: string) { const binary = atob(value); return Uint8Array.from(binary, (char) => char.charCodeAt(0)); }
 function toUnix(value: string) {
   if (!value) return NaN;
   return Math.floor(new Date(`${value}:00Z`).getTime() / 1000);
+}
+
+function responseErrorMessage(data: any, status: number) {
+  if (typeof data?.error === "string" && data.error.trim()) return data.error;
+  if (typeof data?.error?.message === "string" && data.error.message.trim()) return data.error.message;
+  if (typeof data?.message === "string" && data.message.trim()) return data.message;
+  return `Request failed (${status})`;
 }
 
 async function readJsonResponse(response: Response) {
@@ -22,7 +29,7 @@ async function readJsonResponse(response: Response) {
       throw new Error(`API returned ${response.status}: ${preview || "non-JSON response"}`);
     }
   }
-  if (!response.ok) throw new Error(data?.error || `Request failed (${response.status})`);
+  if (!response.ok) throw new Error(responseErrorMessage(data, response.status));
   return data;
 }
 
@@ -44,25 +51,57 @@ async function signBuiltTransaction(transactionBase64: string, lastValidBlockHei
   return signature;
 }
 
-async function uploadCloudinary(file: File, resourceType: "image" | "raw" = "image") {
-  if (resourceType === "image") {
-    const allowed = new Set(["image/jpeg","image/png","image/webp","image/gif"]);
-    if (!allowed.has(file.type)) throw new Error("Use a JPG, PNG, WEBP or GIF image.");
-    if (file.size > 5 * 1024 * 1024) throw new Error("Images must be 5 MB or smaller.");
-    try {
-      const bitmap = await createImageBitmap(file);
-      const width = bitmap.width, height = bitmap.height;
-      bitmap.close();
-      if (width < 96 || height < 96) throw new Error("Images must be at least 96 × 96 pixels.");
-      if (width > 4096 || height > 4096) throw new Error("Images must be 4096 × 4096 pixels or smaller.");
-    } catch (error:any) {
-      if (error?.message?.includes("pixels")) throw error;
-      throw new Error("Unable to read this image. Try a JPG, PNG, WEBP or GIF.");
-    }
+async function prepareImageForUpload(file: File) {
+  const allowed = new Set(["image/jpeg","image/png","image/webp","image/gif"]);
+  if (!allowed.has(file.type)) throw new Error("Use a JPG, PNG, WEBP or GIF image.");
+  if (file.size > 5 * 1024 * 1024) throw new Error("Images must be 5 MB or smaller.");
+
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error("Unable to read this image. Try a JPG, PNG, WEBP or GIF.");
   }
-  const form = new FormData();
-  form.append("file", file);
-  form.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+  const width = bitmap.width;
+  const height = bitmap.height;
+  if (width < 96 || height < 96) {
+    bitmap.close();
+    throw new Error("Images must be at least 96 × 96 pixels.");
+  }
+  if (width > 4096 || height > 4096) {
+    bitmap.close();
+    throw new Error("Images must be 4096 × 4096 pixels or smaller.");
+  }
+
+  // Re-encode browser images before upload. This strips problematic metadata and
+  // turns WEBP/GIF downloads into a Cloudinary-friendly static PNG/JPEG.
+  const maxSide = 2048;
+  const scale = Math.min(1, maxSide / Math.max(width, height));
+  const outWidth = Math.max(1, Math.round(width * scale));
+  const outHeight = Math.max(1, Math.round(height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = outWidth;
+  canvas.height = outHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    bitmap.close();
+    throw new Error("Unable to prepare this image for upload.");
+  }
+  ctx.drawImage(bitmap, 0, 0, outWidth, outHeight);
+  bitmap.close();
+
+  const outputType = file.type === "image/png" ? "image/png" : "image/jpeg";
+  const extension = outputType === "image/png" ? "png" : "jpg";
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, outputType, outputType === "image/jpeg" ? 0.9 : undefined),
+  );
+  if (!blob) throw new Error("Unable to prepare this image for upload.");
+  const baseName = file.name.replace(/\.[^.]+$/, "") || "maryjane-image";
+  return new File([blob], `${baseName}.${extension}`, { type: outputType });
+}
+
+async function postCloudinary(form: FormData, resourceType: "image" | "raw") {
   const response = await fetch(
     `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
     { method: "POST", body: form },
@@ -70,6 +109,45 @@ async function uploadCloudinary(file: File, resourceType: "image" | "raw" = "ima
   const data = await readJsonResponse(response);
   if (!data.secure_url) throw new Error("Cloudinary did not return a media URL.");
   return String(data.secure_url);
+}
+
+async function signedCloudinaryForm(file: File, resourceType: "image" | "raw") {
+  const signatureResponse = await fetch("/api/cloudinary-signature", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resourceType }),
+  });
+  if (!signatureResponse.ok) return null;
+  const signed = await readJsonResponse(signatureResponse);
+  const form = new FormData();
+  form.append("file", file);
+  form.append("api_key", String(signed.apiKey));
+  form.append("timestamp", String(signed.timestamp));
+  form.append("signature", String(signed.signature));
+  form.append("upload_preset", String(signed.uploadPreset));
+  return form;
+}
+
+async function uploadCloudinary(file: File, resourceType: "image" | "raw" = "image") {
+  const preparedFile = resourceType === "image" ? await prepareImageForUpload(file) : file;
+
+  const unsignedForm = new FormData();
+  unsignedForm.append("file", preparedFile);
+  unsignedForm.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+  try {
+    return await postCloudinary(unsignedForm, resourceType);
+  } catch (unsignedError:any) {
+    // Some Cloudinary presets are signed-only. If server credentials are
+    // configured, retry with a short-lived server-generated signature.
+    try {
+      const signedForm = await signedCloudinaryForm(preparedFile, resourceType);
+      if (signedForm) return await postCloudinary(signedForm, resourceType);
+    } catch (signedError:any) {
+      throw new Error(signedError?.message || unsignedError?.message || "Unable to upload media.");
+    }
+    throw new Error(unsignedError?.message || "Unable to upload media.");
+  }
 }
 
 async function uploadMetadata(metadata: Record<string, unknown>) {
