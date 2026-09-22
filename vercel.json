@@ -13,9 +13,6 @@
     "api/discovery-feed.ts": {
       "maxDuration": 60
     },
-    "api/market-probe.ts": {
-      "maxDuration": 15
-    },
     "api/native-market-state.ts": {
       "maxDuration": 30
     },
@@ -36,9 +33,16 @@
     },
     "api/analytics-feed.ts": {
       "maxDuration": 30
+    },
+    "api/market-action.ts": {
+      "maxDuration": 30
     }
   },
   "routes": [
+    {
+      "src": "/api/market-action",
+      "dest": "/api/market-action"
+    },
     {
       "src": "/api/analytics-feed",
       "dest": "/api/analytics-feed"
@@ -66,10 +70,6 @@
     {
       "src": "/api/order-fill",
       "dest": "/api/order-fill"
-    },
-    {
-      "src": "/api/market-probe",
-      "dest": "/api/market-probe"
     },
     {
       "src": "/api/discovery-feed",
