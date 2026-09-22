@@ -7,6 +7,7 @@ import { MarketLintScreen } from './components/MarketLintScreen';
 import { CreateMarketScreen } from './components/CreateMarketScreen';
 import { LaunchReadinessScreen } from './components/LaunchReadinessScreen';
 import { PortfolioScreen } from './components/PortfolioScreen';
+import { FortyFourMiladyScreen } from './components/FortyFourMiladyScreen';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import './index.css';
 
@@ -18,6 +19,7 @@ const isMarketLint = pathname === '/marketlint';
 const isCreateMarket = pathname === '/create';
 const isLaunchReadiness = pathname === '/launch';
 const isPortfolio = pathname === '/portfolio' || pathname === '/positions';
+const isFortyFourMilady = pathname === '/44-milady' || pathname === '/44milady';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -30,6 +32,8 @@ createRoot(document.getElementById('root')!).render(
       <LaunchReadinessScreen />
     ) : isPortfolio ? (
       <PortfolioScreen />
+    ) : isFortyFourMilady ? (
+      <FortyFourMiladyScreen />
     ) : isMarketLint ? (
       <MarketLintScreen />
     ) : isMarketsExplorer ? (
