@@ -308,14 +308,16 @@ export function CreateMarketScreen() {
   };
 
   const uploadVisual = async (kind: "cover" | "yes" | "no", file: File) => {
-    setUploading(kind); setError("");
+    setUploading(kind); setError(""); setNotice("");
     try {
       const url = await uploadCloudinary(file);
       if (kind === "cover") setCoverImageUrl(url);
       if (kind === "yes") setYesImageUrl(url);
       if (kind === "no") setNoImageUrl(url);
     } catch (e:any) {
-      setError(errorText(e) || "Unable to upload image.");
+      // Visuals are optional. A media-hosting outage must never block
+      // permissionless market creation on Solana.
+      setNotice("Image hosting is temporarily unavailable. You can still create this market on Solana without the image.");
     } finally {
       setUploading("");
     }
@@ -342,21 +344,30 @@ export function CreateMarketScreen() {
     const scheduleError = validateSchedule();
     if (scheduleError) return setError(scheduleError);
 
-    setBusy("create"); setError(""); setNotice("Publishing market metadata…");
+    setBusy("create"); setError(""); setNotice("Preparing market metadata…");
     try {
       const baseInput = input();
-      const metadataUrl = await uploadMetadata({
-        v: 2,
-        t: "maryjane-market-metadata",
-        ...baseInput,
-        createdAt: new Date().toISOString(),
-      });
+      let metadataUrl = "";
+      try {
+        metadataUrl = await uploadMetadata({
+          v: 2,
+          t: "maryjane-market-metadata",
+          ...baseInput,
+          createdAt: new Date().toISOString(),
+        });
+      } catch {
+        // Remote metadata improves cross-device visuals but is not required by
+        // the onchain market. Continue with the compact memo + local metadata.
+        metadataUrl = "";
+      }
 
-      setNotice("Preparing certified Solana transaction…");
+      setNotice(metadataUrl
+        ? "Preparing certified Solana transaction…"
+        : "Media hosting unavailable — creating the market on Solana without remote metadata…");
       const response = await fetch("/api/prepare-create", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({wallet,input:{...baseInput,metadataUrl}}),
+        body:JSON.stringify({wallet,input:{...baseInput,metadataUrl: metadataUrl || undefined}}),
       });
       const data = await readJsonResponse(response);
       setReport(data.report);
@@ -376,7 +387,9 @@ export function CreateMarketScreen() {
         } catch {}
       }
       setMarket({ ...data, signature, metadataUrl });
-      setNotice("Market confirmed on Solana with visual metadata. It will appear in Markets → New on the next feed refresh.");
+      setNotice(metadataUrl
+        ? "Market confirmed on Solana with visual metadata. It will appear in Markets → New on the next feed refresh."
+        : "Market confirmed on Solana. Remote media hosting was unavailable, so this market was created without hosted visual metadata.");
     } catch (e:any) { setError(errorText(e) || "Unable to create market."); setNotice(""); } finally { setBusy(""); }
   };
 
