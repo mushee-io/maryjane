@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { CheckCircle2, ExternalLink, Image as ImageIcon, Loader2, Rocket, ShieldCheck, UploadCloud, Wallet, X } from "lucide-react";
-import { Transaction } from "@solana/web3.js";
+import { Connection, Transaction } from "@solana/web3.js";
 
 const CLOUDINARY_CLOUD_NAME = "kbuxvbsa";
 const CLOUDINARY_UPLOAD_PRESET = "ml_default";
@@ -26,18 +26,39 @@ async function readJsonResponse(response: Response) {
   return data;
 }
 
-async function signBuiltTransaction(transactionBase64: string) {
+async function signBuiltTransaction(transactionBase64: string, lastValidBlockHeight?: number) {
   const wallet = provider();
   if (!wallet?.signAndSendTransaction) throw new Error("Wallet cannot sign Solana transactions");
   const tx = Transaction.from(fromBase64(transactionBase64));
   const result = await wallet.signAndSendTransaction(tx);
-  return typeof result === "string" ? result : result.signature;
+  const signature = typeof result === "string" ? result : result.signature;
+  if (tx.recentBlockhash && lastValidBlockHeight) {
+    const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+    const confirmation = await connection.confirmTransaction({
+      signature,
+      blockhash: tx.recentBlockhash,
+      lastValidBlockHeight,
+    }, "confirmed");
+    if (confirmation.value.err) throw new Error("Market transaction failed on Solana.");
+  }
+  return signature;
 }
 
 async function uploadCloudinary(file: File, resourceType: "image" | "raw" = "image") {
   if (resourceType === "image") {
-    if (!file.type.startsWith("image/")) throw new Error("Choose an image file.");
+    const allowed = new Set(["image/jpeg","image/png","image/webp","image/gif"]);
+    if (!allowed.has(file.type)) throw new Error("Use a JPG, PNG, WEBP or GIF image.");
     if (file.size > 5 * 1024 * 1024) throw new Error("Images must be 5 MB or smaller.");
+    try {
+      const bitmap = await createImageBitmap(file);
+      const width = bitmap.width, height = bitmap.height;
+      bitmap.close();
+      if (width < 96 || height < 96) throw new Error("Images must be at least 96 × 96 pixels.");
+      if (width > 4096 || height > 4096) throw new Error("Images must be 4096 × 4096 pixels or smaller.");
+    } catch (error:any) {
+      if (error?.message?.includes("pixels")) throw error;
+      throw new Error("Unable to read this image. Try a JPG, PNG, WEBP or GIF.");
+    }
   }
   const form = new FormData();
   form.append("file", file);
@@ -89,7 +110,7 @@ function VisualUpload({
           {uploading ? "Uploading…" : "Upload image"}
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             className="hidden"
             disabled={uploading}
             onChange={(event) => {
@@ -229,7 +250,8 @@ export function CreateMarketScreen() {
       });
       const data = await readJsonResponse(response);
       setReport(data.report);
-      const signature = await signBuiltTransaction(data.transactionBase64);
+      setNotice("Waiting for Solana confirmation…");
+      const signature = await signBuiltTransaction(data.transactionBase64, data.lastValidBlockHeight);
       const address = data.addresses?.market;
       if (address) {
         try {
@@ -244,7 +266,7 @@ export function CreateMarketScreen() {
         } catch {}
       }
       setMarket({ ...data, signature, metadataUrl });
-      setNotice("Market submitted with visual metadata. It will appear in Markets → New after Devnet confirmation.");
+      setNotice("Market confirmed on Solana with visual metadata. It will appear in Markets → New on the next feed refresh.");
     } catch (e:any) { setError(e.message); setNotice(""); } finally { setBusy(""); }
   };
 
