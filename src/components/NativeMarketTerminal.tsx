@@ -10,7 +10,9 @@ type Market = {
   nativeMarketSeed?: string;
   closesAt?: string;
   status?: string;
-  outcomes: Array<{ label: string; probability: number }>;
+  coverImageUrl?: string;
+  metadataUrl?: string;
+  outcomes: Array<{ id?: string; label: string; probability: number; imageUrl?: string }>;
 };
 
 type BookOrder = {
@@ -225,7 +227,13 @@ export default function NativeMarketTerminal({
     return () => window.clearInterval(timer);
   }, [address, wallet]);
 
-  const fallbackYes = Math.round((market.outcomes.find((outcome) => outcome.label === "YES")?.probability ?? .5) * 10_000);
+  const yesOutcome = market.outcomes.find((outcome) => outcome.id === "yes") || market.outcomes.find((outcome) => outcome.label === "YES") || market.outcomes[0];
+  const noOutcome = market.outcomes.find((outcome) => outcome.id === "no") || market.outcomes.find((outcome) => outcome.label === "NO") || market.outcomes[1];
+  const yesLabel = yesOutcome?.label || "YES";
+  const noLabel = noOutcome?.label || "NO";
+  const labelFor = (value: "YES" | "NO") => value === "YES" ? yesLabel : noLabel;
+  const imageFor = (value: "YES" | "NO") => value === "YES" ? yesOutcome?.imageUrl : noOutcome?.imageUrl;
+  const fallbackYes = Math.round((yesOutcome?.probability ?? .5) * 10_000);
   const yesBps = state?.book.lastMatchedYesBps ?? state?.market.reserveYesBps ?? fallbackYes;
   const selectedBps = side === "YES" ? yesBps : 10_000 - yesBps;
   const book = state?.book[side.toLowerCase() as "yes" | "no"];
@@ -366,7 +374,7 @@ export default function NativeMarketTerminal({
       const signature = await signBuiltTransaction(data.transactionBase64, data.lastValidBlockHeight);
       setNotice(
         action === "SPLIT"
-          ? `Created ${amount.toFixed(2)} YES + ${amount.toFixed(2)} NO · ${short(signature)}`
+          ? `Created ${amount.toFixed(2)} ${yesLabel} + ${amount.toFixed(2)} ${noLabel} · ${short(signature)}`
           : `Merged ${amount.toFixed(2)} complete sets · ${short(signature)}`
       );
       await Promise.all([load(), loadTrader()]);
@@ -401,11 +409,25 @@ export default function NativeMarketTerminal({
           <div className="flex flex-col gap-5 border-b border-white/[.07] pb-7 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
               <div className="text-xs uppercase tracking-[.18em] text-white/25">Native prediction market</div>
+              {market.coverImageUrl && <img src={market.coverImageUrl} alt="" className="mb-5 h-40 w-full max-w-4xl rounded-3xl border border-white/[.08] object-cover md:h-52" />}
               <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-[-.045em] md:text-5xl">{market.title}</h1>
+              {(yesOutcome?.imageUrl || noOutcome?.imageUrl || yesLabel !== "YES" || noLabel !== "NO") && (
+                <div className="mt-5 grid max-w-2xl grid-cols-[1fr_auto_1fr] items-center gap-3">
+                  <div className="flex items-center gap-3 rounded-2xl border border-emerald-300/15 bg-emerald-300/[.05] p-3">
+                    {yesOutcome?.imageUrl && <img src={yesOutcome.imageUrl} alt="" className="h-11 w-11 rounded-full border border-white/10 bg-white object-cover" />}
+                    <div className="min-w-0"><div className="truncate text-sm font-semibold">{yesLabel}</div><div className="mt-1 text-xs text-emerald-300">{(yesBps/100).toFixed(1)}%</div></div>
+                  </div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[.2em] text-white/20">vs</div>
+                  <div className="flex items-center justify-end gap-3 rounded-2xl border border-rose-300/15 bg-rose-300/[.05] p-3 text-right">
+                    <div className="min-w-0"><div className="truncate text-sm font-semibold">{noLabel}</div><div className="mt-1 text-xs text-rose-300">{((10000-yesBps)/100).toFixed(1)}%</div></div>
+                    {noOutcome?.imageUrl && <img src={noOutcome.imageUrl} alt="" className="h-11 w-11 rounded-full border border-white/10 bg-white object-cover" />}
+                  </div>
+                </div>
+              )}
               {market.description && <p className="mt-4 max-w-3xl text-sm leading-6 text-white/38">{market.description}</p>}
             </div>
             <div className="shrink-0 lg:text-right">
-              <div className="text-xs text-white/30">YES probability</div>
+              <div className="text-xs text-white/30">{yesLabel} probability</div>
               <div className="mt-1 text-5xl font-semibold tracking-[-.05em]">{(yesBps / 100).toFixed(1)}%</div>
               <div className="mt-2 text-xs text-white/30">{state?.book.lastMatchedYesBps != null ? "Last matched price" : "Indicative until first match"}</div>
             </div>
@@ -422,7 +444,7 @@ export default function NativeMarketTerminal({
 
           <div className="mt-6">
             <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-semibold"><BarChart3 className="h-4 w-4" />YES probability</div>
+              <div className="flex items-center gap-2 text-sm font-semibold"><BarChart3 className="h-4 w-4" />{yesLabel} probability</div>
               <div className="text-xs text-white/28">{state?.book.lastMatchedAt ? ago(state.book.lastMatchedAt) : "No matches yet"}</div>
             </div>
             <PriceHistory trades={state?.recentTrades || []} fallback={yesBps} />
@@ -437,7 +459,7 @@ export default function NativeMarketTerminal({
                 </div>
                 <div className="flex rounded-xl bg-white/[.04] p-1">
                   {(["YES", "NO"] as const).map((value) => (
-                    <button key={value} onClick={() => setSide(value)} className={`rounded-lg px-4 py-1.5 text-xs font-semibold ${side === value ? value === "YES" ? "bg-emerald-300 text-black" : "bg-rose-300 text-black" : "text-white/35"}`}>{value}</button>
+                    <button key={value} onClick={() => setSide(value)} className={`rounded-lg px-4 py-1.5 text-xs font-semibold ${side === value ? value === "YES" ? "bg-emerald-300 text-black" : "bg-rose-300 text-black" : "text-white/35"}`}>{labelFor(value)}</button>
                   ))}
                 </div>
               </div>
@@ -480,7 +502,7 @@ export default function NativeMarketTerminal({
                 </div>
                 {(state?.recentTrades || []).slice(0, 12).map((trade, index) => (
                   <div key={`${trade.signature}-${index}`} className="grid grid-cols-[1fr_.8fr_.8fr] border-b border-white/[.04] py-2.5 text-xs">
-                    <span className={trade.side === "YES" ? "text-emerald-300" : "text-rose-300"}>{(trade.yesPriceBps / 100).toFixed(2)}¢ YES</span>
+                    <span className={trade.side === "YES" ? "text-emerald-300" : "text-rose-300"}>{(trade.yesPriceBps / 100).toFixed(2)}¢ {yesLabel}</span>
                     <span className="text-white/45">{(Number(trade.shares) / 1e6).toFixed(2)}</span>
                     <span className="text-right text-white/28">{ago(trade.blockTime)}</span>
                   </div>
@@ -516,8 +538,13 @@ export default function NativeMarketTerminal({
                 const bps = value === "YES" ? yesBps : 10_000 - yesBps;
                 return (
                   <button key={value} onClick={() => setSide(value)} className={`rounded-2xl border p-4 text-left ${side === value ? value === "YES" ? "border-emerald-300/40 bg-emerald-300/[.08]" : "border-rose-300/40 bg-rose-300/[.08]" : "border-white/[.07]"}`}>
-                    <div className="text-[10px] text-white/30">{value}</div>
-                    <div className={`mt-1 text-2xl font-semibold ${value === "YES" ? "text-emerald-300" : "text-rose-300"}`}>{(bps / 100).toFixed(0)}¢</div>
+                    <div className="flex items-center gap-2">
+                      {imageFor(value) && <img src={imageFor(value)} alt="" className="h-7 w-7 rounded-full border border-white/10 bg-white object-cover" />}
+                      <div className="min-w-0">
+                        <div className="truncate text-[10px] text-white/45">{labelFor(value)}</div>
+                        <div className={`mt-1 text-2xl font-semibold ${value === "YES" ? "text-emerald-300" : "text-rose-300"}`}>{(bps / 100).toFixed(0)}¢</div>
+                      </div>
+                    </div>
                   </button>
                 );
               })}
@@ -540,7 +567,7 @@ export default function NativeMarketTerminal({
               <div className="flex justify-between text-white/35"><span>Potential payout</span><span className="text-white/70">${(Number(shares) || 0).toFixed(2)}</span></div>
               <div className="flex justify-between text-white/35"><span>Devnet SOL</span><span className="text-white/70">{wallet ? traderState ? traderState.sol.uiAmount.toFixed(4) : "Loading…" : "—"}</span></div>
               <div className="flex justify-between text-white/35"><span>USDG balance</span><span className="text-white/70">{wallet ? traderState ? traderState.collateral.uiAmount.toFixed(2) : "Loading…" : "—"}</span></div>
-              <div className="flex justify-between text-white/35"><span>{side} balance</span><span className="text-white/70">{wallet ? traderState ? (side === "YES" ? traderState.yes.uiAmount : traderState.no.uiAmount).toFixed(2) : "Loading…" : "—"}</span></div>
+              <div className="flex justify-between text-white/35"><span>{labelFor(side)} balance</span><span className="text-white/70">{wallet ? traderState ? (side === "YES" ? traderState.yes.uiAmount : traderState.no.uiAmount).toFixed(2) : "Loading…" : "—"}</span></div>
               <div className="flex justify-between text-white/35"><span>Network</span><span className="text-white/70">Solana Devnet</span></div>
             </div>
 
@@ -548,11 +575,11 @@ export default function NativeMarketTerminal({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold">Outcome inventory</div>
-                  <div className="mt-1 text-[10px] leading-4 text-white/28">1 USDG creates 1 YES + 1 NO. Use these shares to sell into resting bids.</div>
+                  <div className="mt-1 text-[10px] leading-4 text-white/28">1 USDG creates 1 {yesLabel} + 1 {noLabel}. Use these shares to sell into resting bids.</div>
                 </div>
                 <div className="text-right text-[10px] text-white/28">
-                  <div>YES {traderState ? traderState.yes.uiAmount.toFixed(2) : "—"}</div>
-                  <div>NO {traderState ? traderState.no.uiAmount.toFixed(2) : "—"}</div>
+                  <div>{yesLabel} {traderState ? traderState.yes.uiAmount.toFixed(2) : "—"}</div>
+                  <div>{noLabel} {traderState ? traderState.no.uiAmount.toFixed(2) : "—"}</div>
                 </div>
               </div>
 
@@ -573,7 +600,7 @@ export default function NativeMarketTerminal({
                   disabled={busy || !wallet || state?.market.status !== "OPEN" || Boolean(traderState && Number(completeSetAmount || 0) > traderState.collateral.uiAmount)}
                   className="rounded-xl bg-[#b7ff3c] px-3 py-3 text-xs font-semibold text-black disabled:opacity-35"
                 >
-                  Split → YES + NO
+                  Split → outcomes
                 </button>
                 <button
                   onClick={() => void completeSetAction("MERGE")}
@@ -592,7 +619,7 @@ export default function NativeMarketTerminal({
             )}
             {insufficientBalance && (
               <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/[.07] p-3 text-xs leading-5 text-amber-200">
-                Insufficient {kind === "BUY" ? "Devnet USDG" : `${side} shares`}. Need {requiredForOrder.toFixed(2)}, have {(availableForOrder ?? 0).toFixed(2)}.
+                Insufficient {kind === "BUY" ? "Devnet USDG" : `${labelFor(side)} shares`}. Need {requiredForOrder.toFixed(2)}, have {(availableForOrder ?? 0).toFixed(2)}.
               </div>
             )}
             {notice && <div className="mt-3 rounded-xl border border-white/[.07] bg-white/[.025] p-3 text-xs leading-5 text-white/65">{notice}</div>}
@@ -605,7 +632,7 @@ export default function NativeMarketTerminal({
                   ? "Connect wallet to trade"
                   : insufficientBalance
                     ? `Need ${requiredForOrder.toFixed(2)} ${kind === "BUY" ? "USDG" : side}`
-                    : `${kind} ${side} @ ${price}¢`}
+                    : `${kind} ${labelFor(side)} @ ${price}¢`}
             </button>
 
             <p className="mt-4 text-[10px] leading-4 text-white/20">
