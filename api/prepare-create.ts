@@ -13,6 +13,12 @@ type Input = {
   deadline?: string;
   closeTs?: number;
   resolutionTs?: number;
+  yesLabel?: string;
+  noLabel?: string;
+  coverImageUrl?: string;
+  yesImageUrl?: string;
+  noImageUrl?: string;
+  metadataUrl?: string;
 };
 
 function sha(value: string | Buffer) {
@@ -40,7 +46,14 @@ function compileReport(input: Input) {
   const source=normalize(input.source);
   const category=normalize(input.category);
   const deadline=normalize(input.deadline);
+  const yesLabel=normalize(input.yesLabel)||"YES";
+  const noLabel=normalize(input.noLabel)||"NO";
+  const coverImageUrl=normalize(input.coverImageUrl);
+  const yesImageUrl=normalize(input.yesImageUrl);
+  const noImageUrl=normalize(input.noImageUrl);
+  const metadataUrl=normalize(input.metadataUrl);
   if(!question) throw new Error("Question is required");
+  if(!yesLabel||!noLabel||yesLabel.toLowerCase()===noLabel.toLowerCase()) throw new Error("Outcome labels must be distinct");
   if(!Number.isInteger(input.closeTs)||!Number.isInteger(input.resolutionTs)) {
     throw new Error("Trading close and resolution time are required");
   }
@@ -66,16 +79,16 @@ function compileReport(input: Input) {
     throw err;
   }
 
-  const normalizedInput={question,description,source,category,deadline,closeTs,resolutionTs};
+  const normalizedInput={question,description,source,category,deadline,closeTs,resolutionTs,yesLabel,noLabel,coverImageUrl,yesImageUrl,noImageUrl,metadataUrl};
   const questionHash=sha(question);
   const marketSeed=sha(`33milady:market:${questionHash}:${closeTs}`);
-  const metadataHash=sha(JSON.stringify({description,source,category,deadline}));
+  const metadataHash=sha(JSON.stringify({description,source,category,deadline,yesLabel,noLabel,coverImageUrl,yesImageUrl,noImageUrl,metadataUrl}));
   const sourceHash=sha(source);
   const spec={
     version:"33milady-market-spec-v1",
     question,description,source,category,deadline,
     marketType:"binary",
-    outcomes:["YES","NO"],
+    outcomes:[yesLabel,noLabel],
     closeTs,resolutionTs,
     resolutionPolicy:{sourceRequired:true,source,deadline,fallback:"INVALID_IF_SOURCE_UNAVAILABLE"},
   };
@@ -290,13 +303,12 @@ export default async function handler(req:any,res:any) {
       ]),
     });
     const memoPayload = JSON.stringify({
-      v: 1,
+      v: 2,
       t: "maryjane-market",
       m: addresses.market.toBase58(),
-      q: String(report.input.question || "").slice(0, 180),
-      c: String(report.input.category || "").slice(0, 32),
-      s: String(report.input.source || "").slice(0, 80),
-      d: String(report.input.deadline || "").slice(0, 64),
+      q: String(report.input.question || "").slice(0, 120),
+      c: String(report.input.category || "").slice(0, 24),
+      u: String(report.input.metadataUrl || "").slice(0, 220),
     });
     const memoIx = new TransactionInstruction({
       programId: memoProgramId,
