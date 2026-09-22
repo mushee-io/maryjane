@@ -12,11 +12,28 @@ function toUnix(value: string) {
   return Math.floor(new Date(`${value}:00Z`).getTime() / 1000);
 }
 
+function errorText(value: any): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value.trim();
+  if (value instanceof Error) return errorText(value.message) || value.name || "Error";
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) return value.map(errorText).filter(Boolean).join(" · ");
+  if (typeof value === "object") {
+    for (const key of ["message", "error", "detail", "details", "reason", "description"]) {
+      const nested = errorText(value?.[key]);
+      if (nested) return nested;
+    }
+    try {
+      const json = JSON.stringify(value);
+      if (json && json !== "{}") return json;
+    } catch {}
+  }
+  const text = String(value || "").trim();
+  return text === "[object Object]" ? "" : text;
+}
+
 function responseErrorMessage(data: any, status: number) {
-  if (typeof data?.error === "string" && data.error.trim()) return data.error;
-  if (typeof data?.error?.message === "string" && data.error.message.trim()) return data.error.message;
-  if (typeof data?.message === "string" && data.message.trim()) return data.message;
-  return `Request failed (${status})`;
+  return errorText(data?.error) || errorText(data?.message) || errorText(data) || `Request failed (${status})`;
 }
 
 async function readJsonResponse(response: Response) {
@@ -159,9 +176,9 @@ async function uploadCloudinary(file: File, resourceType: "image" | "raw" = "ima
       const signedForm = await signedCloudinaryForm(preparedFile, resourceType);
       if (signedForm) return await postCloudinary(signedForm, resourceType);
     } catch (signedError:any) {
-      throw new Error(signedError?.message || unsignedError?.message || "Unable to upload media.");
+      throw new Error(errorText(signedError) || errorText(unsignedError) || "Unable to upload media.");
     }
-    throw new Error(unsignedError?.message || "Unable to upload media.");
+    throw new Error(errorText(unsignedError) || "Unable to upload media.");
   }
 }
 
@@ -298,7 +315,7 @@ export function CreateMarketScreen() {
       if (kind === "yes") setYesImageUrl(url);
       if (kind === "no") setNoImageUrl(url);
     } catch (e:any) {
-      setError(e?.message || "Unable to upload image.");
+      setError(errorText(e) || "Unable to upload image.");
     } finally {
       setUploading("");
     }
@@ -317,7 +334,7 @@ export function CreateMarketScreen() {
       });
       const data = await readJsonResponse(response);
       setReport(data);
-    } catch (e:any) { setError(e.message); } finally { setBusy(""); }
+    } catch (e:any) { setError(errorText(e) || "Unable to run MarketLint."); } finally { setBusy(""); }
   };
 
   const create = async () => {
@@ -360,7 +377,7 @@ export function CreateMarketScreen() {
       }
       setMarket({ ...data, signature, metadataUrl });
       setNotice("Market confirmed on Solana with visual metadata. It will appear in Markets → New on the next feed refresh.");
-    } catch (e:any) { setError(e.message); setNotice(""); } finally { setBusy(""); }
+    } catch (e:any) { setError(errorText(e) || "Unable to create market."); setNotice(""); } finally { setBusy(""); }
   };
 
   const scheduleValid = Boolean(closeAt && resolutionAt && toUnix(resolutionAt) >= toUnix(closeAt));
