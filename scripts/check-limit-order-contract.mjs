@@ -3,7 +3,7 @@ import fs from "node:fs";
 const checks = [
   ["api/order-place.ts", 'disc("place_limit_order")'],
   ["api/order-fill.ts", 'disc("fill_limit_order")'],
-  ["api/order-cancel.ts", 'disc("cancel_limit_order")'],
+  ["src/serverless/orderCancel.ts", 'disc("cancel_limit_order")'],
   ["solana/sdk/src/transactions.ts", 'instructionDiscriminator("place_limit_order")'],
   ["solana/sdk/src/transactions.ts", 'instructionDiscriminator("fill_limit_order")'],
 ];
@@ -25,7 +25,7 @@ for (const name of ["place_limit_order", "fill_limit_order", "cancel_limit_order
 const forbidden = [
   ['api/order-place.ts', 'disc("place_order")'],
   ['api/order-fill.ts', 'disc("fill_order")'],
-  ['api/order-cancel.ts', 'disc("cancel_order")'],
+  ['src/serverless/orderCancel.ts', 'disc("cancel_order")'],
   ['solana/sdk/src/transactions.ts', 'instructionDiscriminator("place_order")'],
   ['solana/sdk/src/transactions.ts', 'instructionDiscriminator("fill_order")'],
 ];
@@ -48,6 +48,7 @@ console.log("limit-order + complete-set instruction names: PASS");
 
 const lifecycle = fs.readFileSync("api/market-action.ts", "utf8");
 for (const instruction of [
+  "cancel_unused_market",
   "close_market",
   "propose_resolution",
   "dispute_resolution",
