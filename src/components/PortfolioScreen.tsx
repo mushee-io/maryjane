@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+// portfolio deployment marker
 import { ArrowUpRight, Clock3, RefreshCw, Wallet } from "lucide-react";
 import { Connection, Transaction } from "@solana/web3.js";
 
