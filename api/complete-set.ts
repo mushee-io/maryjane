@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { Connection, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 const PROGRAM_ID=new PublicKey("HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL");
@@ -22,8 +22,10 @@ function decodeMarket(raw:Buffer){
   o+=32+32+32+8+8+1+2;
   const collateralVault=new PublicKey(raw.subarray(o,o+32));o+=32;
   const yesMint=new PublicKey(raw.subarray(o,o+32));o+=32;
-  const noMint=new PublicKey(raw.subarray(o,o+32));
-  return{config,collateralMint,collateralVault,yesMint,noMint};
+  const noMint=new PublicKey(raw.subarray(o,o+32));o+=32;
+  const yesReserveVault=new PublicKey(raw.subarray(o,o+32));o+=32;
+  const noReserveVault=new PublicKey(raw.subarray(o,o+32));
+  return{config,collateralMint,collateralVault,yesMint,noMint,yesReserveVault,noReserveVault};
 }
 async function balance(connection:Connection,account:PublicKey){
   const info=await connection.getAccountInfo(account,"confirmed");
@@ -55,7 +57,7 @@ export default async function handler(req:any,res:any){
     const marketAddress=new PublicKey(String(req.body?.market||""));
     const action=String(req.body?.action||"SPLIT").toUpperCase();
     const amount=BigInt(String(req.body?.amountBaseUnits||"0"));
-    if(!["SPLIT","MERGE"].includes(action))throw new Error("action must be SPLIT or MERGE");
+    if(!["SPLIT","MERGE","ADD_LIQUIDITY"].includes(action))throw new Error("action must be SPLIT, MERGE, or ADD_LIQUIDITY");
     if(amount<=0n)throw new Error("Amount must be positive");
 
     const connection=new Connection(RPC_URL,"confirmed");
@@ -76,11 +78,11 @@ export default async function handler(req:any,res:any){
     const userYes=getAssociatedTokenAddressSync(market.yesMint,wallet,false,tokenProgram);
     const userNo=getAssociatedTokenAddressSync(market.noMint,wallet,false,tokenProgram);
 
-    if(action==="SPLIT"){
+    if(action==="SPLIT"||action==="ADD_LIQUIDITY"){
       const available=await balance(connection,userCollateral);
       if(available<amount){
         return res.status(400).json({
-          error:"Insufficient Devnet USDG to create outcome shares.",
+          error:action==="ADD_LIQUIDITY"?"Insufficient Devnet USDG to seed market liquidity.":"Insufficient Devnet USDG to create outcome shares.",
           code:"INSUFFICIENT_COLLATERAL",
           availableBaseUnits:available.toString(),
           requiredBaseUnits:amount.toString(),
@@ -101,23 +103,49 @@ export default async function handler(req:any,res:any){
       }
     }
 
-    const ix=new TransactionInstruction({
-      programId:PROGRAM_ID,
-      keys:[
-        {pubkey:wallet,isSigner:true,isWritable:true},
-        {pubkey:market.config,isSigner:false,isWritable:false},
-        {pubkey:marketAddress,isSigner:false,isWritable:true},
-        {pubkey:market.collateralMint,isSigner:false,isWritable:false},
-        {pubkey:userCollateral,isSigner:false,isWritable:true},
-        {pubkey:market.collateralVault,isSigner:false,isWritable:true},
-        {pubkey:market.yesMint,isSigner:false,isWritable:true},
-        {pubkey:market.noMint,isSigner:false,isWritable:true},
-        {pubkey:userYes,isSigner:false,isWritable:true},
-        {pubkey:userNo,isSigner:false,isWritable:true},
-        {pubkey:tokenProgram,isSigner:false,isWritable:false},
-      ],
-      data:Buffer.concat([disc(action==="SPLIT"?"split_complete_set":"merge_complete_set"),u64(amount)]),
-    });
+    const [lpPosition]=PublicKey.findProgramAddressSync(
+      [Buffer.from("lp"),marketAddress.toBuffer(),wallet.toBuffer()],
+      PROGRAM_ID,
+    );
+    const ix=action==="ADD_LIQUIDITY"
+      ? new TransactionInstruction({
+          programId:PROGRAM_ID,
+          keys:[
+            {pubkey:wallet,isSigner:true,isWritable:true},
+            {pubkey:market.config,isSigner:false,isWritable:false},
+            {pubkey:marketAddress,isSigner:false,isWritable:true},
+            {pubkey:lpPosition,isSigner:false,isWritable:true},
+            {pubkey:market.collateralMint,isSigner:false,isWritable:false},
+            {pubkey:userCollateral,isSigner:false,isWritable:true},
+            {pubkey:market.collateralVault,isSigner:false,isWritable:true},
+            {pubkey:market.yesMint,isSigner:false,isWritable:true},
+            {pubkey:market.noMint,isSigner:false,isWritable:true},
+            {pubkey:market.yesReserveVault,isSigner:false,isWritable:true},
+            {pubkey:market.noReserveVault,isSigner:false,isWritable:true},
+            {pubkey:userYes,isSigner:false,isWritable:true},
+            {pubkey:userNo,isSigner:false,isWritable:true},
+            {pubkey:tokenProgram,isSigner:false,isWritable:false},
+            {pubkey:SystemProgram.programId,isSigner:false,isWritable:false},
+          ],
+          data:Buffer.concat([disc("add_liquidity"),u64(amount)]),
+        })
+      : new TransactionInstruction({
+          programId:PROGRAM_ID,
+          keys:[
+            {pubkey:wallet,isSigner:true,isWritable:true},
+            {pubkey:market.config,isSigner:false,isWritable:false},
+            {pubkey:marketAddress,isSigner:false,isWritable:true},
+            {pubkey:market.collateralMint,isSigner:false,isWritable:false},
+            {pubkey:userCollateral,isSigner:false,isWritable:true},
+            {pubkey:market.collateralVault,isSigner:false,isWritable:true},
+            {pubkey:market.yesMint,isSigner:false,isWritable:true},
+            {pubkey:market.noMint,isSigner:false,isWritable:true},
+            {pubkey:userYes,isSigner:false,isWritable:true},
+            {pubkey:userNo,isSigner:false,isWritable:true},
+            {pubkey:tokenProgram,isSigner:false,isWritable:false},
+          ],
+          data:Buffer.concat([disc(action==="SPLIT"?"split_complete_set":"merge_complete_set"),u64(amount)]),
+        });
 
     const latest=await connection.getLatestBlockhash("confirmed");
     const tx=new Transaction({feePayer:wallet,recentBlockhash:latest.blockhash})
@@ -135,6 +163,7 @@ export default async function handler(req:any,res:any){
       userCollateral:userCollateral.toBase58(),
       userYes:userYes.toBase58(),
       userNo:userNo.toBase58(),
+      lpPosition:action==="ADD_LIQUIDITY"?lpPosition.toBase58():undefined,
     });
   }catch(error:any){
     return res.status(400).json({error:error?.message||String(error),stage:"complete-set"});
