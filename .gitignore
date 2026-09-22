@@ -14,3 +14,4 @@ local.properties
 build/
 app/build/
 dist/
+data/demo-seed-result.json
