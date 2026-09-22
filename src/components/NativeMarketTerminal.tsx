@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, BarChart3, Trash2, Wallet } from "lucide-react";
-import { Connection, Transaction } from "@solana/web3.js";
+import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 
 type Market = {
   title: string;
@@ -53,6 +53,9 @@ type NativeState = {
     feeBps: number;
     reserveYesBps: number;
     totalVolumeBaseUnits: string;
+    collateralMint?: string;
+    yesMint?: string;
+    noMint?: string;
   };
   book: {
     yes: { bids: BookOrder[]; asks: BookOrder[]; bestBidBps: number | null; bestAskBps: number | null };
@@ -70,6 +73,36 @@ type NativeState = {
 };
 
 function provider() { return (window as any).solana; }
+async function directWalletBalances(
+  wallet: string,
+  marketState: NativeState | null,
+): Promise<TraderState | null> {
+  if (!wallet || !marketState?.market.collateralMint || !marketState.market.yesMint || !marketState.market.noMint) return null;
+  const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+  const owner = new PublicKey(wallet);
+  const readMint = async (mintValue: string, symbol: "USDG"|"YES"|"NO") => {
+    const mint = new PublicKey(mintValue);
+    const rows = await connection.getParsedTokenAccountsByOwner(owner, { mint }, "confirmed");
+    let amount = 0n;
+    let decimals = 6;
+    for (const row of rows.value) {
+      const info: any = (row.account.data as any).parsed?.info;
+      const token = info?.tokenAmount;
+      if (!token) continue;
+      amount += BigInt(token.amount || "0");
+      decimals = Number(token.decimals ?? decimals);
+    }
+    const scale = 10 ** decimals;
+    return { symbol, mint: mintValue, amount: amount.toString(), decimals, uiAmount: Number(amount) / scale, ata: rows.value[0]?.pubkey.toBase58() || "" };
+  };
+  const [solLamports, collateral, yes, no] = await Promise.all([
+    connection.getBalance(owner, "confirmed"),
+    readMint(marketState.market.collateralMint, "USDG"),
+    readMint(marketState.market.yesMint, "YES"),
+    readMint(marketState.market.noMint, "NO"),
+  ]);
+  return { collateral, yes, no, sol: { lamports: solLamports, uiAmount: solLamports / 1e9 } };
+}
 function fromBase64(value: string) {
   const binary = atob(value);
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
@@ -230,15 +263,24 @@ export default function NativeMarketTerminal({
       setTraderState(null);
       return;
     }
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 6500);
     try {
       const response = await fetch(
         `/api/trader-state?market=${encodeURIComponent(address)}&wallet=${encodeURIComponent(wallet)}`,
-        { cache: "no-store" },
+        { cache: "no-store", signal: controller.signal },
       );
       const data = await jsonOrThrow(response);
       setTraderState(data);
     } catch {
-      setTraderState(null);
+      try {
+        const fallback = await directWalletBalances(wallet, state);
+        if (fallback) setTraderState(fallback);
+      } catch {
+        setTraderState(null);
+      }
+    } finally {
+      window.clearTimeout(timer);
     }
   };
 
@@ -256,7 +298,7 @@ export default function NativeMarketTerminal({
     void loadTrader();
     const timer = window.setInterval(() => void loadTrader(), 5_000);
     return () => window.clearInterval(timer);
-  }, [address, wallet]);
+  }, [address, wallet, state?.market.collateralMint, state?.market.yesMint, state?.market.noMint]);
 
   const yesOutcome = market.outcomes.find((outcome) => outcome.id === "yes") || market.outcomes.find((outcome) => outcome.label === "YES") || market.outcomes[0];
   const noOutcome = market.outcomes.find((outcome) => outcome.id === "no") || market.outcomes.find((outcome) => outcome.label === "NO") || market.outcomes[1];
