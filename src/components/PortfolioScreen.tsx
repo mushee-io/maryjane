@@ -125,10 +125,14 @@ export function PortfolioScreen(){
 
         {!wallet&&<div className="mt-10 flex min-h-[360px] flex-col items-center justify-center rounded-3xl border border-dashed border-white/[.09] bg-white/[.015] text-center"><Wallet className="h-8 w-8 text-white/20"/><div className="mt-4 text-xl font-semibold">Connect your trading wallet</div><div className="mt-2 max-w-md text-sm text-white/30">Mary Jane reads your native positions directly from Solana. No account or portfolio database is required.</div><button onClick={connect} className="mt-6 rounded-xl bg-[#b7ff3c] px-5 py-3 text-sm font-semibold text-black">Connect wallet</button></div>}
 
+        {wallet&&loading&&!data&&<div className="mt-10 rounded-3xl border border-white/[.08] bg-white/[.02] px-5 py-14 text-center"><RefreshCw className="mx-auto h-5 w-5 animate-spin text-[#b7ff3c]"/><div className="mt-3 text-sm text-white/55">Loading Solana balances and Mary Jane positions…</div></div>}
+        {wallet&&error&&!data&&<div className="mt-6 rounded-2xl border border-rose-300/20 bg-rose-300/[.07] p-4 text-sm text-rose-200"><div className="font-semibold">Portfolio could not load</div><div className="mt-1 text-xs text-rose-100/70">{error}</div><button onClick={()=>void load()} className="mt-3 rounded-lg border border-rose-200/20 px-3 py-2 text-xs">Retry</button></div>}
+
         {wallet&&data&&<>
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
             {[
-              ["USDG",`$${data.summary.usdg.toFixed(2)}`],
+              ["SOL",data.sol.uiAmount.toFixed(4)],
+              ["USDG",`${data.summary.usdg.toFixed(2)}`],
               ["Positions",usd(data.summary.positionValueBaseUnits)],
               ["Unrealized",signedUsd(data.summary.unrealizedPnlBaseUnits)],
               ["Realized",signedUsd(data.summary.realizedPnlBaseUnits)],
