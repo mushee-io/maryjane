@@ -137,7 +137,49 @@ function ago(ts?: number | null) {
 function PriceHistory({ trades, fallback }: { trades: Trade[]; fallback: number }) {
   const values = [...trades].reverse().slice(-24).map((trade) => trade.yesPriceBps);
   if (values.length < 2) {
-    return (
+    const completeSetAction = async (action: "SPLIT" | "MERGE") => {
+    if (!market.nativeAddress) return;
+    if (!wallet) { await onConnect(); return; }
+
+    const amount = Number(completeSetAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setNotice("Enter a positive complete-set amount.");
+      return;
+    }
+    const decimals = traderState?.collateral.decimals ?? 6;
+    const scale = 10 ** decimals;
+    const amountBaseUnits = String(Math.round(amount * scale));
+
+    setBusy(true);
+    setNotice("");
+    try {
+      const response = await fetch("/api/complete-set", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet,
+          market: market.nativeAddress,
+          action,
+          amountBaseUnits,
+        }),
+      });
+      const data = await jsonOrThrow(response);
+      setNotice(action === "SPLIT" ? "Creating YES + NO shares…" : "Merging YES + NO back to USDG…");
+      const signature = await signBuiltTransaction(data.transactionBase64, data.lastValidBlockHeight);
+      setNotice(
+        action === "SPLIT"
+          ? `Created ${amount.toFixed(2)} YES + ${amount.toFixed(2)} NO · ${short(signature)}`
+          : `Merged ${amount.toFixed(2)} complete sets · ${short(signature)}`
+      );
+      await Promise.all([load(), loadTrader()]);
+    } catch (err: any) {
+      setNotice(err?.message || `Unable to ${action.toLowerCase()} complete set`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
       <div className="flex h-36 items-center justify-center rounded-2xl border border-dashed border-white/[.08] bg-white/[.015] text-xs text-white/25">
         Price history begins after the first matched trades.
       </div>
@@ -179,6 +221,7 @@ export default function NativeMarketTerminal({
   const [kind, setKind] = useState<"BUY" | "SELL">("BUY");
   const [price, setPrice] = useState("50");
   const [shares, setShares] = useState("1");
+  const [completeSetAmount, setCompleteSetAmount] = useState("10");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -498,6 +541,47 @@ export default function NativeMarketTerminal({
               <div className="flex justify-between text-white/35"><span>USDG balance</span><span className="text-white/70">{wallet ? traderState ? traderState.collateral.uiAmount.toFixed(2) : "Loading…" : "—"}</span></div>
               <div className="flex justify-between text-white/35"><span>{side} balance</span><span className="text-white/70">{wallet ? traderState ? (side === "YES" ? traderState.yes.uiAmount : traderState.no.uiAmount).toFixed(2) : "Loading…" : "—"}</span></div>
               <div className="flex justify-between text-white/35"><span>Network</span><span className="text-white/70">Solana Devnet</span></div>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-white/[.07] bg-white/[.018] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold">Outcome inventory</div>
+                  <div className="mt-1 text-[10px] leading-4 text-white/28">1 USDG creates 1 YES + 1 NO. Use these shares to sell into resting bids.</div>
+                </div>
+                <div className="text-right text-[10px] text-white/28">
+                  <div>YES {traderState ? traderState.yes.uiAmount.toFixed(2) : "—"}</div>
+                  <div>NO {traderState ? traderState.no.uiAmount.toFixed(2) : "—"}</div>
+                </div>
+              </div>
+
+              <div className="mt-3 flex items-center rounded-xl border border-white/[.08] bg-black/30 px-3">
+                <input
+                  value={completeSetAmount}
+                  onChange={(event) => setCompleteSetAmount(event.target.value)}
+                  inputMode="decimal"
+                  className="w-full bg-transparent py-3 text-sm outline-none"
+                  placeholder="10"
+                />
+                <span className="text-xs text-white/30">USDG</span>
+              </div>
+
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => void completeSetAction("SPLIT")}
+                  disabled={busy || !wallet || state?.market.status !== "OPEN" || Boolean(traderState && Number(completeSetAmount || 0) > traderState.collateral.uiAmount)}
+                  className="rounded-xl bg-[#b7ff3c] px-3 py-3 text-xs font-semibold text-black disabled:opacity-35"
+                >
+                  Split → YES + NO
+                </button>
+                <button
+                  onClick={() => void completeSetAction("MERGE")}
+                  disabled={busy || !wallet || !traderState || Number(completeSetAmount || 0) <= 0 || traderState.yes.uiAmount < Number(completeSetAmount || 0) || traderState.no.uiAmount < Number(completeSetAmount || 0)}
+                  className="rounded-xl border border-white/[.09] bg-white/[.04] px-3 py-3 text-xs font-semibold text-white/65 disabled:opacity-25"
+                >
+                  Merge → USDG
+                </button>
+              </div>
             </div>
 
             {wallet && traderState && traderState.sol.uiAmount < 0.01 && (

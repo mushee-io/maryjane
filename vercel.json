@@ -33,9 +33,16 @@
     },
     "api/trader-state.ts": {
       "maxDuration": 30
+    },
+    "api/complete-set.ts": {
+      "maxDuration": 30
     }
   },
   "routes": [
+    {
+      "src": "/api/complete-set",
+      "dest": "/api/complete-set"
+    },
     {
       "src": "/api/trader-state",
       "dest": "/api/trader-state"

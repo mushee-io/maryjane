@@ -37,4 +37,10 @@ for (const [file, needle] of forbidden) {
   }
 }
 
-console.log("limit-order instruction names: PASS");
+const positionSource = fs.readFileSync("solana/programs/milady_market/src/lib.rs", "utf8");
+for (const name of ["split_complete_set", "merge_complete_set"]) {
+  if (!positionSource.includes(`pub fn ${name}`)) {
+    throw new Error(`Deployed-program source missing ${name}`);
+  }
+}
+console.log("limit-order + complete-set instruction names: PASS");

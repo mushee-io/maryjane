@@ -39,6 +39,7 @@ const state=await waitForState();
 await controlledError("/api/order-place");
 await controlledError("/api/order-fill");
 await controlledError("/api/order-cancel");
+await controlledError("/api/complete-set");
 
 console.log(JSON.stringify({
   nativeTerminal:"PASS",
