@@ -85,7 +85,8 @@ if (!lifecyclePassed) throw new Error("production lifecycle endpoint did not bec
 
 let portfolioPassed = false;
 for (let attempt = 1; attempt <= 12; attempt++) {
-  const response = await fetch(`https://maryjane-blue.vercel.app/api/trader-state?wallet=${knownMarket}`, {
+  const quietWallet = "4wBqpZM9xaSheZzJSMawUKKwhdpChKbZ5eu5ky4Vigw";
+  const response = await fetch(`https://maryjane-blue.vercel.app/api/trader-state?wallet=${quietWallet}`, {
     headers: { "cache-control": "no-cache" },
     signal: AbortSignal.timeout(30000),
   }).catch(() => null);
@@ -94,7 +95,7 @@ for (let attempt = 1; attempt <= 12; attempt++) {
   if (response?.ok) {
     try {
       const data = JSON.parse(body);
-      if (data?.wallet === knownMarket && Array.isArray(data?.positions) && Array.isArray(data?.openOrders) && Array.isArray(data?.history)) {
+      if (data?.wallet === quietWallet && Array.isArray(data?.positions) && Array.isArray(data?.openOrders) && Array.isArray(data?.history)) {
         console.log(JSON.stringify({ productionPortfolio: "PASS", positions: data.positions.length }));
         portfolioPassed = true;
         break;
