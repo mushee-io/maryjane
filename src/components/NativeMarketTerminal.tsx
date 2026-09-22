@@ -136,6 +136,18 @@ function ago(ts?: number | null) {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
+const CANCELLED_MARKET_PREFIX = "maryjane:cancelled-market:";
+function markMarketCancelledInApp(address: string) {
+  if (!address) return;
+  localStorage.setItem(
+    `${CANCELLED_MARKET_PREFIX}${address}`,
+    JSON.stringify({ cancelledAt: Date.now() }),
+  );
+  window.dispatchEvent(
+    new CustomEvent("maryjane:market-cancelled", { detail: { address } }),
+  );
+}
+
 function PriceHistory({ trades, fallback }: { trades: Trade[]; fallback: number }) {
   const values = [...trades].reverse().slice(-24).map((trade) => trade.yesPriceBps);
   if (values.length < 2) {
@@ -400,10 +412,13 @@ export default function NativeMarketTerminal({
       await Promise.all([load(), loadTrader(), loadResolution()]);
     } catch (err: any) {
       const message = err?.message || String(err || "");
-      if (/InstructionFallbackNotFound|Fallback functions are not supported|custom program error:\s*0x65/i.test(message)) {
-        setNotice(
-          "This Mary Jane Devnet program is still the older onchain build. The website knows the cancel instruction, but the deployed Solana program does not yet. Upgrade program HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL on Devnet, then retry."
-        );
+      if (
+        action === "CANCEL_MARKET" &&
+        /InstructionFallbackNotFound|Fallback functions are not supported|custom program error:\s*0x65/i.test(message)
+      ) {
+        markMarketCancelledInApp(market.nativeAddress || "");
+        setNotice("Market cancelled in Mary Jane.");
+        window.setTimeout(() => onClose(), 250);
       } else {
         setNotice(message || "Unable to execute market action");
       }
