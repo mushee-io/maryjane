@@ -28,7 +28,7 @@ function accountBuffer(account:any){
   const encoded=Array.isArray(data)?data[0]:"";
   return encoded?Buffer.from(encoded,"base64"):Buffer.alloc(0);
 }
-function decodeMarket(raw:Buffer){
+function decodeMarket(raw:Buffer,bs58:any){
   if(raw.length<420||!raw.subarray(0,8).equals(MARKET_DISC))throw new Error("Invalid Mary Jane market account");
   let o=8+32+32;
   const collateralMint=raw.subarray(o,o+32);o+=32;
@@ -45,7 +45,12 @@ function decodeMarket(raw:Buffer){
   const total=yesReserve+noReserve;
   const reserveYesBps=total===0n?5000:Number((noReserve*10000n)/total);
   const status=["OPEN","CLOSED","RESOLUTION_PENDING","DISPUTED","RESOLVED_YES","RESOLVED_NO","CANCELLED"][statusIndex]||"OPEN";
-  return{marketSeed,closeTs,resolutionTs,status,feeBps,reserveYesBps,totalVolumeBaseUnits:volume.toString()};
+  return{
+    marketSeed,closeTs,resolutionTs,status,feeBps,reserveYesBps,totalVolumeBaseUnits:volume.toString(),
+    collateralMint:bs58.encode(collateralMint),
+    yesMint:bs58.encode(raw.subarray(251,283)),
+    noMint:bs58.encode(raw.subarray(283,315)),
+  };
 }
 function decodeOrder(address:string,raw:Buffer,bs58:any){
   if(raw.length!==198||!raw.subarray(0,8).equals(ORDER_DISC))return null;
@@ -90,7 +95,7 @@ export default async function handler(req:any,res:any){
     const bs58=(await import("bs58")).default;
     const marketResult=await rpc("getAccountInfo",[address,{commitment:"confirmed",encoding:"base64"}]);
     if(!marketResult?.value)return res.status(404).json({error:"Market not found on Devnet"});
-    const market=decodeMarket(accountBuffer(marketResult.value));
+    const market=decodeMarket(accountBuffer(marketResult.value),bs58);
 
     const orderRows:any[]=await rpc("getProgramAccounts",[PROGRAM_ID,{
       commitment:"confirmed",
@@ -128,6 +133,7 @@ export default async function handler(req:any,res:any){
     recentTrades.sort((a,b)=>b.blockTime-a.blockTime);
     const cutoff=Math.floor(Date.now()/1000)-86400;
     let volume24=0n,totalMatched=0n;const traders=new Set<string>();
+    for(const order of active) traders.add(order.maker);
     for(const trade of recentTrades){
       const quote=BigInt(trade.quoteAmount);
       totalMatched+=quote;if(trade.blockTime>=cutoff)volume24+=quote;
