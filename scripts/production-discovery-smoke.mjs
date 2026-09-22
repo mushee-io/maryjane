@@ -58,3 +58,49 @@ for (let attempt = 1; attempt <= 18; attempt++) {
   await new Promise((resolve) => setTimeout(resolve, 10000));
 }
 if (!analyticsPassed) throw new Error("production analytics feed did not expose native markets");
+
+
+const knownMarket = "B76aB9GWZPtFqwuyTPjB33Gys1UgCQXw27mdyPKEMyeF";
+let lifecyclePassed = false;
+for (let attempt = 1; attempt <= 18; attempt++) {
+  const response = await fetch(`https://maryjane-blue.vercel.app/api/market-action?market=${knownMarket}`, {
+    headers: { "cache-control": "no-cache" },
+    signal: AbortSignal.timeout(15000),
+  }).catch(() => null);
+  const body = response ? await response.text() : "";
+  console.log(`lifecycle attempt ${attempt} status=${response?.status || 0} body=${body.slice(0, 500)}`);
+  if (response?.ok) {
+    try {
+      const data = JSON.parse(body);
+      if (data?.market?.address === knownMarket && data?.resolutionConfig?.address) {
+        console.log(JSON.stringify({ productionMarketAction: "PASS", status: data.market.status }));
+        lifecyclePassed = true;
+        break;
+      }
+    } catch {}
+  }
+  await new Promise((resolve) => setTimeout(resolve, 10000));
+}
+if (!lifecyclePassed) throw new Error("production lifecycle endpoint did not become healthy");
+
+let portfolioPassed = false;
+for (let attempt = 1; attempt <= 12; attempt++) {
+  const response = await fetch(`https://maryjane-blue.vercel.app/api/trader-state?wallet=${knownMarket}`, {
+    headers: { "cache-control": "no-cache" },
+    signal: AbortSignal.timeout(30000),
+  }).catch(() => null);
+  const body = response ? await response.text() : "";
+  console.log(`portfolio attempt ${attempt} status=${response?.status || 0} body=${body.slice(0, 500)}`);
+  if (response?.ok) {
+    try {
+      const data = JSON.parse(body);
+      if (data?.wallet === knownMarket && Array.isArray(data?.positions) && Array.isArray(data?.openOrders) && Array.isArray(data?.history)) {
+        console.log(JSON.stringify({ productionPortfolio: "PASS", positions: data.positions.length }));
+        portfolioPassed = true;
+        break;
+      }
+    } catch {}
+  }
+  await new Promise((resolve) => setTimeout(resolve, 10000));
+}
+if (!portfolioPassed) throw new Error("production portfolio endpoint did not become healthy");
