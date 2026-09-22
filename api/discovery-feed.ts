@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 const PROGRAM_ID="HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL";
 const RPC_URL=process.env.SOLANA_RPC_URL||"https://api.devnet.solana.com";
 const MARKET_SIZE=420;
+const MEMO_PROGRAM_ID="MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
+const metadataCache=new Map<string,{at:number,value:any}>();
 const KNOWN=["B76aB9GWZPtFqwuyTPjB33Gys1UgCQXw27mdyPKEMyeF"];
 const DISC=createHash("sha256").update("account:Market").digest().subarray(0,8);
 
@@ -60,6 +62,56 @@ function decode(address:string,account:any){
   };
 }
 
+async function nativeMetadata(address:string){
+  const cached=metadataCache.get(address);
+  if(cached&&Date.now()-cached.at<60_000)return cached.value;
+
+  let memo:any={};
+  try{
+    const signatures:any[]=await rpc("getSignaturesForAddress",[address,{limit:6},"confirmed"])||[];
+    for(const signature of signatures){
+      const tx=await rpc("getTransaction",[signature.signature,{commitment:"confirmed",encoding:"jsonParsed",maxSupportedTransactionVersion:0}]).catch(()=>null);
+      const instructions=tx?.transaction?.message?.instructions||[];
+      for(const ix of instructions){
+        const programId=String(ix?.programId||"");
+        if(programId!==MEMO_PROGRAM_ID)continue;
+        const parsed=typeof ix?.parsed==="string"?ix.parsed:"";
+        if(!parsed)continue;
+        try{
+          const candidate=JSON.parse(parsed);
+          if(candidate?.t==="maryjane-market"&&(!candidate?.m||candidate.m===address)){
+            memo=candidate;
+            break;
+          }
+        }catch{}
+      }
+      if(memo?.t)break;
+    }
+  }catch{}
+
+  let remote:any={};
+  if(memo?.u&&/^https:\/\//i.test(String(memo.u))){
+    try{remote=await jsonFetch(String(memo.u),{},5000);}catch{}
+  }
+
+  const value={
+    question:remote?.question||memo?.q,
+    description:remote?.description,
+    category:remote?.category||memo?.c,
+    source:remote?.source||memo?.s,
+    deadline:remote?.deadline||memo?.d,
+    createdAt:remote?.createdAt,
+    yesLabel:remote?.yesLabel,
+    noLabel:remote?.noLabel,
+    coverImageUrl:remote?.coverImageUrl,
+    yesImageUrl:remote?.yesImageUrl,
+    noImageUrl:remote?.noImageUrl,
+    metadataUrl:memo?.u,
+  };
+  metadataCache.set(address,{at:Date.now(),value});
+  return value;
+}
+
 async function nativeMarkets(limit:number){
   const errors:string[]=[];
   const addresses=new Set<string>(KNOWN);
@@ -82,9 +134,13 @@ async function nativeMarkets(limit:number){
       if(!result?.value) continue;
       const m=decode(address,result.value);
       if(!m){errors.push(`decode:${address}`);continue;}
-      const meta=META[address]||{};
+      let chainMeta:any={};
+      try{chainMeta=await nativeMetadata(address);}catch(e:any){errors.push(`metadata:${address}:${e?.message||e}`);}
+      const meta={...(META[address]||{}),...chainMeta};
       const total=m.yesReserve+m.noReserve;
       const yes=total===0n?0.5:Number(m.noReserve*10000n/total)/10000;
+      const yesLabel=String(meta.yesLabel||"YES");
+      const noLabel=String(meta.noLabel||"NO");
       items.push({
         id:`maryjane:${address}`,
         source:"maryjane",
@@ -92,7 +148,12 @@ async function nativeMarkets(limit:number){
         title:meta.question||`Mary Jane market ${address.slice(0,8)}…`,
         description:meta.description,
         category:meta.category||"Other",
-        outcomes:[{id:"yes",label:"YES",probability:yes},{id:"no",label:"NO",probability:1-yes}],
+        outcomes:[
+          {id:"yes",label:yesLabel,probability:yes,imageUrl:meta.yesImageUrl||undefined},
+          {id:"no",label:noLabel,probability:1-yes,imageUrl:meta.noImageUrl||undefined},
+        ],
+        coverImageUrl:meta.coverImageUrl||undefined,
+        metadataUrl:meta.metadataUrl||undefined,
         volume24h:0,
         volumeTotal:Number(m.volume)/1_000_000,
         traders:0,
@@ -266,6 +327,7 @@ async function externalMarkets(limit:number){
         items.push({
           id:`polymarket:${id}`,source:"polymarket",sourceMarketId:id,title,
           description:String(m.description||event.description||"")||undefined,
+          coverImageUrl:String(m.image||event.image||event.icon||"")||undefined,
           category:category(`${event.title||""} ${m.question}`),
           outcomes:[{id:"yes",label:"YES",probability:yes},{id:"no",label:"NO",probability:no}],
           volume24h:Number(m.volume24hr||0),volumeTotal:Number(m.volumeNum||m.volume||0),
@@ -290,7 +352,9 @@ async function externalMarkets(limit:number){
       const id=String(m.id||m.slug||m.question);
       items.push({
         id:`manifold:${id}`,source:"manifold",sourceMarketId:id,title,
-        description:String(m.textDescription||"")||undefined,category:category(String(m.question)),
+        description:String(m.textDescription||"")||undefined,
+        coverImageUrl:String(m.coverImageUrl||m.imageUrl||m.thumbnailUrl||"")||undefined,
+        category:category(String(m.question)),
         outcomes:[{id:"yes",label:"YES",probability:yes},{id:"no",label:"NO",probability:1-yes}],
         volume24h:Number(m.volume24Hours||0),volumeTotal:Number(m.volume||0),
         traders:Number(m.uniqueBettorCount||0),
