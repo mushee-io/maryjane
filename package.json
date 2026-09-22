@@ -18,7 +18,9 @@
     "test:solana-runtime": "node scripts/solana-runtime-smoke.mjs",
     "postinstall": "node scripts/verify-solana-deps.mjs",
     "test:discovery-function": "tsx scripts/discovery-function-smoke.ts",
-    "test:production-discovery": "node scripts/production-discovery-smoke.mjs"
+    "test:production-discovery": "node scripts/production-discovery-smoke.mjs",
+    "demo:seed": "tsx scripts/seed-demo-markets.ts",
+    "test:judge-readiness": "node scripts/judge-readiness.mjs"
   },
   "dependencies": {
     "@solana/spl-token": "^0.4.14",
