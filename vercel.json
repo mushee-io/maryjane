@@ -25,9 +25,6 @@
     "api/order-fill.ts": {
       "maxDuration": 30
     },
-    "api/market-book.ts": {
-      "maxDuration": 30
-    },
     "api/order-cancel.ts": {
       "maxDuration": 30
     },
@@ -61,10 +58,6 @@
     {
       "src": "/api/native-market-state",
       "dest": "/api/native-market-state"
-    },
-    {
-      "src": "/api/market-book",
-      "dest": "/api/market-book"
     },
     {
       "src": "/api/order-place",
