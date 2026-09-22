@@ -50,6 +50,18 @@ async function simulate(connection:Connection,tx:Transaction){
   }
   return serialized;
 }
+function boundedString(value:any,label:string,max:number,required=false){
+  const text=String(value||"").trim();
+  if(required&&!text)throw new Error(`${label} is required`);
+  if(text.length>max)throw new Error(`${label} must be ${max} characters or fewer`);
+  return text;
+}
+function positiveU64(value:any,label:string){
+  let amount:bigint;
+  try{amount=BigInt(String(value));}catch{throw new Error(`${label} is invalid`);}
+  if(amount<=0n||amount>0xffff_ffff_ffff_ffffn)throw new Error(`${label} must be a positive u64 amount`);
+  return amount;
+}
 function outcomeByte(value:any){
   const v=String(value||"").toUpperCase();
   if(v==="YES")return 1;if(v==="NO")return 2;if(v==="INVALID")return 3;
@@ -90,7 +102,10 @@ export default async function handler(req:any,res:any){
 
     const body=typeof req.body==="string"?JSON.parse(req.body):req.body||{};
     const action=String(body.action||"").toUpperCase();
+    const allowed=new Set(["CLOSE","PROPOSE","DISPUTE","FINALIZE","RESOLVE_DISPUTE","CANCEL_STALLED","REDEEM","REFUND"]);
+    if(!allowed.has(action))throw new Error("Unsupported market action");
     const wallet=new PublicKey(String(body.wallet||""));
+    const now=Math.floor(Date.now()/1000);
     const tokenProgram=mintInfo.owner;
     const userCollateral=getAssociatedTokenAddressSync(market.collateralMint,wallet,false,tokenProgram);
     const instructions:TransactionInstruction[]=[];
@@ -103,27 +118,38 @@ export default async function handler(req:any,res:any){
     };
 
     if(action==="CLOSE"){
+      if(market.status!=="OPEN")throw new Error("Only an OPEN market can be closed");
+      if(now<market.closeTs)throw new Error("Trading is still open; wait until the market close time");
       ix=new TransactionInstruction({programId:PROGRAM_ID,keys:[
         {pubkey:wallet,isSigner:true,isWritable:true},{pubkey:market.config,isSigner:false,isWritable:false},{pubkey:marketAddress,isSigner:false,isWritable:true},
       ],data:disc("close_market")});
     }else if(action==="PROPOSE"){
       if(market.status!=="CLOSED")throw new Error("Market must be CLOSED before proposing a resolution");
+      if(now<market.resolutionTs)throw new Error("Resolution proposals are not open yet");
+      if(resolution)throw new Error("A resolution proposal already exists");
+      const evidence=boundedString(body.evidence,"Evidence",2000,true);
+      const source=boundedString(body.source,"Source",500,true);
+      const observation=boundedString(body.observation||body.source,"Observation",500,true);
       const proposerCollateral=ata(wallet,wallet,market.collateralMint);
       ix=new TransactionInstruction({programId:PROGRAM_ID,keys:[
         {pubkey:wallet,isSigner:true,isWritable:true},{pubkey:market.config,isSigner:false,isWritable:false},{pubkey:resolutionConfigAddress,isSigner:false,isWritable:false},
         {pubkey:marketAddress,isSigner:false,isWritable:true},{pubkey:market.collateralMint,isSigner:false,isWritable:false},{pubkey:proposerCollateral,isSigner:false,isWritable:true},
         {pubkey:resolutionAddress,isSigner:false,isWritable:true},{pubkey:bondVault,isSigner:false,isWritable:true},{pubkey:tokenProgram,isSigner:false,isWritable:false},{pubkey:SystemProgram.programId,isSigner:false,isWritable:false},
-      ],data:Buffer.concat([disc("propose_resolution"),Buffer.from([outcomeByte(body.outcome)]),hash(body.evidence),hash(body.source),hash(body.observation)])});
+      ],data:Buffer.concat([disc("propose_resolution"),Buffer.from([outcomeByte(body.outcome)]),hash(evidence),hash(source),hash(observation)])});
     }else if(action==="DISPUTE"){
-      if(!resolution)throw new Error("No resolution proposal exists");
+      if(market.status!=="RESOLUTION_PENDING"||!resolution)throw new Error("No challengeable resolution proposal exists");
+      if(now>=resolution.challengeDeadline)throw new Error("The challenge window has ended");
+      if(wallet.toBase58()===resolution.proposer)throw new Error("The proposer cannot dispute their own proposal");
+      const evidence=boundedString(body.evidence,"Dispute evidence",2000,true);
       const challengerCollateral=ata(wallet,wallet,market.collateralMint);
       ix=new TransactionInstruction({programId:PROGRAM_ID,keys:[
         {pubkey:wallet,isSigner:true,isWritable:true},{pubkey:market.config,isSigner:false,isWritable:false},{pubkey:resolutionConfigAddress,isSigner:false,isWritable:false},
         {pubkey:marketAddress,isSigner:false,isWritable:true},{pubkey:resolutionAddress,isSigner:false,isWritable:true},{pubkey:market.collateralMint,isSigner:false,isWritable:false},
         {pubkey:challengerCollateral,isSigner:false,isWritable:true},{pubkey:new PublicKey(resolution.bondVault),isSigner:false,isWritable:true},{pubkey:tokenProgram,isSigner:false,isWritable:false},
-      ],data:Buffer.concat([disc("dispute_resolution"),hash(body.evidence)])});
+      ],data:Buffer.concat([disc("dispute_resolution"),hash(evidence)])});
     }else if(action==="FINALIZE"){
-      if(!resolution)throw new Error("No resolution proposal exists");
+      if(market.status!=="RESOLUTION_PENDING"||!resolution)throw new Error("No pending resolution exists");
+      if(now<resolution.challengeDeadline)throw new Error("The challenge window is still open");
       const proposer=new PublicKey(resolution.proposer);const proposerCollateral=ata(wallet,proposer,market.collateralMint);
       ix=new TransactionInstruction({programId:PROGRAM_ID,keys:[
         {pubkey:wallet,isSigner:true,isWritable:true},{pubkey:market.config,isSigner:false,isWritable:false},{pubkey:marketAddress,isSigner:false,isWritable:true},
@@ -131,8 +157,9 @@ export default async function handler(req:any,res:any){
         {pubkey:proposerCollateral,isSigner:false,isWritable:true},{pubkey:new PublicKey(resolution.bondVault),isSigner:false,isWritable:true},{pubkey:tokenProgram,isSigner:false,isWritable:false},
       ],data:disc("finalize_uncontested")});
     }else if(action==="RESOLVE_DISPUTE"){
-      if(!resolution)throw new Error("No disputed resolution exists");
+      if(market.status!=="DISPUTED"||!resolution)throw new Error("No disputed resolution exists");
       if(wallet.toBase58()!==resolutionConfig.authority)throw new Error("Only the resolution authority can adjudicate a dispute");
+      const adjudication=boundedString(body.adjudication||body.evidence,"Adjudication evidence",2000,true);
       const proposer=new PublicKey(resolution.proposer),challenger=new PublicKey(resolution.challenger);
       const proposerCollateral=ata(wallet,proposer,market.collateralMint),challengerCollateral=ata(wallet,challenger,market.collateralMint);
       ix=new TransactionInstruction({programId:PROGRAM_ID,keys:[
@@ -140,9 +167,10 @@ export default async function handler(req:any,res:any){
         {pubkey:marketAddress,isSigner:false,isWritable:true},{pubkey:resolutionAddress,isSigner:false,isWritable:true},{pubkey:proposer,isSigner:false,isWritable:false},
         {pubkey:challenger,isSigner:false,isWritable:false},{pubkey:market.collateralMint,isSigner:false,isWritable:false},{pubkey:proposerCollateral,isSigner:false,isWritable:true},
         {pubkey:challengerCollateral,isSigner:false,isWritable:true},{pubkey:new PublicKey(resolution.bondVault),isSigner:false,isWritable:true},{pubkey:tokenProgram,isSigner:false,isWritable:false},
-      ],data:Buffer.concat([disc("resolve_dispute"),Buffer.from([outcomeByte(body.outcome)]),hash(body.adjudication||body.evidence)])});
+      ],data:Buffer.concat([disc("resolve_dispute"),Buffer.from([outcomeByte(body.outcome)]),hash(adjudication)])});
     }else if(action==="CANCEL_STALLED"){
-      if(!resolution)throw new Error("No disputed resolution exists");
+      if(market.status!=="DISPUTED"||!resolution)throw new Error("No disputed resolution exists");
+      if(now<resolution.escalationDeadline)throw new Error("The dispute escalation window is still open");
       const proposer=new PublicKey(resolution.proposer),challenger=new PublicKey(resolution.challenger);
       const proposerCollateral=ata(wallet,proposer,market.collateralMint),challengerCollateral=ata(wallet,challenger,market.collateralMint);
       ix=new TransactionInstruction({programId:PROGRAM_ID,keys:[
@@ -155,8 +183,10 @@ export default async function handler(req:any,res:any){
       const winningMint=market.status==="RESOLVED_YES"?market.yesMint:market.status==="RESOLVED_NO"?market.noMint:null;
       if(!winningMint)throw new Error("Market is not resolved to a winning outcome");
       const userWinning=ata(wallet,wallet,winningMint);const collateral=ata(wallet,wallet,market.collateralMint);
-      const amount=body.amountBaseUnits?BigInt(String(body.amountBaseUnits)):await tokenAmount(connection,userWinning);
+      const available=await tokenAmount(connection,userWinning);
+      const amount=body.amountBaseUnits?positiveU64(body.amountBaseUnits,"Redeem amount"):available;
       if(amount<=0n)throw new Error("No winning shares to redeem");
+      if(amount>available)throw new Error("Redeem amount exceeds the wallet's winning-share balance");
       const [receipt]=PublicKey.findProgramAddressSync([Buffer.from("settlement"),marketAddress.toBuffer(),wallet.toBuffer()],PROGRAM_ID);
       ix=new TransactionInstruction({programId:PROGRAM_ID,keys:[
         {pubkey:wallet,isSigner:true,isWritable:true},{pubkey:market.config,isSigner:false,isWritable:false},{pubkey:marketAddress,isSigner:false,isWritable:true},
@@ -167,9 +197,12 @@ export default async function handler(req:any,res:any){
     }else if(action==="REFUND"){
       if(market.status!=="CANCELLED")throw new Error("Market is not cancelled/invalid");
       const userYes=ata(wallet,wallet,market.yesMint),userNo=ata(wallet,wallet,market.noMint),collateral=ata(wallet,wallet,market.collateralMint);
-      const yes=body.yesAmountBaseUnits?BigInt(String(body.yesAmountBaseUnits)):await tokenAmount(connection,userYes);
-      const no=body.noAmountBaseUnits?BigInt(String(body.noAmountBaseUnits)):await tokenAmount(connection,userNo);
+      const yesAvailable=await tokenAmount(connection,userYes);
+      const noAvailable=await tokenAmount(connection,userNo);
+      const yes=body.yesAmountBaseUnits?positiveU64(body.yesAmountBaseUnits,"YES refund amount"):yesAvailable;
+      const no=body.noAmountBaseUnits?positiveU64(body.noAmountBaseUnits,"NO refund amount"):noAvailable;
       if(yes+no<=0n)throw new Error("No outcome shares available for refund");
+      if(yes>yesAvailable||no>noAvailable)throw new Error("Refund amount exceeds the wallet's outcome-share balance");
       const [receipt]=PublicKey.findProgramAddressSync([Buffer.from("settlement"),marketAddress.toBuffer(),wallet.toBuffer()],PROGRAM_ID);
       ix=new TransactionInstruction({programId:PROGRAM_ID,keys:[
         {pubkey:wallet,isSigner:true,isWritable:true},{pubkey:market.config,isSigner:false,isWritable:false},{pubkey:marketAddress,isSigner:false,isWritable:true},
