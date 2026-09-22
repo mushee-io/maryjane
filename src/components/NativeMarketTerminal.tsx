@@ -442,7 +442,7 @@ export default function NativeMarketTerminal({
     }
 
     const confirmed = window.confirm(
-      "Cancel this market?\n\nThis is only allowed while the market is unused: no positions, liquidity, collateral or completed trades. Once cancelled it cannot be reopened. The onchain account remains as a transparent CANCELLED record."
+      "Cancel this market?\n\nMary Jane will remove this unused market from the active app immediately. The legacy Devnet account remains on-chain as a test record until the program is upgraded."
     );
     if (!confirmed) return;
 
