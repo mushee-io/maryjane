@@ -1,0 +1,14 @@
+{
+  "v": 2,
+  "t": "maryjane-market-metadata",
+  "question": "Will London Heathrow temperature exceed 20°C on 10 October 2026?",
+  "description": "Resolve from the Met Office official observation for London Heathrow.",
+  "source": "Met Office official observation",
+  "category": "World",
+  "yesLabel": "Above 20°C",
+  "noLabel": "20°C or below",
+  "coverImageUrl": "/demo/weather.svg",
+  "yesImageUrl": "/demo/up.svg",
+  "noImageUrl": "/demo/down.svg",
+  "createdAt": "2026-09-22T10:45:00.000Z"
+}
