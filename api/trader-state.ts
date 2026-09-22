@@ -6,7 +6,7 @@ const PROGRAM_ID=new PublicKey("HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL");
 const USDG_MINT="4F6PM96JJxngmHnZLBh9n58RH4aTVNWvDs2nuwrT5BP7";
 const MEMO_PROGRAM_ID="MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
 const RPC_URL=process.env.SOLANA_RPC_URL||"https://api.devnet.solana.com";
-const PORTFOLIO_HISTORY_LIMIT=Math.max(20,Math.min(100,Number(process.env.PORTFOLIO_HISTORY_LIMIT||60)));
+const PORTFOLIO_HISTORY_LIMIT=Math.max(10,Math.min(60,Number(process.env.PORTFOLIO_HISTORY_LIMIT||30)));
 const METADATA_HOSTS=new Set([
   "res.cloudinary.com",
   "maryjane-blue.vercel.app",
@@ -150,7 +150,9 @@ function eventFromPayload(payload:Buffer,signature:string,blockTime:number){
 }
 
 async function walletEvents(connection:Connection,wallet:PublicKey){
-  const signatures=await connection.getSignaturesForAddress(wallet,{limit:PORTFOLIO_HISTORY_LIMIT},"confirmed");
+  let signatures:any[]=[];
+  try{signatures=await connection.getSignaturesForAddress(wallet,{limit:PORTFOLIO_HISTORY_LIMIT},"confirmed");}
+  catch{return[];}
   const events:any[]=[];
   for(let i=0;i<signatures.length;i+=20){
     const chunk=signatures.slice(i,i+20);
@@ -248,12 +250,13 @@ function sell(state:LedgerSide,qty:bigint,proceeds:bigint){
 }
 
 async function portfolio(connection:Connection,wallet:PublicKey){
+  const warnings:string[]=[];
   const [marketRows,orderRows,tokens,events,solLamports]=await Promise.all([
-    connection.getProgramAccounts(PROGRAM_ID,{commitment:"confirmed",filters:[{dataSize:420}]}),
-    connection.getProgramAccounts(PROGRAM_ID,{commitment:"confirmed",filters:[{dataSize:198},{memcmp:{offset:8,bytes:wallet.toBase58()}}]}),
-    tokenBalances(connection,wallet),
-    walletEvents(connection,wallet),
-    connection.getBalance(wallet,"confirmed"),
+    connection.getProgramAccounts(PROGRAM_ID,{commitment:"confirmed",filters:[{dataSize:420}]}).catch((error:any)=>{warnings.push(`markets:${error?.message||error}`);return[];}),
+    connection.getProgramAccounts(PROGRAM_ID,{commitment:"confirmed",filters:[{dataSize:198},{memcmp:{offset:8,bytes:wallet.toBase58()}}]}).catch((error:any)=>{warnings.push(`orders:${error?.message||error}`);return[];}),
+    tokenBalances(connection,wallet).catch((error:any)=>{warnings.push(`tokens:${error?.message||error}`);return new Map();}),
+    walletEvents(connection,wallet).catch((error:any)=>{warnings.push(`history:${error?.message||error}`);return[];}),
+    connection.getBalance(wallet,"confirmed").catch((error:any)=>{warnings.push(`sol:${error?.message||error}`);return 0;}),
   ]);
 
   const markets=new Map<string,any>();
@@ -291,13 +294,15 @@ async function portfolio(connection:Connection,wallet:PublicKey){
   const relevant=[...markets.values()].filter(m=>{
     const y=tokens.get(m.yesMint)?.amount||0n;const n=tokens.get(m.noMint)?.amount||0n;
     return y>0n||n>0n||activeOrders.some(o=>o.market===m.address)||events.some(e=>e.market===m.address);
-  }).slice(0,30);
+  }).slice(0,20);
 
-  const results=await mapLimit(relevant,5,async market=>{
+  const results=await mapLimit(relevant,8,async market=>{
     const total=market.yesReserve+market.noReserve;
     const fallback=market.status==="RESOLVED_YES"?10000:market.status==="RESOLVED_NO"?0:market.status==="CANCELLED"?5000:total===0n?5000:Number(market.noReserve*10000n/total);
-    const yesPriceBps=await latestPrice(connection,market.address,fallback);
-    const meta=await marketMetadata(connection,market.address);
+    const [yesPriceBps,meta]=await Promise.all([
+      latestPrice(connection,market.address,fallback),
+      marketMetadata(connection,market.address),
+    ]);
     const y=tokens.get(market.yesMint)||{amount:0n,decimals:6,uiAmount:0};
     const n=tokens.get(market.noMint)||{amount:0n,decimals:6,uiAmount:0};
     const l=ledgers.get(market.address)||{yes:sideState(),no:sideState()};
@@ -359,7 +364,7 @@ async function portfolio(connection:Connection,wallet:PublicKey){
       return{...order,reservedBaseUnits:reserved.toString()};
     }).sort((a,b)=>b.createdAt-a.createdAt),
     history:[...events].filter(e=>e.maker===wallet.toBase58()||e.taker===wallet.toBase58()||e.user===wallet.toBase58()).sort((a,b)=>b.blockTime-a.blockTime).slice(0,100),
-    diagnostics:{historyLimit:PORTFOLIO_HISTORY_LIMIT,metadataHosts:[...METADATA_HOSTS]},
+    diagnostics:{historyLimit:PORTFOLIO_HISTORY_LIMIT,metadataHosts:[...METADATA_HOSTS],warnings},
     updatedAt:Date.now(),
   };
 }
