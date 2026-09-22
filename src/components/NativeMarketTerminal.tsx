@@ -182,6 +182,10 @@ export default function NativeMarketTerminal({
   const [price, setPrice] = useState("50");
   const [shares, setShares] = useState("1");
   const [completeSetAmount, setCompleteSetAmount] = useState("10");
+  const [resolutionState, setResolutionState] = useState<any>(null);
+  const [resolutionOutcome, setResolutionOutcome] = useState<"YES"|"NO"|"INVALID">("YES");
+  const [resolutionEvidence, setResolutionEvidence] = useState("");
+  const [resolutionSource, setResolutionSource] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -195,6 +199,17 @@ export default function NativeMarketTerminal({
       setError("");
     } catch (err: any) {
       setError(err?.message || "Unable to load live market state");
+    }
+  };
+
+  const loadResolution = async () => {
+    if (!address) return;
+    try {
+      const response = await fetch(`/api/market-action?market=${encodeURIComponent(address)}`, { cache: "no-store" });
+      const data = await jsonOrThrow(response);
+      setResolutionState(data);
+    } catch {
+      setResolutionState(null);
     }
   };
 
@@ -217,7 +232,11 @@ export default function NativeMarketTerminal({
 
   useEffect(() => {
     void load();
-    const timer = window.setInterval(() => void load(), 5_000);
+    void loadResolution();
+    const timer = window.setInterval(() => {
+      void load();
+      void loadResolution();
+    }, 5_000);
     return () => window.clearInterval(timer);
   }, [address]);
 
@@ -338,6 +357,39 @@ export default function NativeMarketTerminal({
       await Promise.all([load(), loadTrader()]);
     } catch (err: any) {
       setNotice(err?.message || "Unable to fill order");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const executeMarketAction = async (action: string, extra: Record<string, unknown> = {}) => {
+    if (!market.nativeAddress) return;
+    if (!wallet) { await onConnect(); return; }
+    setBusy(true);
+    setNotice("");
+    try {
+      const response = await fetch("/api/market-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, wallet, market: market.nativeAddress, ...extra }),
+      });
+      const data = await jsonOrThrow(response);
+      setNotice("Waiting for Solana confirmation…");
+      const signature = await signBuiltTransaction(data.transactionBase64, data.lastValidBlockHeight);
+      const labels: Record<string,string> = {
+        CLOSE: "Market closed",
+        PROPOSE: "Resolution proposed",
+        DISPUTE: "Resolution disputed",
+        FINALIZE: "Resolution finalized",
+        RESOLVE_DISPUTE: "Dispute adjudicated",
+        CANCEL_STALLED: "Stalled dispute cancelled",
+        REDEEM: "Winnings redeemed",
+        REFUND: "Refund claimed",
+      };
+      setNotice(`${labels[action] || "Market updated"} · ${short(signature)}`);
+      await Promise.all([load(), loadTrader(), loadResolution()]);
+    } catch (err: any) {
+      setNotice(err?.message || "Unable to execute market action");
     } finally {
       setBusy(false);
     }
@@ -523,6 +575,95 @@ export default function NativeMarketTerminal({
               View market account on Solana <ArrowUpRight className="h-3.5 w-3.5" />
             </a>
           </div>
+          <div className="mt-6 rounded-3xl border border-white/[.08] bg-white/[.018] p-5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <div className="text-xs uppercase tracking-[.16em] text-[#b7ff3c]">Resolution & settlement</div>
+                <div className="mt-2 text-xl font-semibold">Market lifecycle</div>
+                <div className="mt-1 text-xs text-white/28">Close, resolve, challenge and settle directly through the deployed Mary Jane program.</div>
+              </div>
+              <div className="rounded-full border border-white/[.08] px-3 py-1.5 text-xs text-white/45">
+                {state?.market.status || market.status || "OPEN"}
+              </div>
+            </div>
+
+            {(() => {
+              const status = state?.market.status || market.status || "OPEN";
+              const now = Math.floor(Date.now() / 1000);
+              const closeTs = state?.market.closeTs || 0;
+              const resolutionTs = state?.market.resolutionTs || 0;
+              const config = resolutionState?.resolutionConfig;
+              const resolution = resolutionState?.resolution;
+              const proposedLabel = resolution?.proposedOutcome === "YES" ? yesLabel : resolution?.proposedOutcome === "NO" ? noLabel : resolution?.proposedOutcome || "—";
+              const proposalBond = Number(config?.proposalBond || 0) / 1e6;
+              const disputeBond = Number(config?.disputeBond || 0) / 1e6;
+              const winningBalance = status === "RESOLVED_YES" ? (traderState?.yes.uiAmount || 0) : status === "RESOLVED_NO" ? (traderState?.no.uiAmount || 0) : 0;
+              const refundEstimate = status === "CANCELLED" ? ((traderState?.yes.uiAmount || 0) + (traderState?.no.uiAmount || 0)) / 2 : 0;
+
+              if (status === "OPEN") return (
+                <div className="mt-5 rounded-2xl border border-white/[.06] bg-black/20 p-4">
+                  {now < closeTs ? (
+                    <div className="text-sm text-white/45">Trading remains open until <span className="text-white/75">{when(closeTs)}</span>.</div>
+                  ) : (
+                    <><div className="text-sm text-white/50">Trading time has elapsed. Close the market to begin resolution.</div><button onClick={() => void executeMarketAction("CLOSE")} disabled={busy || !wallet} className="mt-4 rounded-xl bg-white px-4 py-3 text-xs font-semibold text-black disabled:opacity-35">{wallet ? "Close market on Solana" : "Connect to close"}</button></>
+                  )}
+                </div>
+              );
+
+              if (status === "CLOSED") return (
+                <div className="mt-5">
+                  {now < resolutionTs ? <div className="rounded-2xl border border-white/[.06] bg-black/20 p-4 text-sm text-white/45">Resolution proposals open at <span className="text-white/75">{when(resolutionTs)}</span>.</div> : <>
+                    <div className="text-xs text-white/35">Propose the final outcome · bond {proposalBond.toFixed(2)} USDG</div>
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      {(["YES","NO","INVALID"] as const).map(value => <button key={value} onClick={() => setResolutionOutcome(value)} className={`rounded-xl border px-3 py-3 text-xs font-semibold ${resolutionOutcome===value?"border-[#b7ff3c]/40 bg-[#b7ff3c]/10 text-[#caff75]":"border-white/[.07] text-white/40"}`}>{value==="YES"?yesLabel:value==="NO"?noLabel:"Invalid"}</button>)}
+                    </div>
+                    <input value={resolutionSource} onChange={e=>setResolutionSource(e.target.value)} placeholder="Official source or oracle observation" className="mt-3 w-full rounded-xl border border-white/[.08] bg-black/30 p-3 text-sm outline-none"/>
+                    <textarea value={resolutionEvidence} onChange={e=>setResolutionEvidence(e.target.value)} placeholder="Evidence / explanation for this resolution" rows={3} className="mt-2 w-full rounded-xl border border-white/[.08] bg-black/30 p-3 text-sm outline-none"/>
+                    <button onClick={() => void executeMarketAction("PROPOSE",{outcome:resolutionOutcome,source:resolutionSource,evidence:resolutionEvidence,observation:resolutionSource})} disabled={busy || !wallet || !resolutionEvidence.trim() || !resolutionSource.trim()} className="mt-3 w-full rounded-xl bg-[#b7ff3c] py-3 text-sm font-semibold text-black disabled:opacity-35">Propose {resolutionOutcome==="YES"?yesLabel:resolutionOutcome==="NO"?noLabel:"Invalid"}</button>
+                  </>}
+                </div>
+              );
+
+              if (status === "RESOLUTION_PENDING") return (
+                <div className="mt-5 rounded-2xl border border-white/[.06] bg-black/20 p-4">
+                  <div className="flex justify-between gap-4 text-sm"><span className="text-white/35">Proposed outcome</span><span className="font-semibold">{proposedLabel}</span></div>
+                  <div className="mt-2 flex justify-between gap-4 text-xs"><span className="text-white/30">Challenge deadline</span><span className="text-white/55">{when(resolution?.challengeDeadline)}</span></div>
+                  {now < Number(resolution?.challengeDeadline||0) ? <>
+                    <textarea value={resolutionEvidence} onChange={e=>setResolutionEvidence(e.target.value)} placeholder="Evidence for a dispute" rows={2} className="mt-4 w-full rounded-xl border border-white/[.08] bg-black/30 p-3 text-sm outline-none"/>
+                    <button onClick={() => void executeMarketAction("DISPUTE",{evidence:resolutionEvidence})} disabled={busy || !wallet || !resolutionEvidence.trim() || wallet===resolution?.proposer} className="mt-2 w-full rounded-xl border border-rose-300/20 bg-rose-300/[.07] py-3 text-sm font-semibold text-rose-200 disabled:opacity-30">Dispute · bond {disputeBond.toFixed(2)} USDG</button>
+                  </> : <button onClick={() => void executeMarketAction("FINALIZE")} disabled={busy || !wallet} className="mt-4 w-full rounded-xl bg-[#b7ff3c] py-3 text-sm font-semibold text-black disabled:opacity-35">Finalize uncontested resolution</button>}
+                </div>
+              );
+
+              if (status === "DISPUTED") return (
+                <div className="mt-5 rounded-2xl border border-rose-300/15 bg-rose-300/[.04] p-4">
+                  <div className="text-sm font-semibold text-rose-200">Resolution disputed</div>
+                  <div className="mt-2 text-xs text-white/35">Escalation deadline {when(resolution?.escalationDeadline)}</div>
+                  {wallet && wallet === config?.authority && <><div className="mt-4 grid grid-cols-3 gap-2">{(["YES","NO","INVALID"] as const).map(value=><button key={value} onClick={()=>setResolutionOutcome(value)} className={`rounded-lg border px-2 py-2 text-[10px] ${resolutionOutcome===value?"border-white/30 bg-white/[.08]":"border-white/[.07]"}`}>{value==="YES"?yesLabel:value==="NO"?noLabel:"Invalid"}</button>)}</div><button onClick={()=>void executeMarketAction("RESOLVE_DISPUTE",{outcome:resolutionOutcome,adjudication:resolutionEvidence||"Mary Jane adjudication"})} disabled={busy} className="mt-2 w-full rounded-xl bg-white py-3 text-sm font-semibold text-black">Adjudicate dispute</button></>}
+                  {now >= Number(resolution?.escalationDeadline||0) && <button onClick={()=>void executeMarketAction("CANCEL_STALLED")} disabled={busy || !wallet} className="mt-3 w-full rounded-xl border border-white/[.1] py-3 text-xs text-white/55">Cancel stalled dispute as invalid</button>}
+                </div>
+              );
+
+              if (status === "RESOLVED_YES" || status === "RESOLVED_NO") return (
+                <div className="mt-5 rounded-2xl border border-emerald-300/15 bg-emerald-300/[.05] p-4">
+                  <div className="text-sm font-semibold text-emerald-200">Resolved: {status==="RESOLVED_YES"?yesLabel:noLabel}</div>
+                  <div className="mt-2 text-xs text-white/40">{winningBalance > 0 ? `${winningBalance.toFixed(2)} winning shares are claimable for ${winningBalance.toFixed(2)} USDG.` : "This wallet has no winning shares to redeem."}</div>
+                  {winningBalance>0&&<button onClick={()=>void executeMarketAction("REDEEM")} disabled={busy || !wallet} className="mt-4 w-full rounded-xl bg-[#b7ff3c] py-3 text-sm font-semibold text-black">Redeem {winningBalance.toFixed(2)} USDG</button>}
+                </div>
+              );
+
+              if (status === "CANCELLED") return (
+                <div className="mt-5 rounded-2xl border border-amber-300/15 bg-amber-300/[.05] p-4">
+                  <div className="text-sm font-semibold text-amber-200">Market resolved invalid</div>
+                  <div className="mt-2 text-xs text-white/40">Outcome shares can be refunded at the protocol's invalid-market settlement rate. Estimated claim: {refundEstimate.toFixed(2)} USDG.</div>
+                  {refundEstimate>0&&<button onClick={()=>void executeMarketAction("REFUND")} disabled={busy || !wallet} className="mt-4 w-full rounded-xl bg-amber-200 py-3 text-sm font-semibold text-black">Claim refund</button>}
+                </div>
+              );
+
+              return <div className="mt-5 text-xs text-white/30">Settlement state unavailable.</div>;
+            })()}
+          </div>
+
         </section>
 
         <aside className="xl:sticky xl:top-24 xl:h-fit">
