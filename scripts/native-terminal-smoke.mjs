@@ -21,18 +21,29 @@ async function waitForState(){
 }
 
 async function controlledError(path){
-  const response=await fetch(`${base}${path}`,{
-    method:"POST",
-    headers:{"content-type":"application/json"},
-    body:JSON.stringify({}),
-    signal:AbortSignal.timeout(12000),
-  });
-  const text=await response.text();
-  console.log(`${path} status=${response.status} body=${text.slice(0,500)}`);
-  if(response.status>=500)throw new Error(`${path} crashed with ${response.status}`);
-  let data;
-  try{data=JSON.parse(text);}catch{throw new Error(`${path} did not return JSON`);}
-  if(!data?.error)throw new Error(`${path} did not return a controlled error`);
+  let last="";
+  for(let attempt=1;attempt<=18;attempt++){
+    try{
+      const response=await fetch(`${base}${path}`,{
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({}),
+        signal:AbortSignal.timeout(12000),
+      });
+      last=await response.text();
+      console.log(`${path} attempt=${attempt} status=${response.status} body=${last.slice(0,500)}`);
+      if(response.status<500){
+        let data;
+        try{data=JSON.parse(last);}catch{throw new Error(`${path} did not return JSON`);}
+        if(!data?.error)throw new Error(`${path} did not return a controlled error`);
+        return;
+      }
+    }catch(error){
+      console.log(`${path} attempt=${attempt} error=${error?.message||error}`);
+    }
+    await new Promise(r=>setTimeout(r,8000));
+  }
+  throw new Error(`${path} never became healthy: ${last}`);
 }
 
 const state=await waitForState();
