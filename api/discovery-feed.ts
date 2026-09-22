@@ -4,7 +4,12 @@ const PROGRAM_ID="HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL";
 const RPC_URL=process.env.SOLANA_RPC_URL||"https://api.devnet.solana.com";
 const MARKET_SIZE=420;
 const MEMO_PROGRAM_ID="MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr";
-const metadataCache=new Map<string,{at:number,value:any}>();
+const metadataCache=new Map<string,{at:number,value:any,ttl:number}>();
+const METADATA_HOSTS=new Set([
+  "res.cloudinary.com",
+  "maryjane-blue.vercel.app",
+  ...String(process.env.MARY_JANE_METADATA_HOSTS||"").split(",").map(value=>value.trim().toLowerCase()).filter(Boolean),
+]);
 const KNOWN=["B76aB9GWZPtFqwuyTPjB33Gys1UgCQXw27mdyPKEMyeF"];
 const DISC=createHash("sha256").update("account:Market").digest().subarray(0,8);
 
@@ -17,6 +22,35 @@ const META:Record<string,any>={
     createdAt:"2026-09-21T17:09:00.000Z",
   },
 };
+
+function safeMetadataUrl(value:any){
+  try{
+    const url=new URL(String(value||""));
+    if(url.protocol!=="https:")return null;
+    if(!METADATA_HOSTS.has(url.hostname.toLowerCase()))return null;
+    return url.toString();
+  }catch{return null;}
+}
+function safeText(value:any,max:number){
+  return String(value||"").replace(/[\u0000-\u001F\u007F]/g,"").trim().slice(0,max)||undefined;
+}
+function safeNativeImage(value:any){
+  const url=safeMetadataUrl(value);
+  return url&&/\.(?:png|jpe?g|webp|gif|svg)(?:$|\?)/i.test(url)?url:undefined;
+}
+async function mapLimit<T,R>(items:T[],limit:number,fn:(item:T,index:number)=>Promise<R>){
+  const out=new Array<R>(items.length);
+  let cursor=0;
+  async function worker(){
+    while(true){
+      const index=cursor++;
+      if(index>=items.length)return;
+      out[index]=await fn(items[index],index);
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(limit,items.length)},()=>worker()));
+  return out;
+}
 
 async function jsonFetch(url:string,init:RequestInit={},timeout=7000){
   const controller=new AbortController();
@@ -64,57 +98,60 @@ function decode(address:string,account:any){
 
 async function nativeMetadata(address:string){
   const cached=metadataCache.get(address);
-  if(cached&&Date.now()-cached.at<60_000)return cached.value;
+  if(cached&&Date.now()-cached.at<cached.ttl)return cached.value;
 
   let memo:any={};
+  let metadataError="";
   try{
     const signatures:any[]=await rpc("getSignaturesForAddress",[address,{limit:6},"confirmed"])||[];
     for(const signature of signatures){
       const tx=await rpc("getTransaction",[signature.signature,{commitment:"confirmed",encoding:"jsonParsed",maxSupportedTransactionVersion:0}]).catch(()=>null);
       const instructions=tx?.transaction?.message?.instructions||[];
       for(const ix of instructions){
-        const programId=String(ix?.programId||"");
-        if(programId!==MEMO_PROGRAM_ID)continue;
+        if(String(ix?.programId||"")!==MEMO_PROGRAM_ID)continue;
         const parsed=typeof ix?.parsed==="string"?ix.parsed:"";
         if(!parsed)continue;
         try{
           const candidate=JSON.parse(parsed);
-          if(candidate?.t==="maryjane-market"&&(!candidate?.m||candidate.m===address)){
-            memo=candidate;
-            break;
-          }
+          if(candidate?.t==="maryjane-market"&&(!candidate?.m||candidate.m===address)){memo=candidate;break;}
         }catch{}
       }
       if(memo?.t)break;
     }
-  }catch{}
+  }catch(error:any){metadataError=String(error?.message||error);}
 
   let remote:any={};
-  if(memo?.u&&/^https:\/\//i.test(String(memo.u))){
-    try{remote=await jsonFetch(String(memo.u),{},5000);}catch{}
+  const metadataUrl=safeMetadataUrl(memo?.u);
+  if(metadataUrl){
+    try{
+      const candidate=await jsonFetch(metadataUrl,{},5000);
+      if(candidate&&candidate.t==="maryjane-market-metadata")remote=candidate;
+    }catch(error:any){metadataError=String(error?.message||error);}
   }
 
   const value={
-    question:remote?.question||memo?.q,
-    description:remote?.description,
-    category:remote?.category||memo?.c,
-    source:remote?.source||memo?.s,
-    deadline:remote?.deadline||memo?.d,
-    createdAt:remote?.createdAt,
-    yesLabel:remote?.yesLabel,
-    noLabel:remote?.noLabel,
-    coverImageUrl:remote?.coverImageUrl,
-    yesImageUrl:remote?.yesImageUrl,
-    noImageUrl:remote?.noImageUrl,
-    metadataUrl:memo?.u,
+    question:safeText(remote?.question||memo?.q,220),
+    description:safeText(remote?.description,2000),
+    category:safeText(remote?.category||memo?.c,32),
+    source:safeText(remote?.source||memo?.s,180),
+    deadline:safeText(remote?.deadline||memo?.d,96),
+    createdAt:safeText(remote?.createdAt,64),
+    yesLabel:safeText(remote?.yesLabel,48),
+    noLabel:safeText(remote?.noLabel,48),
+    coverImageUrl:safeNativeImage(remote?.coverImageUrl),
+    yesImageUrl:safeNativeImage(remote?.yesImageUrl),
+    noImageUrl:safeNativeImage(remote?.noImageUrl),
+    metadataUrl:metadataUrl||undefined,
+    metadataError:metadataError||undefined,
   };
-  metadataCache.set(address,{at:Date.now(),value});
+  const useful=Boolean(value.question||value.description||value.coverImageUrl||value.yesImageUrl||value.noImageUrl);
+  metadataCache.set(address,{at:Date.now(),value,ttl:useful?300_000:20_000});
   return value;
 }
 
 async function nativeMarkets(limit:number){
   const errors:string[]=[];
-  const addresses=new Set<string>(KNOWN);
+  const accountByAddress=new Map<string,any>();
 
   try{
     const rows:any[]=await rpc("getProgramAccounts",[
@@ -123,52 +160,45 @@ async function nativeMarkets(limit:number){
     ])||[];
     for(const row of rows){
       const raw=dataBuffer(row.account);
-      if(raw.length===MARKET_SIZE&&raw.subarray(0,8).equals(DISC)) addresses.add(String(row.pubkey));
+      if(raw.length===MARKET_SIZE&&raw.subarray(0,8).equals(DISC))accountByAddress.set(String(row.pubkey),row.account);
     }
   }catch(e:any){errors.push(`getProgramAccounts:${e?.message||e}`);}
 
-  const items:any[]=[];
-  for(const address of [...addresses].slice(0,Math.max(limit,10))){
+  const missingKnown=KNOWN.filter(address=>!accountByAddress.has(address));
+  if(missingKnown.length){
     try{
-      const result=await rpc("getAccountInfo",[address,{commitment:"confirmed",encoding:"base64"}]);
-      if(!result?.value) continue;
-      const m=decode(address,result.value);
-      if(!m){errors.push(`decode:${address}`);continue;}
-      let chainMeta:any={};
-      try{chainMeta=await nativeMetadata(address);}catch(e:any){errors.push(`metadata:${address}:${e?.message||e}`);}
-      const meta={...(META[address]||{}),...chainMeta};
-      const total=m.yesReserve+m.noReserve;
-      const yes=total===0n?0.5:Number(m.noReserve*10000n/total)/10000;
-      const yesLabel=String(meta.yesLabel||"YES");
-      const noLabel=String(meta.noLabel||"NO");
-      items.push({
-        id:`maryjane:${address}`,
-        source:"maryjane",
-        sourceMarketId:address,
-        title:meta.question||`Mary Jane market ${address.slice(0,8)}…`,
-        description:meta.description,
-        category:meta.category||"Other",
-        outcomes:[
-          {id:"yes",label:yesLabel,probability:yes,imageUrl:meta.yesImageUrl||undefined},
-          {id:"no",label:noLabel,probability:1-yes,imageUrl:meta.noImageUrl||undefined},
-        ],
-        coverImageUrl:meta.coverImageUrl||undefined,
-        metadataUrl:meta.metadataUrl||undefined,
-        volume24h:0,
-        volumeTotal:Number(m.volume)/1_000_000,
-        traders:0,
-        tradeCount:0,
-        createdAt:meta.createdAt,
-        closesAt:new Date(m.closeTs*1000).toISOString(),
-        resolved:m.status.startsWith("RESOLVED")||m.status==="CANCELLED",
-        nativeAddress:address,
-        nativeMarketSeed:m.marketSeed,
-        status:m.status,
-        probabilitySource:"pool-reference",
-      });
-    }catch(e:any){errors.push(`account:${address}:${e?.message||e}`);}
+      const result=await rpc("getMultipleAccounts",[missingKnown,{commitment:"confirmed",encoding:"base64"}]);
+      (result?.value||[]).forEach((account:any,index:number)=>{if(account)accountByAddress.set(missingKnown[index],account);});
+    }catch(e:any){errors.push(`knownFallback:${e?.message||e}`);}
   }
-  return{items,errors};
+
+  const addresses=[...accountByAddress.keys()].slice(0,Math.min(180,Math.max(limit,10)));
+  const rows=await mapLimit(addresses,6,async(address)=>{
+    const account=accountByAddress.get(address);
+    const m=decode(address,account);
+    if(!m){errors.push(`decode:${address}`);return null;}
+    let chainMeta:any={};
+    try{chainMeta=await nativeMetadata(address);}catch(e:any){errors.push(`metadata:${address}:${e?.message||e}`);}
+    if(chainMeta?.metadataError)errors.push(`metadata:${address}:${chainMeta.metadataError}`);
+    const meta={...(META[address]||{}),...chainMeta};
+    const total=m.yesReserve+m.noReserve;
+    const yes=total===0n?0.5:Number(m.noReserve*10000n/total)/10000;
+    const yesLabel=String(meta.yesLabel||"YES");
+    const noLabel=String(meta.noLabel||"NO");
+    return{
+      id:`maryjane:${address}`,source:"maryjane",sourceMarketId:address,
+      title:meta.question||`Mary Jane market ${address.slice(0,8)}…`,description:meta.description,category:meta.category||"Other",
+      outcomes:[
+        {id:"yes",label:yesLabel,probability:yes,imageUrl:meta.yesImageUrl||undefined},
+        {id:"no",label:noLabel,probability:1-yes,imageUrl:meta.noImageUrl||undefined},
+      ],
+      coverImageUrl:meta.coverImageUrl||undefined,metadataUrl:meta.metadataUrl||undefined,
+      volume24h:0,volumeTotal:Number(m.volume)/1_000_000,traders:0,tradeCount:0,createdAt:meta.createdAt,
+      closesAt:new Date(m.closeTs*1000).toISOString(),resolved:m.status.startsWith("RESOLVED")||m.status==="CANCELLED",
+      nativeAddress:address,nativeMarketSeed:m.marketSeed,status:m.status,probabilitySource:"pool-reference",
+    };
+  });
+  return{items:rows.filter(Boolean),errors};
 }
 
 function prob(v:any){
@@ -392,7 +422,7 @@ export default async function handler(req:any,res:any){
         accepted:ranked.length,
         filtered:Math.max(0,raw.length-ranked.length),
       },
-      nativeDiagnostics:{runtime:"pure-json-rpc",known:KNOWN.length,rpcHost:new URL(RPC_URL).host},
+      nativeDiagnostics:{runtime:"pure-json-rpc",known:KNOWN.length,rpcHost:(()=>{try{return new URL(RPC_URL).host;}catch{return"invalid-rpc-url";}})(),metadataHosts:[...METADATA_HOSTS]},
       updatedAt:Date.now(),
     });
   }catch(e:any){
