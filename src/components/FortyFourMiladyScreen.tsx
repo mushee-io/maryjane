@@ -211,6 +211,31 @@ function qty(value: number | null | undefined, digits = 4) {
   return value.toLocaleString(undefined, { maximumFractionDigits: digits });
 }
 
+function friendlyTransactionError(error: any) {
+  const text = String(error?.message || error || "");
+  if (/insufficient funds/i.test(text)) {
+    return "Not enough test tokens for this action. Claim the required test token first, wait for the balance to refresh, then retry.";
+  }
+  if (/FaucetCooldown|faucet cooldown/i.test(text)) {
+    return "The Devnet faucet is still on cooldown for this wallet. Use the balance already in the wallet or wait until the cooldown expires.";
+  }
+  if (/BorrowLimitExceeded|borrow amount exceeds|BorrowWouldBeLiquidatable/i.test(text)) {
+    return "That borrow is too large for the current SOLx collateral. Enter a smaller USDG amount.";
+  }
+  if (/InsufficientLiquidity/i.test(text)) {
+    return "The USDG pool does not currently have enough available liquidity for that amount.";
+  }
+  if (/InsufficientRepaymentFunds/i.test(text)) {
+    return "Your wallet does not have enough USDG to repay that amount.";
+  }
+  if (/User rejected|rejected the request|Transaction cancelled/i.test(text)) {
+    return "Transaction cancelled in the wallet.";
+  }
+  return text.length > 320
+    ? "The transaction failed during Solana simulation. Refresh the balances and retry the action shown on screen."
+    : text;
+}
+
 function decodeBase64(value: string) {
   const binary = atob(value);
   const out = new Uint8Array(binary.length);
@@ -222,8 +247,8 @@ export function FortyFourMiladyScreen() {
   const [wallet, setWallet] = useState("");
   const [state, setState] = useState<MiladyState | null>(null);
   const [mode, setMode] = useState<"BORROW" | "SUPPLY">("BORROW");
-  const [depositAmount, setDepositAmount] = useState("10");
-  const [borrowAmount, setBorrowAmount] = useState("100");
+  const [depositAmount, setDepositAmount] = useState("1");
+  const [borrowAmount, setBorrowAmount] = useState("20");
   const [supplyAmount, setSupplyAmount] = useState("100");
   const [repayAmount, setRepayAmount] = useState("100");
   const [withdrawAmount, setWithdrawAmount] = useState("1");
@@ -331,6 +356,62 @@ export function FortyFourMiladyScreen() {
         action === "repayMax"
           ? 0n
           : parseAmount(String(amount || ""));
+
+      const walletSolxRaw = BigInt(
+        Math.max(0, Math.round((state.solx.walletBalance || 0) * 1_000_000)),
+      );
+      const walletUsdgRaw = BigInt(
+        Math.max(0, Math.round((state.wallet?.usdg || 0) * 1_000_000)),
+      );
+      const suppliedUsdgRaw = BigInt(
+        Math.max(0, Math.round((state.wallet?.suppliedUsdg || 0) * 1_000_000)),
+      );
+      const depositedSolxRaw = BigInt(
+        Math.max(0, Math.round((state.solx.deposited || 0) * 1_000_000)),
+      );
+      const debtUsdgRaw = BigInt(
+        Math.max(0, Math.round((state.credit?.debt || 0) * 1_000_000)),
+      );
+
+      if (action === "initializeCredit" && state.wallet?.creditExists) {
+        setMessage("Credit account is already initialized.");
+        return;
+      }
+      if (action === "deposit" && raw > walletSolxRaw) {
+        throw new Error(
+          `You only have ${qty(state.solx.walletBalance || 0)} SOLx. Click “Get test SOLx”, wait for the balance to update, then deposit.`,
+        );
+      }
+      if (action === "supply" && raw > walletUsdgRaw) {
+        throw new Error(
+          `You only have ${qty(state.wallet?.usdg || 0, 2)} USDG. Click “Get test USDG” first.`,
+        );
+      }
+      if (action === "withdrawSupply" && raw > suppliedUsdgRaw) {
+        throw new Error(
+          `You only have ${qty(state.wallet?.suppliedUsdg || 0, 2)} USDG supplied.`,
+        );
+      }
+      if (action === "repay" && raw > walletUsdgRaw) {
+        throw new Error(
+          `Your wallet only has ${qty(state.wallet?.usdg || 0, 2)} USDG available for repayment.`,
+        );
+      }
+      if (action === "repay" && raw > debtUsdgRaw) {
+        throw new Error(
+          `Your current debt is ${qty(state.credit?.debt || 0, 2)} USDG. Use that amount or choose “Repay full debt”.`,
+        );
+      }
+      if (action === "repayMax" && debtUsdgRaw > walletUsdgRaw) {
+        throw new Error(
+          `Full repayment needs about ${qty(state.credit?.debt || 0, 2)} USDG, but the wallet has ${qty(state.wallet?.usdg || 0, 2)} USDG.`,
+        );
+      }
+      if (action === "withdrawCollateral" && raw > depositedSolxRaw) {
+        throw new Error(
+          `Only ${qty(state.solx.deposited || 0)} SOLx is currently deposited.`,
+        );
+      }
 
       if (action === "initializeCredit") {
         instructions.push(
@@ -516,7 +597,7 @@ export function FortyFourMiladyScreen() {
       setMessage(`${action} confirmed on Solana Devnet`);
       await loadState(wallet);
     } catch (e: any) {
-      setError(e?.message || "Transaction failed");
+      setError(friendlyTransactionError(e));
     } finally {
       setBusy("");
     }
@@ -555,6 +636,12 @@ export function FortyFourMiladyScreen() {
       );
       if (currentDebtRaw + borrowRaw > maxBorrowRaw) {
         throw new Error("Borrow amount exceeds the current SOLx LTV limit");
+      }
+      if (Number(borrowRaw) / 1_000_000 > (state.poolUsdg || 0)) {
+        throw new Error("The USDG pool does not currently have enough available liquidity for that amount.");
+      }
+      if ((state.wallet?.sol || 0) < 0.02) {
+        throw new Error("This wallet needs a small amount of Devnet SOL for transaction fees and the temporary Pyth update account.");
       }
 
       const p = provider();
@@ -692,7 +779,7 @@ export function FortyFourMiladyScreen() {
       );
       await loadState(wallet);
     } catch (e: any) {
-      setError(e?.message || "Borrow failed");
+      setError(friendlyTransactionError(e));
     } finally {
       setBusy("");
     }
@@ -726,9 +813,10 @@ export function FortyFourMiladyScreen() {
     return `${credit.healthFactor.toFixed(2)}×`;
   }, [credit]);
 
-  const canTransact = Boolean(wallet && state?.programLive && walletState?.creditExists);
-  const canBorrow = Boolean(canTransact && state?.oracle.configured && state?.oracle.price != null && (solx?.deposited || 0) > 0);
-  const canWithdrawCollateral = Boolean(canTransact && (credit?.debt || 0) === 0 && (solx?.deposited || 0) > 0);
+  const canWalletTransact = Boolean(wallet && state?.programLive);
+  const canCreditTransact = Boolean(canWalletTransact && walletState?.creditExists);
+  const canBorrow = Boolean(canCreditTransact && state?.oracle.configured && state?.oracle.price != null && (solx?.deposited || 0) > 0);
+  const canWithdrawCollateral = Boolean(canCreditTransact && (credit?.debt || 0) === 0 && (solx?.deposited || 0) > 0);
 
   const statCards = [
     ["Collateral value", money(credit?.collateralValue), Landmark],
@@ -844,8 +932,25 @@ export function FortyFourMiladyScreen() {
                 </div>
 
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <button disabled={Boolean(busy) || !walletState?.creditExists} onClick={() => sendAction("deposit", depositAmount)} className="rounded-xl bg-white py-3 text-sm font-semibold text-black disabled:opacity-35">
-                    {busy === "deposit" ? "Depositing…" : "Deposit SOLx"}
+                  <button
+                    disabled={Boolean(busy) || !walletState?.creditExists}
+                    onClick={() => {
+                      const requested = Number(depositAmount || 0);
+                      if ((solx?.walletBalance || 0) + 1e-9 < requested) {
+                        void sendAction("claimSolx");
+                      } else {
+                        void sendAction("deposit", depositAmount);
+                      }
+                    }}
+                    className="rounded-xl bg-white py-3 text-sm font-semibold text-black disabled:opacity-35"
+                  >
+                    {busy === "deposit"
+                      ? "Depositing…"
+                      : busy === "claimSolx"
+                        ? "Claiming SOLx…"
+                        : (solx?.walletBalance || 0) + 1e-9 < Number(depositAmount || 0)
+                          ? "Get test SOLx first"
+                          : "Deposit SOLx"}
                   </button>
                   <button disabled={Boolean(busy)} onClick={() => sendAction("claimSolx")} className="rounded-xl border border-white/[.1] py-3 text-sm font-semibold text-white/70 disabled:opacity-35">
                     {busy === "claimSolx" ? "Claiming…" : "Get test SOLx"}
@@ -876,8 +981,27 @@ export function FortyFourMiladyScreen() {
                   <div className="rounded-xl bg-white/[.025] p-3"><div className="text-[10px] text-white/25">Pool</div><div className="mt-1 font-semibold">{qty(state?.poolUsdg, 2)}</div></div>
                 </div>
                 <div className="mt-5 grid gap-2 sm:grid-cols-3">
-                  <button disabled={Boolean(busy) || !canTransact} onClick={() => sendAction("supply", supplyAmount)} className="rounded-xl bg-white py-3 text-sm font-semibold text-black disabled:opacity-35">{busy === "supply" ? "Supplying…" : "Supply USDG"}</button>
-                  <button disabled={Boolean(busy) || !canTransact || (walletState?.suppliedUsdg || 0) <= 0} onClick={() => sendAction("withdrawSupply", supplyAmount)} className="rounded-xl border border-white/[.1] py-3 text-sm font-semibold disabled:opacity-35">{busy === "withdrawSupply" ? "Withdrawing…" : "Withdraw supply"}</button>
+                  <button
+                    disabled={Boolean(busy) || !canWalletTransact}
+                    onClick={() => {
+                      const requested = Number(supplyAmount || 0);
+                      if ((walletState?.usdg || 0) + 1e-9 < requested) {
+                        void sendAction("claimUsdg");
+                      } else {
+                        void sendAction("supply", supplyAmount);
+                      }
+                    }}
+                    className="rounded-xl bg-white py-3 text-sm font-semibold text-black disabled:opacity-35"
+                  >
+                    {busy === "supply"
+                      ? "Supplying…"
+                      : busy === "claimUsdg"
+                        ? "Claiming USDG…"
+                        : (walletState?.usdg || 0) + 1e-9 < Number(supplyAmount || 0)
+                          ? "Get test USDG first"
+                          : "Supply USDG"}
+                  </button>
+                  <button disabled={Boolean(busy) || !canWalletTransact || (walletState?.suppliedUsdg || 0) <= 0} onClick={() => sendAction("withdrawSupply", supplyAmount)} className="rounded-xl border border-white/[.1] py-3 text-sm font-semibold disabled:opacity-35">{busy === "withdrawSupply" ? "Withdrawing…" : "Withdraw supply"}</button>
                   <button disabled={Boolean(busy)} onClick={() => sendAction("claimUsdg")} className="rounded-xl border border-[#b7ff3c]/20 py-3 text-sm font-semibold text-[#caff75] disabled:opacity-35">{busy === "claimUsdg" ? "Claiming…" : "Get test USDG"}</button>
                 </div>
               </>
