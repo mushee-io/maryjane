@@ -14,6 +14,7 @@ import {
 import {
   Connection,
   PublicKey,
+  SystemProgram,
   Transaction,
   TransactionInstruction,
   VersionedTransaction,
@@ -21,10 +22,130 @@ import {
 import {
   TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountIdempotentInstruction,
+  getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { PythSolanaReceiver } from "@pythnetwork/pyth-solana-receiver";
 
 const RPC_URL = "https://api.devnet.solana.com";
+const PROGRAM_ID = new PublicKey("BS3vTdhrkK5zHchx92PFGeodckt1dLzf7i9uJyEsmZst");
+const PROTOCOL = new PublicKey("ACszf63tCaLrk11goAU4FLsZyuXq1xznbHsS4SMmSvWc");
+const USDG_MINT = new PublicKey("H9fWLuVzqjWjkFjsZ8hSYUb3fGGofa4XHtwCSxQbP9PS");
+const LENDING_POOL = new PublicKey("Gkxt6cQjhrqD6CoXLC3TabNxPB1fDYfru1xsTPD1rsru");
+const LIQUIDITY_VAULT = new PublicKey("77SvAEarM7aXgvN2TV8Hw4Nd4Dy4oQ3Brv9TM2y9HUPN");
+const SOL_FEED_ID = "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d";
+
+function instructionDisc(hex: string) {
+  return Buffer.from(hex, "hex");
+}
+function u64(value: bigint) {
+  const out = Buffer.alloc(8);
+  out.writeBigUInt64LE(value);
+  return out;
+}
+function parseAmount(value: string) {
+  const text = value.trim();
+  if (!/^\\d+(?:\\.\\d{0,6})?$/.test(text)) {
+    throw new Error("Amount must be a positive number with at most 6 decimals");
+  }
+  const [whole, frac = ""] = text.split(".");
+  const raw = BigInt(whole) * 1_000_000n + BigInt((frac + "000000").slice(0, 6));
+  if (raw <= 0n) throw new Error("Amount must be greater than zero");
+  return raw;
+}
+function formatRaw(value: bigint) {
+  return Number(value) / 1_000_000;
+}
+function deriveCredit(owner: PublicKey) {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("credit"), owner.toBuffer()],
+    PROGRAM_ID,
+  )[0];
+}
+function deriveSupplier(owner: PublicKey) {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("supplier"), LENDING_POOL.toBuffer(), owner.toBuffer()],
+    PROGRAM_ID,
+  )[0];
+}
+function deriveVault(credit: PublicKey, market: PublicKey) {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("vault"), credit.toBuffer(), market.toBuffer()],
+    PROGRAM_ID,
+  )[0];
+}
+function deriveFaucet(mint: PublicKey) {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("faucet"), mint.toBuffer()],
+    PROGRAM_ID,
+  )[0];
+}
+function deriveClaim(owner: PublicKey, mint: PublicKey) {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("claim"), owner.toBuffer(), mint.toBuffer()],
+    PROGRAM_ID,
+  )[0];
+}
+async function rawTokenBalance(connection: Connection, address: PublicKey) {
+  try {
+    return BigInt((await connection.getTokenAccountBalance(address, "confirmed")).value.amount);
+  } catch {
+    return 0n;
+  }
+}
+function decodeCredit(data: Buffer | null) {
+  if (!data || data.length < 76) return null;
+  let offset = 40;
+  const debt = data.readBigUInt64LE(offset);
+  offset = 72;
+  const count = data.readUInt32LE(offset);
+  offset += 4 + count * 40;
+  if (offset + 32 > data.length) {
+    return { debt, collateralValue: 0n, borrowLimit: 0n, liquidationCapacity: 0n, health: 0n };
+  }
+  const collateralValue = data.readBigUInt64LE(offset); offset += 8;
+  const borrowLimit = data.readBigUInt64LE(offset); offset += 8;
+  const liquidationCapacity = data.readBigUInt64LE(offset); offset += 8;
+  const health = data.readBigUInt64LE(offset);
+  return { debt, collateralValue, borrowLimit, liquidationCapacity, health };
+}
+function decodeSupplier(data: Buffer | null) {
+  if (!data || data.length < 80) return 0n;
+  return data.readBigUInt64LE(72);
+}
+async function findSolxMarket(connection: Connection) {
+  const accounts = await connection.getProgramAccounts(PROGRAM_ID, "confirmed");
+  for (const row of accounts) {
+    const data = Buffer.from(row.account.data);
+    if (data.length < 150) continue;
+    const symbol = data.subarray(72, 80).toString("utf8").replace(/\\0+$/g, "");
+    if (symbol !== "SOLx") continue;
+    return {
+      address: row.pubkey,
+      mint: new PublicKey(data.subarray(40, 72)),
+      ltvBps: data.readUInt16LE(113),
+      liquidationThresholdBps: data.readUInt16LE(115),
+    };
+  }
+  throw new Error("SOLx market is not initialized on Devnet");
+}
+async function fetchPythSol() {
+  const response = await fetch("/api/pyth-sol", { cache: "no-store" });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return {
+      configured: response.status !== 503,
+      price: null as number | null,
+      updateData: null as string[] | null,
+      error: data?.error || "Pyth unavailable",
+    };
+  }
+  return {
+    configured: true,
+    price: Number(data.price),
+    updateData: data.updateData as string[],
+    error: "",
+  };
+}
 
 type MiladyState = {
   network: string;
