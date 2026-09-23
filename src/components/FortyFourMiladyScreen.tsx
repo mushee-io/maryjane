@@ -233,128 +233,22 @@ export function FortyFourMiladyScreen() {
   const [lastSignature, setLastSignature] = useState("");
 
   const loadState = async (walletAddress = wallet) => {
-    const connection = new Connection(RPC_URL, "confirmed");
-    const [programInfo, solxMarket, poolRaw, pyth] = await Promise.all([
-      connection.getAccountInfo(PROGRAM_ID, "confirmed"),
-      findSolxMarket(connection),
-      rawTokenBalance(connection, LIQUIDITY_VAULT),
-      fetchPythSol().catch(() => ({
-        configured: false,
-        price: null as number | null,
-        updateData: null as string[] | null,
-        error: "Pyth unavailable",
-      })),
-    ]);
+    const query = new URLSearchParams({ miladyState: "1" });
+    if (walletAddress) query.set("wallet", walletAddress);
 
-    const base: MiladyState = {
-      network: "devnet",
-      programId: PROGRAM_ID.toBase58(),
-      programLive: Boolean(programInfo?.executable),
-      protocol: PROTOCOL.toBase58(),
-      usdgMint: USDG_MINT.toBase58(),
-      lendingPool: LENDING_POOL.toBase58(),
-      liquidityVault: LIQUIDITY_VAULT.toBase58(),
-      poolUsdg: formatRaw(poolRaw),
-      solx: {
-        market: solxMarket.address.toBase58(),
-        mint: solxMarket.mint.toBase58(),
-        ltvBps: solxMarket.ltvBps,
-        liquidationThresholdBps: solxMarket.liquidationThresholdBps,
-      },
-      oracle: {
-        price: pyth.price,
-        configured: pyth.configured,
-      },
-    };
-
-    if (!walletAddress) {
-      setState(base);
-      return base;
+    const response = await fetch(
+      `/api/discovery-feed?${query.toString()}`,
+      { cache: "no-store" },
+    );
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        data?.error || "Unable to load 44 Milady Devnet state",
+      );
     }
 
-    const owner = new PublicKey(walletAddress);
-    const credit = deriveCredit(owner);
-    const supplier = deriveSupplier(owner);
-    const solxVault = deriveVault(credit, solxMarket.address);
-    const usdgAta = getAssociatedTokenAddressSync(USDG_MINT, owner);
-    const solxAta = getAssociatedTokenAddressSync(solxMarket.mint, owner);
-
-    const [
-      creditInfo,
-      supplierInfo,
-      walletUsdg,
-      walletSolx,
-      vaultSolx,
-      solLamports,
-    ] = await Promise.all([
-      connection.getAccountInfo(credit, "confirmed"),
-      connection.getAccountInfo(supplier, "confirmed"),
-      rawTokenBalance(connection, usdgAta),
-      rawTokenBalance(connection, solxAta),
-      rawTokenBalance(connection, solxVault),
-      connection.getBalance(owner, "confirmed"),
-    ]);
-
-    const decodedCredit = decodeCredit(
-      creditInfo ? Buffer.from(creditInfo.data) : null,
-    );
-    const suppliedRaw = decodeSupplier(
-      supplierInfo ? Buffer.from(supplierInfo.data) : null,
-    );
-    const debt = formatRaw(decodedCredit?.debt ?? 0n);
-    const deposited = formatRaw(vaultSolx);
-
-    let collateralValue = formatRaw(decodedCredit?.collateralValue ?? 0n);
-    let borrowLimit = formatRaw(decodedCredit?.borrowLimit ?? 0n);
-    let liquidationCapacity = formatRaw(
-      decodedCredit?.liquidationCapacity ?? 0n,
-    );
-
-    if (pyth.price != null && deposited > 0) {
-      collateralValue = deposited * pyth.price;
-      borrowLimit = collateralValue * (solxMarket.ltvBps / 10_000);
-      liquidationCapacity =
-        collateralValue *
-        (solxMarket.liquidationThresholdBps / 10_000);
-    }
-
-    const healthFactor =
-      debt > 0
-        ? liquidationCapacity > 0
-          ? liquidationCapacity / debt
-          : decodedCredit?.health
-            ? Number(decodedCredit.health) / 10_000
-            : 0
-        : null;
-
-    const next: MiladyState = {
-      ...base,
-      solx: {
-        ...base.solx,
-        walletBalance: formatRaw(walletSolx),
-        deposited,
-      },
-      wallet: {
-        address: walletAddress,
-        sol: solLamports / 1e9,
-        usdg: formatRaw(walletUsdg),
-        credit: credit.toBase58(),
-        creditExists: Boolean(creditInfo),
-        supplier: supplier.toBase58(),
-        suppliedUsdg: formatRaw(suppliedRaw),
-      },
-      credit: {
-        debt,
-        collateralValue,
-        borrowLimit,
-        availableToBorrow: Math.max(0, borrowLimit - debt),
-        liquidationCapacity,
-        healthFactor,
-      },
-    };
-
-    setState(next);
-    return next;
+    setState(data as MiladyState);
+    return data as MiladyState;
   };
 
   const connect = async () => {
