@@ -1064,12 +1064,33 @@ export function FortyFourMiladyScreen() {
                   </button>
                 </div>
 
-                <label className="mt-5 block text-xs text-white/35">Borrow USDG
-                  <input value={borrowAmount} onChange={(e) => setBorrowAmount(e.target.value)} inputMode="decimal" className="mt-2 w-full rounded-xl border border-white/[.08] bg-black/35 p-3 text-lg text-white outline-none" />
-                </label>
-                <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="mt-5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-white/35">Borrow USDG</label>
+                    <button
+                      type="button"
+                      disabled={!canBorrow || safeMaxBorrow <= 0 || Boolean(busy)}
+                      onClick={setSafeMaxBorrow}
+                      className="rounded-lg border border-[#b7ff3c]/20 px-2.5 py-1 text-[10px] font-semibold text-[#caff75] disabled:opacity-35"
+                    >
+                      Max
+                    </button>
+                  </div>
+                  <input
+                    value={borrowAmount}
+                    onChange={(e) => setBorrowAmount(e.target.value)}
+                    inputMode="decimal"
+                    className="mt-2 w-full rounded-xl border border-white/[.08] bg-black/35 p-3 text-lg text-white outline-none"
+                  />
+                  <div className="mt-2 flex items-center justify-between text-[10px] text-white/25">
+                    <span>Available {qty(credit?.availableToBorrow, 2)} USDG</span>
+                    <span>Max keeps a 5% oracle buffer</span>
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
                   <div className="rounded-xl bg-white/[.025] p-3"><div className="text-[10px] text-white/25">Max LTV</div><div className="mt-1 font-semibold">{solx ? solx.ltvBps / 100 : 70}%</div></div>
-                  <div className="rounded-xl bg-white/[.025] p-3"><div className="text-[10px] text-white/25">Liquidation</div><div className="mt-1 font-semibold">{solx ? solx.liquidationThresholdBps / 100 : 80}%</div></div>
+                  <div className="rounded-xl bg-white/[.025] p-3"><div className="text-[10px] text-white/25">Borrow APR</div><div className="mt-1 font-semibold">{state?.pool ? `${qty(state.pool.borrowAprPct, 2)}%` : "—"}</div></div>
+                  <div className="rounded-xl bg-white/[.025] p-3"><div className="text-[10px] text-white/25">Utilization</div><div className="mt-1 font-semibold">{state?.pool ? `${qty(state.pool.utilizationPct, 2)}%` : "—"}</div></div>
                   <div className="rounded-xl bg-white/[.025] p-3"><div className="text-[10px] text-white/25">Oracle</div><div className="mt-1 font-semibold">Pyth</div></div>
                 </div>
                 <button disabled={Boolean(busy) || !canBorrow} onClick={borrow} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-[#b7ff3c] py-4 text-sm font-semibold text-black disabled:opacity-35">
@@ -1082,10 +1103,11 @@ export function FortyFourMiladyScreen() {
                 <label className="mt-6 block text-xs text-white/35">USDG amount
                   <input value={supplyAmount} onChange={(e) => setSupplyAmount(e.target.value)} inputMode="decimal" className="mt-2 w-full rounded-xl border border-white/[.08] bg-black/35 p-3 text-lg text-white outline-none" />
                 </label>
-                <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
                   <div className="rounded-xl bg-white/[.025] p-3"><div className="text-[10px] text-white/25">Wallet</div><div className="mt-1 font-semibold">{qty(walletState?.usdg, 2)} USDG</div></div>
                   <div className="rounded-xl bg-white/[.025] p-3"><div className="text-[10px] text-white/25">Your supply</div><div className="mt-1 font-semibold">{qty(walletState?.suppliedUsdg, 2)}</div></div>
-                  <div className="rounded-xl bg-white/[.025] p-3"><div className="text-[10px] text-white/25">Pool</div><div className="mt-1 font-semibold">{qty(state?.poolUsdg, 2)}</div></div>
+                  <div className="rounded-xl bg-white/[.025] p-3"><div className="text-[10px] text-white/25">Supply APR</div><div className="mt-1 font-semibold">{state?.pool ? `${qty(state.pool.supplyAprPct, 2)}%` : "—"}</div></div>
+                  <div className="rounded-xl bg-white/[.025] p-3"><div className="text-[10px] text-white/25">Pool liquidity</div><div className="mt-1 font-semibold">{qty(state?.poolUsdg, 2)}</div></div>
                 </div>
                 <div className="mt-5 grid gap-2 sm:grid-cols-3">
                   <button
@@ -1145,6 +1167,65 @@ export function FortyFourMiladyScreen() {
                     <button disabled={Boolean(busy) || !canWithdrawCollateral} onClick={() => sendAction("withdrawCollateral", withdrawAmount)} className="rounded-xl border border-[#b7ff3c]/20 px-3 py-2 text-xs font-semibold text-[#caff75] disabled:opacity-35">{busy === "withdrawCollateral" ? "Withdrawing…" : "Withdraw SOLx"}</button>
                   </div>
                   {(credit?.debt || 0) > 0 && <p className="mt-2 text-[10px] text-white/25">Repay debt first before collateral withdrawal.</p>}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-[28px] border border-white/[.08] bg-[#0a0a0a] p-5">
+              <div className="flex items-center gap-2"><Landmark className="h-4 w-4 text-[#b7ff3c]" /><h3 className="font-semibold">USDG lending pool</h3></div>
+              <div className="mt-5 grid grid-cols-2 gap-3 text-xs">
+                <div className="rounded-xl bg-white/[.025] p-3">
+                  <div className="text-[10px] uppercase tracking-[.12em] text-white/25">Utilization</div>
+                  <div className="mt-1 text-lg font-semibold">{state?.pool ? `${qty(state.pool.utilizationPct, 2)}%` : "—"}</div>
+                </div>
+                <div className="rounded-xl bg-white/[.025] p-3">
+                  <div className="text-[10px] uppercase tracking-[.12em] text-white/25">Available</div>
+                  <div className="mt-1 text-lg font-semibold">{state?.pool ? `${qty(state.pool.availableUsdg, 2)} USDG` : "—"}</div>
+                </div>
+                <div className="rounded-xl bg-white/[.025] p-3">
+                  <div className="text-[10px] uppercase tracking-[.12em] text-white/25">Borrow APR</div>
+                  <div className="mt-1 text-lg font-semibold">{state?.pool ? `${qty(state.pool.borrowAprPct, 2)}%` : "—"}</div>
+                </div>
+                <div className="rounded-xl bg-white/[.025] p-3">
+                  <div className="text-[10px] uppercase tracking-[.12em] text-white/25">Supply APR</div>
+                  <div className="mt-1 text-lg font-semibold">{state?.pool ? `${qty(state.pool.supplyAprPct, 2)}%` : "—"}</div>
+                </div>
+              </div>
+              <div className="mt-3 flex justify-between text-[10px] text-white/25">
+                <span>Supplied {qty(state?.pool?.totalSuppliedUsdg, 2)} USDG</span>
+                <span>Borrowed {qty(state?.pool?.totalBorrowedUsdg, 2)} USDG</span>
+              </div>
+            </div>
+
+            <div className="rounded-[28px] border border-white/[.08] bg-[#0a0a0a] p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2"><Activity className="h-4 w-4 text-[#b7ff3c]" /><h3 className="font-semibold">Recent transactions</h3></div>
+                <span className="text-[10px] text-white/25">This wallet</span>
+              </div>
+              {txHistory.length === 0 ? (
+                <div className="mt-5 rounded-xl border border-dashed border-white/[.08] p-4 text-xs text-white/30">
+                  Successful 44 Milady actions will appear here.
+                </div>
+              ) : (
+                <div className="mt-4 space-y-2">
+                  {txHistory.slice(0, 6).map((item) => (
+                    <a
+                      key={item.signature}
+                      href={`https://explorer.solana.com/tx/${item.signature}?cluster=devnet`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-white/[.06] bg-white/[.02] p-3 transition hover:bg-white/[.04]"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-xs font-medium text-white/75">{item.label}</div>
+                        <div className="mt-1 text-[10px] text-white/25">
+                          {item.amount ? `${item.amount} · ` : ""}
+                          {new Date(item.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                      </div>
+                      <span className="font-mono text-[10px] text-[#caff75]">{short(item.signature, 5, 4)}</span>
+                    </a>
+                  ))}
                 </div>
               )}
             </div>
