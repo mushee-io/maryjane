@@ -80,7 +80,7 @@ async function directWalletBalances(
   if (!wallet || !marketState?.market.collateralMint || !marketState.market.yesMint || !marketState.market.noMint) return null;
   const connection = new Connection("https://api.devnet.solana.com", "confirmed");
   const owner = new PublicKey(wallet);
-  const readMint = async (mintValue: string, symbol: "USDG"|"YES"|"NO") => {
+  const readMint = async <S extends "USDG"|"YES"|"NO">(mintValue: string, symbol: S): Promise<{ symbol: S; mint: string; amount: string; decimals: number; uiAmount: number; ata: string }> => {
     const mint = new PublicKey(mintValue);
     const rows = await connection.getParsedTokenAccountsByOwner(owner, { mint }, "confirmed");
     let amount = 0n;
