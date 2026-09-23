@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Activity,
@@ -265,7 +266,7 @@ export function FortyFourMiladyScreen() {
                 { pubkey: new PublicKey(accounts.solxMarket), isSigner: false, isWritable: false },
                 { pubkey: pythAccount, isSigner: false, isWritable: false },
               ],
-              data: instructionData,
+              data: Buffer.from(instructionData),
             }),
             signers: [],
           },
