@@ -17,7 +17,6 @@ import {
   SystemProgram,
   Transaction,
   TransactionInstruction,
-  VersionedTransaction,
 } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
@@ -212,7 +211,10 @@ function qty(value: number | null | undefined, digits = 4) {
 }
 
 function friendlyTransactionError(error: any) {
-  const text = String(error?.message || error || "");
+  const logs = Array.isArray(error?.logs) ? error.logs.join(" | ") : "";
+  const text = [String(error?.message || error || ""), logs]
+    .filter(Boolean)
+    .join(" | ");
   if (/insufficient funds/i.test(text)) {
     return "Not enough test tokens for this action. Claim the required test token first, wait for the balance to refresh, then retry.";
   }
@@ -660,6 +662,22 @@ export function FortyFourMiladyScreen() {
       );
       const solxMarket = new PublicKey(state.solx.market);
 
+      const borrowerUsdgInfo = await connection.getAccountInfo(
+        borrowerUsdg,
+        "confirmed",
+      );
+      if (!borrowerUsdgInfo) {
+        const ataSignature = await sendInstructions([
+          createAssociatedTokenAccountIdempotentInstruction(
+            owner,
+            borrowerUsdg,
+            owner,
+            USDG_MINT,
+          ),
+        ]);
+        setLastSignature(ataSignature);
+      }
+
       const anchorWallet = {
         publicKey: owner,
         signTransaction: (tx: any) => p.signTransaction(tx),
@@ -686,16 +704,6 @@ export function FortyFourMiladyScreen() {
         async (getPriceUpdateAccount) => {
           const pythAccount = getPriceUpdateAccount(SOL_FEED_ID);
           return [
-            {
-              instruction:
-                createAssociatedTokenAccountIdempotentInstruction(
-                  owner,
-                  borrowerUsdg,
-                  owner,
-                  USDG_MINT,
-                ),
-              signers: [],
-            },
             {
               instruction: new TransactionInstruction({
                 programId: PROGRAM_ID,
@@ -751,26 +759,16 @@ export function FortyFourMiladyScreen() {
         tightComputeBudget: true,
       });
 
-      let finalSignature = "";
-      for (const item of built as any[]) {
-        const tx = item.tx;
-        const signers = item.signers || [];
-        if (signers.length) {
-          if (tx instanceof VersionedTransaction) tx.sign(signers);
-          else {
-            for (const signer of signers) tx.partialSign(signer);
-          }
-        }
-        const signed = await p.signTransaction(tx);
-        const signature = await connection.sendRawTransaction(
-          signed.serialize(),
-          {
-            skipPreflight: false,
-            preflightCommitment: "confirmed",
-          },
-        );
-        await connection.confirmTransaction(signature, "confirmed");
-        finalSignature = signature;
+      const signatures = await receiver.provider.sendAll(
+        built as any,
+        {
+          preflightCommitment: "confirmed",
+          commitment: "confirmed",
+        },
+      );
+      const finalSignature = signatures.at(-1) || "";
+      if (!finalSignature) {
+        throw new Error("Pyth borrow transaction did not return a signature");
       }
 
       setLastSignature(finalSignature);
