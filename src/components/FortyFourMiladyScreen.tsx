@@ -129,7 +129,7 @@ async function findSolxMarket(connection: Connection) {
   throw new Error("SOLx market is not initialized on Devnet");
 }
 async function fetchPythSol() {
-  const response = await fetch("/api/pyth-sol", { cache: "no-store" });
+  const response = await fetch("/api/discovery-feed?pythSol=1", { cache: "no-store" });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     return {
