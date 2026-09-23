@@ -6,7 +6,6 @@ import {
   SystemProgram,
   Transaction,
   TransactionInstruction,
-  VersionedTransaction,
 } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
@@ -397,6 +396,7 @@ export function registerFortyFourMiladyRoutes(app: express.Express, connection: 
       const w = deriveWalletState(walletKey, solx.mint, solx.address);
       const creditInfo = await connection.getAccountInfo(w.credit, "confirmed");
       if (!creditInfo) throw new Error("Initialize your 44 Milady credit account first");
+
       const vaultAmount = await tokenBalance(connection, w.solxVault);
       if (vaultAmount <= 0n) throw new Error("Deposit SOLx collateral first");
 
@@ -404,76 +404,39 @@ export function registerFortyFourMiladyRoutes(app: express.Express, connection: 
       if (!pyth.configured || pyth.price == null || !pyth.updateData) {
         throw new Error("PYTH_API_KEY is not configured on the Mary Jane server");
       }
+
       const collateralValue = formatRaw(vaultAmount) * pyth.price;
-      const maxBorrowRaw = BigInt(Math.floor(collateralValue * (solx.ltvBps / 10_000) * 1_000_000));
+      const maxBorrowRaw = BigInt(
+        Math.floor(collateralValue * (solx.ltvBps / 10_000) * 1_000_000),
+      );
       const credit = decodeCredit(Buffer.from(creditInfo.data));
       const currentDebt = credit?.debt ?? 0n;
-      if (currentDebt + amount > maxBorrowRaw) throw new Error("Borrow amount exceeds the current SOLx LTV limit");
-
-      const readonlyWallet = {
-        publicKey: walletKey,
-        signTransaction: async <T>(tx: T) => tx,
-        signAllTransactions: async <T>(txs: T[]) => txs,
-      } as any;
-      const { PythSolanaReceiver } = await import("@pythnetwork/pyth-solana-receiver");
-      const receiver = new PythSolanaReceiver({ connection, wallet: readonlyWallet });
-      const builder = receiver.newTransactionBuilder({ closeUpdateAccounts: true });
-      await builder.addPostPriceUpdates(pyth.updateData);
-
-      await builder.addPriceConsumerInstructions(async (getPriceUpdateAccount: (feedId: string) => PublicKey) => {
-        const pythAccount = getPriceUpdateAccount(SOL_FEED_ID);
-        const instructions: any[] = [];
-        const usdgInfo = await connection.getAccountInfo(w.usdgAta, "confirmed");
-        if (!usdgInfo) {
-          instructions.push({
-            instruction: createAssociatedTokenAccountIdempotentInstruction(walletKey, w.usdgAta, walletKey, USDG_MINT),
-            signers: [],
-          });
-        }
-        instructions.push({
-          instruction: new TransactionInstruction({
-            programId: PROGRAM_ID,
-            keys: [
-              { pubkey: walletKey, isSigner: true, isWritable: true },
-              { pubkey: PROTOCOL, isSigner: false, isWritable: false },
-              { pubkey: w.credit, isSigner: false, isWritable: true },
-              { pubkey: LENDING_POOL, isSigner: false, isWritable: true },
-              { pubkey: USDG_MINT, isSigner: false, isWritable: false },
-              { pubkey: w.usdgAta, isSigner: false, isWritable: true },
-              { pubkey: LIQUIDITY_VAULT, isSigner: false, isWritable: true },
-              { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-              { pubkey: solx.address, isSigner: false, isWritable: false },
-              { pubkey: pythAccount, isSigner: false, isWritable: false },
-            ],
-            data: Buffer.concat([ixDisc("borrow_usdg"), u64(amount)]),
-          }),
-          signers: [],
-        });
-        return instructions;
-      });
-
-      const built = await builder.buildVersionedTransactions({
-        computeUnitPriceMicroLamports: 1_000,
-        tightComputeBudget: true,
-      });
-      const transactions = built.map((item: any) => {
-        const tx = item.tx;
-        const signers = item.signers || [];
-        if (signers.length) {
-          if (tx instanceof VersionedTransaction) tx.sign(signers);
-          else for (const signer of signers) tx.partialSign(signer);
-        }
-        return Buffer.from(tx.serialize()).toString("base64");
-      });
+      if (currentDebt + amount > maxBorrowRaw) {
+        throw new Error("Borrow amount exceeds the current SOLx LTV limit");
+      }
 
       res.json({
-        transactions,
+        updateData: pyth.updateData,
+        feedId: SOL_FEED_ID,
         oraclePrice: pyth.price,
         collateralValue,
         maxBorrow: Number(maxBorrowRaw) / 1_000_000,
+        amountBaseUnits: amount.toString(),
+        accounts: {
+          programId: PROGRAM_ID.toBase58(),
+          protocol: PROTOCOL.toBase58(),
+          credit: w.credit.toBase58(),
+          lendingPool: LENDING_POOL.toBase58(),
+          usdgMint: USDG_MINT.toBase58(),
+          borrowerUsdgAccount: w.usdgAta.toBase58(),
+          liquidityVault: LIQUIDITY_VAULT.toBase58(),
+          solxMarket: solx.address.toBase58(),
+        },
       });
     } catch (error: any) {
-      res.status(400).json({ error: error?.message || "Unable to build Pyth-backed borrow transaction" });
+      res.status(400).json({
+        error: error?.message || "Unable to prepare Pyth-backed borrow",
+      });
     }
   });
 }
