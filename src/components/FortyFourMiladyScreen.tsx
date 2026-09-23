@@ -233,14 +233,128 @@ export function FortyFourMiladyScreen() {
   const [lastSignature, setLastSignature] = useState("");
 
   const loadState = async (walletAddress = wallet) => {
-    const url = walletAddress
-      ? `/api/v1/44-milady/state?wallet=${encodeURIComponent(walletAddress)}`
-      : "/api/v1/44-milady/state";
-    const response = await fetch(url);
-    const data = await response.json();
-    if (!response.ok) throw new Error(data?.error || "Unable to load 44 Milady state");
-    setState(data);
-    return data as MiladyState;
+    const connection = new Connection(RPC_URL, "confirmed");
+    const [programInfo, solxMarket, poolRaw, pyth] = await Promise.all([
+      connection.getAccountInfo(PROGRAM_ID, "confirmed"),
+      findSolxMarket(connection),
+      rawTokenBalance(connection, LIQUIDITY_VAULT),
+      fetchPythSol().catch(() => ({
+        configured: false,
+        price: null as number | null,
+        updateData: null as string[] | null,
+        error: "Pyth unavailable",
+      })),
+    ]);
+
+    const base: MiladyState = {
+      network: "devnet",
+      programId: PROGRAM_ID.toBase58(),
+      programLive: Boolean(programInfo?.executable),
+      protocol: PROTOCOL.toBase58(),
+      usdgMint: USDG_MINT.toBase58(),
+      lendingPool: LENDING_POOL.toBase58(),
+      liquidityVault: LIQUIDITY_VAULT.toBase58(),
+      poolUsdg: formatRaw(poolRaw),
+      solx: {
+        market: solxMarket.address.toBase58(),
+        mint: solxMarket.mint.toBase58(),
+        ltvBps: solxMarket.ltvBps,
+        liquidationThresholdBps: solxMarket.liquidationThresholdBps,
+      },
+      oracle: {
+        price: pyth.price,
+        configured: pyth.configured,
+      },
+    };
+
+    if (!walletAddress) {
+      setState(base);
+      return base;
+    }
+
+    const owner = new PublicKey(walletAddress);
+    const credit = deriveCredit(owner);
+    const supplier = deriveSupplier(owner);
+    const solxVault = deriveVault(credit, solxMarket.address);
+    const usdgAta = getAssociatedTokenAddressSync(USDG_MINT, owner);
+    const solxAta = getAssociatedTokenAddressSync(solxMarket.mint, owner);
+
+    const [
+      creditInfo,
+      supplierInfo,
+      walletUsdg,
+      walletSolx,
+      vaultSolx,
+      solLamports,
+    ] = await Promise.all([
+      connection.getAccountInfo(credit, "confirmed"),
+      connection.getAccountInfo(supplier, "confirmed"),
+      rawTokenBalance(connection, usdgAta),
+      rawTokenBalance(connection, solxAta),
+      rawTokenBalance(connection, solxVault),
+      connection.getBalance(owner, "confirmed"),
+    ]);
+
+    const decodedCredit = decodeCredit(
+      creditInfo ? Buffer.from(creditInfo.data) : null,
+    );
+    const suppliedRaw = decodeSupplier(
+      supplierInfo ? Buffer.from(supplierInfo.data) : null,
+    );
+    const debt = formatRaw(decodedCredit?.debt ?? 0n);
+    const deposited = formatRaw(vaultSolx);
+
+    let collateralValue = formatRaw(decodedCredit?.collateralValue ?? 0n);
+    let borrowLimit = formatRaw(decodedCredit?.borrowLimit ?? 0n);
+    let liquidationCapacity = formatRaw(
+      decodedCredit?.liquidationCapacity ?? 0n,
+    );
+
+    if (pyth.price != null && deposited > 0) {
+      collateralValue = deposited * pyth.price;
+      borrowLimit = collateralValue * (solxMarket.ltvBps / 10_000);
+      liquidationCapacity =
+        collateralValue *
+        (solxMarket.liquidationThresholdBps / 10_000);
+    }
+
+    const healthFactor =
+      debt > 0
+        ? liquidationCapacity > 0
+          ? liquidationCapacity / debt
+          : decodedCredit?.health
+            ? Number(decodedCredit.health) / 10_000
+            : 0
+        : null;
+
+    const next: MiladyState = {
+      ...base,
+      solx: {
+        ...base.solx,
+        walletBalance: formatRaw(walletSolx),
+        deposited,
+      },
+      wallet: {
+        address: walletAddress,
+        sol: solLamports / 1e9,
+        usdg: formatRaw(walletUsdg),
+        credit: credit.toBase58(),
+        creditExists: Boolean(creditInfo),
+        supplier: supplier.toBase58(),
+        suppliedUsdg: formatRaw(suppliedRaw),
+      },
+      credit: {
+        debt,
+        collateralValue,
+        borrowLimit,
+        availableToBorrow: Math.max(0, borrowLimit - debt),
+        liquidationCapacity,
+        healthFactor,
+      },
+    };
+
+    setState(next);
+    return next;
   };
 
   const connect = async () => {
@@ -268,34 +382,242 @@ export function FortyFourMiladyScreen() {
     }
   };
 
-  const signAndSendLegacy = async (transactionBase64: string) => {
+  const sendInstructions = async (instructions: TransactionInstruction[]) => {
     const p = provider();
-    if (!p?.signTransaction) throw new Error("Connected wallet does not support transaction signing");
+    if (!p?.signTransaction) {
+      throw new Error("Connected wallet does not support transaction signing");
+    }
     const connection = new Connection(RPC_URL, "confirmed");
-    const tx = Transaction.from(decodeBase64(transactionBase64));
+    const owner = new PublicKey(wallet);
+    const latest = await connection.getLatestBlockhash("confirmed");
+    const tx = new Transaction({
+      feePayer: owner,
+      recentBlockhash: latest.blockhash,
+    }).add(...instructions);
     const signed = await p.signTransaction(tx);
     const signature = await connection.sendRawTransaction(signed.serialize(), {
       skipPreflight: false,
       preflightCommitment: "confirmed",
     });
-    await connection.confirmTransaction(signature, "confirmed");
+    await connection.confirmTransaction(
+      {
+        signature,
+        blockhash: latest.blockhash,
+        lastValidBlockHeight: latest.lastValidBlockHeight,
+      },
+      "confirmed",
+    );
     return signature;
   };
 
   const sendAction = async (action: string, amount?: string) => {
     if (!wallet) return connect();
+    if (!state?.solx?.mint || !state?.solx?.market) {
+      throw new Error("SOLx market state is not loaded");
+    }
+
     setBusy(action);
     setMessage("");
     setError("");
+
     try {
-      const response = await fetch("/api/v1/44-milady/build-transaction", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ wallet, action, amount }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.error || "Unable to build transaction");
-      const signature = await signAndSendLegacy(data.transactionBase64);
+      const owner = new PublicKey(wallet);
+      const solxMint = new PublicKey(state.solx.mint);
+      const solxMarket = new PublicKey(state.solx.market);
+      const credit = deriveCredit(owner);
+      const supplier = deriveSupplier(owner);
+      const solxVault = deriveVault(credit, solxMarket);
+      const usdgAta = getAssociatedTokenAddressSync(USDG_MINT, owner);
+      const solxAta = getAssociatedTokenAddressSync(solxMint, owner);
+      const instructions: TransactionInstruction[] = [];
+      const raw =
+        action === "initializeCredit" ||
+        action === "claimUsdg" ||
+        action === "claimSolx" ||
+        action === "repayMax"
+          ? 0n
+          : parseAmount(String(amount || ""));
+
+      if (action === "initializeCredit") {
+        instructions.push(
+          new TransactionInstruction({
+            programId: PROGRAM_ID,
+            keys: [
+              { pubkey: owner, isSigner: true, isWritable: true },
+              { pubkey: PROTOCOL, isSigner: false, isWritable: false },
+              { pubkey: credit, isSigner: false, isWritable: true },
+              {
+                pubkey: SystemProgram.programId,
+                isSigner: false,
+                isWritable: false,
+              },
+            ],
+            data: instructionDisc("781f9a4e363c597b"),
+          }),
+        );
+      } else if (action === "claimUsdg" || action === "claimSolx") {
+        const mint = action === "claimUsdg" ? USDG_MINT : solxMint;
+        const destination = action === "claimUsdg" ? usdgAta : solxAta;
+        instructions.push(
+          createAssociatedTokenAccountIdempotentInstruction(
+            owner,
+            destination,
+            owner,
+            mint,
+          ),
+          new TransactionInstruction({
+            programId: PROGRAM_ID,
+            keys: [
+              { pubkey: owner, isSigner: true, isWritable: true },
+              { pubkey: PROTOCOL, isSigner: false, isWritable: false },
+              { pubkey: deriveFaucet(mint), isSigner: false, isWritable: false },
+              { pubkey: mint, isSigner: false, isWritable: true },
+              { pubkey: destination, isSigner: false, isWritable: true },
+              { pubkey: deriveClaim(owner, mint), isSigner: false, isWritable: true },
+              { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+              {
+                pubkey: SystemProgram.programId,
+                isSigner: false,
+                isWritable: false,
+              },
+            ],
+            data: instructionDisc("5007fb6c37918744"),
+          }),
+        );
+      } else if (action === "supply") {
+        instructions.push(
+          createAssociatedTokenAccountIdempotentInstruction(
+            owner,
+            usdgAta,
+            owner,
+            USDG_MINT,
+          ),
+          new TransactionInstruction({
+            programId: PROGRAM_ID,
+            keys: [
+              { pubkey: owner, isSigner: true, isWritable: true },
+              { pubkey: PROTOCOL, isSigner: false, isWritable: false },
+              { pubkey: LENDING_POOL, isSigner: false, isWritable: true },
+              { pubkey: USDG_MINT, isSigner: false, isWritable: false },
+              { pubkey: usdgAta, isSigner: false, isWritable: true },
+              { pubkey: LIQUIDITY_VAULT, isSigner: false, isWritable: true },
+              { pubkey: supplier, isSigner: false, isWritable: true },
+              { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+              {
+                pubkey: SystemProgram.programId,
+                isSigner: false,
+                isWritable: false,
+              },
+            ],
+            data: Buffer.concat([
+              instructionDisc("16e2d4f29838c2cd"),
+              u64(raw),
+            ]),
+          }),
+        );
+      } else if (action === "withdrawSupply") {
+        instructions.push(
+          new TransactionInstruction({
+            programId: PROGRAM_ID,
+            keys: [
+              { pubkey: owner, isSigner: true, isWritable: true },
+              { pubkey: PROTOCOL, isSigner: false, isWritable: false },
+              { pubkey: LENDING_POOL, isSigner: false, isWritable: true },
+              { pubkey: USDG_MINT, isSigner: false, isWritable: false },
+              { pubkey: usdgAta, isSigner: false, isWritable: true },
+              { pubkey: LIQUIDITY_VAULT, isSigner: false, isWritable: true },
+              { pubkey: supplier, isSigner: false, isWritable: true },
+              { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+            ],
+            data: Buffer.concat([
+              instructionDisc("5941168bbb6a503f"),
+              u64(raw),
+            ]),
+          }),
+        );
+      } else if (action === "deposit") {
+        instructions.push(
+          createAssociatedTokenAccountIdempotentInstruction(
+            owner,
+            solxAta,
+            owner,
+            solxMint,
+          ),
+          new TransactionInstruction({
+            programId: PROGRAM_ID,
+            keys: [
+              { pubkey: owner, isSigner: true, isWritable: true },
+              { pubkey: PROTOCOL, isSigner: false, isWritable: false },
+              { pubkey: credit, isSigner: false, isWritable: true },
+              { pubkey: solxMarket, isSigner: false, isWritable: true },
+              { pubkey: solxMint, isSigner: false, isWritable: false },
+              { pubkey: solxAta, isSigner: false, isWritable: true },
+              { pubkey: solxVault, isSigner: false, isWritable: true },
+              { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+              {
+                pubkey: SystemProgram.programId,
+                isSigner: false,
+                isWritable: false,
+              },
+            ],
+            data: Buffer.concat([
+              instructionDisc("9c838e7492f7a278"),
+              u64(raw),
+            ]),
+          }),
+        );
+      } else if (action === "repay" || action === "repayMax") {
+        instructions.push(
+          new TransactionInstruction({
+            programId: PROGRAM_ID,
+            keys: [
+              { pubkey: owner, isSigner: true, isWritable: true },
+              { pubkey: PROTOCOL, isSigner: false, isWritable: false },
+              { pubkey: credit, isSigner: false, isWritable: true },
+              { pubkey: LENDING_POOL, isSigner: false, isWritable: true },
+              { pubkey: USDG_MINT, isSigner: false, isWritable: false },
+              { pubkey: usdgAta, isSigner: false, isWritable: true },
+              { pubkey: LIQUIDITY_VAULT, isSigner: false, isWritable: true },
+              { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+            ],
+            data:
+              action === "repayMax"
+                ? instructionDisc("b5a72647a1095fbd")
+                : Buffer.concat([
+                    instructionDisc("662241950bacfad1"),
+                    u64(raw),
+                  ]),
+          }),
+        );
+      } else if (action === "withdrawCollateral") {
+        if ((state.credit?.debt || 0) > 0) {
+          throw new Error("Repay the USDG debt before withdrawing SOLx");
+        }
+        instructions.push(
+          new TransactionInstruction({
+            programId: PROGRAM_ID,
+            keys: [
+              { pubkey: owner, isSigner: true, isWritable: true },
+              { pubkey: PROTOCOL, isSigner: false, isWritable: false },
+              { pubkey: credit, isSigner: false, isWritable: true },
+              { pubkey: LENDING_POOL, isSigner: false, isWritable: true },
+              { pubkey: solxMarket, isSigner: false, isWritable: true },
+              { pubkey: solxMint, isSigner: false, isWritable: false },
+              { pubkey: solxAta, isSigner: false, isWritable: true },
+              { pubkey: solxVault, isSigner: false, isWritable: true },
+              { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+            ],
+            data: Buffer.concat([
+              instructionDisc("7387a86a8bd68a96"),
+              u64(raw),
+            ]),
+          }),
+        );
+      } else {
+        throw new Error("Unsupported 44 Milady action");
+      }
+
+      const signature = await sendInstructions(instructions);
       setLastSignature(signature);
       setMessage(`${action} confirmed on Solana Devnet`);
       await loadState(wallet);
@@ -308,30 +630,64 @@ export function FortyFourMiladyScreen() {
 
   const borrow = async () => {
     if (!wallet) return connect();
+    if (!state?.solx?.market || !state?.wallet?.creditExists) {
+      setError("Initialize your credit account and deposit SOLx first.");
+      return;
+    }
+
     setBusy("borrow");
     setMessage("");
     setError("");
+
     try {
-      const response = await fetch("/api/v1/44-milady/build-borrow", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ wallet, amount: borrowAmount }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.error || "Unable to prepare Pyth-backed borrow");
+      const pyth = await fetchPythSol();
+      if (!pyth.configured || pyth.price == null || !pyth.updateData?.length) {
+        throw new Error(
+          pyth.error ||
+            "Pyth SOL/USD is not configured on the Mary Jane deployment",
+        );
+      }
+
+      const borrowRaw = parseAmount(borrowAmount);
+      const collateralValue =
+        (state.solx.deposited || 0) * pyth.price;
+      const maxBorrowRaw = BigInt(
+        Math.floor(
+          collateralValue * (state.solx.ltvBps / 10_000) * 1_000_000,
+        ),
+      );
+      const currentDebtRaw = BigInt(
+        Math.round((state.credit?.debt || 0) * 1_000_000),
+      );
+      if (currentDebtRaw + borrowRaw > maxBorrowRaw) {
+        throw new Error("Borrow amount exceeds the current SOLx LTV limit");
+      }
 
       const p = provider();
-      if (!p?.signTransaction) throw new Error("Connected wallet does not support transaction signing");
+      if (!p?.signTransaction) {
+        throw new Error(
+          "Connected wallet does not support transaction signing",
+        );
+      }
 
       const connection = new Connection(RPC_URL, "confirmed");
-      const walletKey = new PublicKey(wallet);
+      const owner = new PublicKey(wallet);
+      const credit = deriveCredit(owner);
+      const borrowerUsdg = getAssociatedTokenAddressSync(
+        USDG_MINT,
+        owner,
+      );
+      const solxMarket = new PublicKey(state.solx.market);
+
       const anchorWallet = {
-        publicKey: walletKey,
+        publicKey: owner,
         signTransaction: (tx: any) => p.signTransaction(tx),
         signAllTransactions: async (txs: any[]) => {
           if (p.signAllTransactions) return p.signAllTransactions(txs);
           const signed = [];
-          for (const tx of txs) signed.push(await p.signTransaction(tx));
+          for (const tx of txs) {
+            signed.push(await p.signTransaction(tx));
+          }
           return signed;
         },
       } as any;
@@ -343,56 +699,71 @@ export function FortyFourMiladyScreen() {
       const builder = receiver.newTransactionBuilder({
         closeUpdateAccounts: true,
       });
+      await builder.addPostPriceUpdates(pyth.updateData);
 
-      await builder.addPostPriceUpdates(data.updateData as string[]);
-
-      const accounts = data.accounts;
-      const feedId = String(data.feedId);
-      const borrowRaw = BigInt(String(data.amountBaseUnits));
-
-      const amountBytes = new Uint8Array(8);
-      new DataView(amountBytes.buffer).setBigUint64(0, borrowRaw, true);
-      const discriminator = Uint8Array.from([0xf9, 0x98, 0xa2, 0x93, 0xf2, 0x25, 0x9a, 0x22]);
-      const instructionData = new Uint8Array(16);
-      instructionData.set(discriminator, 0);
-      instructionData.set(amountBytes, 8);
-
-      await builder.addPriceConsumerInstructions(async (getPriceUpdateAccount) => {
-        const pythAccount = getPriceUpdateAccount(feedId);
-        const borrowerUsdg = new PublicKey(accounts.borrowerUsdgAccount);
-        const usdgMint = new PublicKey(accounts.usdgMint);
-
-        return [
-          {
-            instruction: createAssociatedTokenAccountIdempotentInstruction(
-              walletKey,
-              borrowerUsdg,
-              walletKey,
-              usdgMint,
-            ),
-            signers: [],
-          },
-          {
-            instruction: new TransactionInstruction({
-              programId: new PublicKey(accounts.programId),
-              keys: [
-                { pubkey: walletKey, isSigner: true, isWritable: true },
-                { pubkey: new PublicKey(accounts.protocol), isSigner: false, isWritable: false },
-                { pubkey: new PublicKey(accounts.credit), isSigner: false, isWritable: true },
-                { pubkey: new PublicKey(accounts.lendingPool), isSigner: false, isWritable: true },
-                { pubkey: usdgMint, isSigner: false, isWritable: false },
-                { pubkey: borrowerUsdg, isSigner: false, isWritable: true },
-                { pubkey: new PublicKey(accounts.liquidityVault), isSigner: false, isWritable: true },
-                { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-                { pubkey: new PublicKey(accounts.solxMarket), isSigner: false, isWritable: false },
-                { pubkey: pythAccount, isSigner: false, isWritable: false },
-              ],
-              data: Buffer.from(instructionData),
-            }),
-            signers: [],
-          },
-        ];
-      });
+      await builder.addPriceConsumerInstructions(
+        async (getPriceUpdateAccount) => {
+          const pythAccount = getPriceUpdateAccount(SOL_FEED_ID);
+          return [
+            {
+              instruction:
+                createAssociatedTokenAccountIdempotentInstruction(
+                  owner,
+                  borrowerUsdg,
+                  owner,
+                  USDG_MINT,
+                ),
+              signers: [],
+            },
+            {
+              instruction: new TransactionInstruction({
+                programId: PROGRAM_ID,
+                keys: [
+                  { pubkey: owner, isSigner: true, isWritable: true },
+                  { pubkey: PROTOCOL, isSigner: false, isWritable: false },
+                  { pubkey: credit, isSigner: false, isWritable: true },
+                  {
+                    pubkey: LENDING_POOL,
+                    isSigner: false,
+                    isWritable: true,
+                  },
+                  { pubkey: USDG_MINT, isSigner: false, isWritable: false },
+                  {
+                    pubkey: borrowerUsdg,
+                    isSigner: false,
+                    isWritable: true,
+                  },
+                  {
+                    pubkey: LIQUIDITY_VAULT,
+                    isSigner: false,
+                    isWritable: true,
+                  },
+                  {
+                    pubkey: TOKEN_PROGRAM_ID,
+                    isSigner: false,
+                    isWritable: false,
+                  },
+                  {
+                    pubkey: solxMarket,
+                    isSigner: false,
+                    isWritable: false,
+                  },
+                  {
+                    pubkey: pythAccount,
+                    isSigner: false,
+                    isWritable: false,
+                  },
+                ],
+                data: Buffer.concat([
+                  instructionDisc("f998a293f2259a22"),
+                  u64(borrowRaw),
+                ]),
+              }),
+              signers: [],
+            },
+          ];
+        },
+      );
 
       const built = await builder.buildVersionedTransactions({
         computeUnitPriceMicroLamports: 1_000,
@@ -405,20 +776,26 @@ export function FortyFourMiladyScreen() {
         const signers = item.signers || [];
         if (signers.length) {
           if (tx instanceof VersionedTransaction) tx.sign(signers);
-          else for (const signer of signers) tx.partialSign(signer);
+          else {
+            for (const signer of signers) tx.partialSign(signer);
+          }
         }
-
         const signed = await p.signTransaction(tx);
-        const signature = await connection.sendRawTransaction(signed.serialize(), {
-          skipPreflight: false,
-          preflightCommitment: "confirmed",
-        });
+        const signature = await connection.sendRawTransaction(
+          signed.serialize(),
+          {
+            skipPreflight: false,
+            preflightCommitment: "confirmed",
+          },
+        );
         await connection.confirmTransaction(signature, "confirmed");
         finalSignature = signature;
       }
 
       setLastSignature(finalSignature);
-      setMessage(`Borrowed ${borrowAmount} USDG against live Pyth SOL/USD collateral`);
+      setMessage(
+        `Borrowed ${borrowAmount} USDG against live Pyth SOL/USD collateral`,
+      );
       await loadState(wallet);
     } catch (e: any) {
       setError(e?.message || "Borrow failed");
