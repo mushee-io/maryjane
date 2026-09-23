@@ -10,7 +10,18 @@ import {
   ShieldCheck,
   Wallet,
 } from "lucide-react";
-import { Connection, Transaction, VersionedTransaction } from "@solana/web3.js";
+import {
+  Connection,
+  PublicKey,
+  Transaction,
+  TransactionInstruction,
+  VersionedTransaction,
+} from "@solana/web3.js";
+import {
+  TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountIdempotentInstruction,
+} from "@solana/spl-token";
+import { PythSolanaReceiver } from "@pythnetwork/pyth-solana-receiver";
 
 const RPC_URL = "https://api.devnet.solana.com";
 
@@ -185,15 +196,96 @@ export function FortyFourMiladyScreen() {
         body: JSON.stringify({ wallet, amount: borrowAmount }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data?.error || "Unable to build Pyth-backed borrow");
+      if (!response.ok) throw new Error(data?.error || "Unable to prepare Pyth-backed borrow");
 
       const p = provider();
       if (!p?.signTransaction) throw new Error("Connected wallet does not support transaction signing");
-      const connection = new Connection(RPC_URL, "confirmed");
-      let finalSignature = "";
 
-      for (const encoded of data.transactions as string[]) {
-        const tx = VersionedTransaction.deserialize(decodeBase64(encoded));
+      const connection = new Connection(RPC_URL, "confirmed");
+      const walletKey = new PublicKey(wallet);
+      const anchorWallet = {
+        publicKey: walletKey,
+        signTransaction: (tx: any) => p.signTransaction(tx),
+        signAllTransactions: async (txs: any[]) => {
+          if (p.signAllTransactions) return p.signAllTransactions(txs);
+          const signed = [];
+          for (const tx of txs) signed.push(await p.signTransaction(tx));
+          return signed;
+        },
+      } as any;
+
+      const receiver = new PythSolanaReceiver({
+        connection,
+        wallet: anchorWallet,
+      });
+      const builder = receiver.newTransactionBuilder({
+        closeUpdateAccounts: true,
+      });
+
+      await builder.addPostPriceUpdates(data.updateData as string[]);
+
+      const accounts = data.accounts;
+      const feedId = String(data.feedId);
+      const borrowRaw = BigInt(String(data.amountBaseUnits));
+
+      const amountBytes = new Uint8Array(8);
+      new DataView(amountBytes.buffer).setBigUint64(0, borrowRaw, true);
+      const discriminator = Uint8Array.from([0xf9, 0x98, 0xa2, 0x93, 0xf2, 0x25, 0x9a, 0x22]);
+      const instructionData = new Uint8Array(16);
+      instructionData.set(discriminator, 0);
+      instructionData.set(amountBytes, 8);
+
+      await builder.addPriceConsumerInstructions(async (getPriceUpdateAccount) => {
+        const pythAccount = getPriceUpdateAccount(feedId);
+        const borrowerUsdg = new PublicKey(accounts.borrowerUsdgAccount);
+        const usdgMint = new PublicKey(accounts.usdgMint);
+
+        return [
+          {
+            instruction: createAssociatedTokenAccountIdempotentInstruction(
+              walletKey,
+              borrowerUsdg,
+              walletKey,
+              usdgMint,
+            ),
+            signers: [],
+          },
+          {
+            instruction: new TransactionInstruction({
+              programId: new PublicKey(accounts.programId),
+              keys: [
+                { pubkey: walletKey, isSigner: true, isWritable: true },
+                { pubkey: new PublicKey(accounts.protocol), isSigner: false, isWritable: false },
+                { pubkey: new PublicKey(accounts.credit), isSigner: false, isWritable: true },
+                { pubkey: new PublicKey(accounts.lendingPool), isSigner: false, isWritable: true },
+                { pubkey: usdgMint, isSigner: false, isWritable: false },
+                { pubkey: borrowerUsdg, isSigner: false, isWritable: true },
+                { pubkey: new PublicKey(accounts.liquidityVault), isSigner: false, isWritable: true },
+                { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+                { pubkey: new PublicKey(accounts.solxMarket), isSigner: false, isWritable: false },
+                { pubkey: pythAccount, isSigner: false, isWritable: false },
+              ],
+              data: instructionData,
+            }),
+            signers: [],
+          },
+        ];
+      });
+
+      const built = await builder.buildVersionedTransactions({
+        computeUnitPriceMicroLamports: 1_000,
+        tightComputeBudget: true,
+      });
+
+      let finalSignature = "";
+      for (const item of built as any[]) {
+        const tx = item.tx;
+        const signers = item.signers || [];
+        if (signers.length) {
+          if (tx instanceof VersionedTransaction) tx.sign(signers);
+          else for (const signer of signers) tx.partialSign(signer);
+        }
+
         const signed = await p.signTransaction(tx);
         const signature = await connection.sendRawTransaction(signed.serialize(), {
           skipPreflight: false,
