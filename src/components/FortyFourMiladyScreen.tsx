@@ -44,7 +44,7 @@ function u64(value: bigint) {
 }
 function parseAmount(value: string) {
   const text = value.trim();
-  if (!/^\\d+(?:\\.\\d{0,6})?$/.test(text)) {
+  if (!/^\d+(?:\.\d{0,6})?$/.test(text)) {
     throw new Error("Amount must be a positive number with at most 6 decimals");
   }
   const [whole, frac = ""] = text.split(".");
