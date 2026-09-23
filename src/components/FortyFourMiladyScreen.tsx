@@ -12,7 +12,7 @@ import {
 import { Connection, PublicKey } from "@solana/web3.js";
 
 const RPC_URL = "https://api.devnet.solana.com";
-const PROGRAM_ID = new PublicKey("7ahY74GVSGRf9sDXFPtX6EnynoxWz2myNijQd7MPH5vF");
+const PROGRAM_ID = new PublicKey("BS3vTdhrkK5zHchx92PFGeodckt1dLzf7i9uJyEsmZst");
 
 const collateralMarkets = [
   { symbol: "NVDAx", ltv: 60, liquidation: 75, source: "Pyth" },
