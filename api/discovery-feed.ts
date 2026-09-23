@@ -108,11 +108,22 @@ async function miladyState(walletText?:string){
   }
   if(!solx)throw new Error("SOLx market not found on 44 Milady Devnet");
 
-  const [programAccount,poolRaw,pyth]=await Promise.all([
+  const [programAccount,poolRaw,poolAccount,pyth]=await Promise.all([
     rpcAccount(MILADY_PROGRAM_ID),
     rpcAmount(MILADY_LIQUIDITY_VAULT),
+    rpcAccount(MILADY_POOL),
     pythSolPayload().catch((error:any)=>({configured:Boolean(process.env.PYTH_API_KEY),price:null,updateData:null,error:error?.message||String(error)})),
   ]);
+
+  const poolData=poolAccount?accountRaw(poolAccount):Buffer.alloc(0);
+  const totalSuppliedRaw=poolData.length>=237?poolData.readBigUInt64LE(104):0n;
+  const totalBorrowedRaw=poolData.length>=237?poolData.readBigUInt64LE(112):0n;
+  const reserveFactorBps=poolData.length>=237?poolData.readUInt16LE(208):0;
+  const borrowAprBps=poolData.length>=237?poolData.readUInt32LE(224):0;
+  const supplyAprBps=poolData.length>=237?poolData.readUInt32LE(228):0;
+  const utilizationPct=totalSuppliedRaw>0n
+    ? Number(totalBorrowedRaw*10_000n/totalSuppliedRaw)/100
+    : 0;
 
   const base:any={
     network:"devnet",
@@ -123,6 +134,15 @@ async function miladyState(walletText?:string){
     lendingPool:MILADY_POOL.toBase58(),
     liquidityVault:MILADY_LIQUIDITY_VAULT.toBase58(),
     poolUsdg:Number(poolRaw)/1_000_000,
+    pool:{
+      availableUsdg:Number(poolRaw)/1_000_000,
+      totalSuppliedUsdg:Number(totalSuppliedRaw)/1_000_000,
+      totalBorrowedUsdg:Number(totalBorrowedRaw)/1_000_000,
+      utilizationPct,
+      borrowAprPct:borrowAprBps/100,
+      supplyAprPct:supplyAprBps/100,
+      reserveFactorPct:reserveFactorBps/100,
+    },
     solx:{
       market:solx.market.toBase58(),
       mint:solx.mint.toBase58(),
