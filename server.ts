@@ -265,10 +265,6 @@ export async function createMaryJaneApp(options: { local?: boolean } = {}) {
   });
 
   const solana = new Connection(SOLANA_RPC_URL, "confirmed");
-  if (local) {
-    const { registerFortyFourMiladyRoutes } = await import("./src/lib/fortyFourMiladyServer");
-    registerFortyFourMiladyRoutes(app, solana);
-  }
   const marketIndexer = new MarketIndexer(
     solana,
     MILADY_MARKET_PROGRAM_ID,
