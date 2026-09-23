@@ -1,0 +1,25 @@
+name: 44 Milady Production Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/components/FortyFourMiladyScreen.tsx"
+      - "src/lib/fortyFourMiladyServer.ts"
+      - "api/index.ts"
+      - "package.json"
+      - "vercel.json"
+      - "scripts/forty-four-milady-smoke.mjs"
+      - ".github/workflows/forty-four-milady.yml"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify production 44 Milady
+        run: node scripts/forty-four-milady-smoke.mjs
