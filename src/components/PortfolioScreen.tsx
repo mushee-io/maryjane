@@ -114,6 +114,7 @@ export function PortfolioScreen(){
             <a href="/create" className="rounded-full px-4 py-2 text-sm text-white/45">Create</a>
             <a href="/analytics" className="rounded-full px-4 py-2 text-sm text-white/45">Analytics</a>
             <a href="/44-milady" className="rounded-full px-4 py-2 text-sm font-semibold text-[#caff75]">44 Milady</a>
+            <a href="/7070" className="rounded-full px-4 py-2 text-sm font-semibold text-[#caff75] hover:bg-[#b7ff3c]/10">7070</a>
           </nav>
           <button onClick={connect} className="ml-auto flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-black"><Wallet className="h-4 w-4"/>{wallet?short(wallet):"Connect"}</button>
         </div>
