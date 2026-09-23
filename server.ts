@@ -19,7 +19,7 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { MarketIndexer, rangeToMs, type MarketStatus } from "./src/lib/marketIndexer";
-import { buildOrderBook, fetchExternalMarkets, normalizeNativeMarkets } from "./src/lib/marketAggregation";
+import { buildOrderBook, fetchExternalMarkets, normalizeNativeMarkets } from "./src/lib/marketAggregation";\nimport { registerFortyFourMiladyRoutes } from "./src/lib/fortyFourMiladyServer";
 import {
   MILADY_MARKET_PROGRAM_ID as SDK_PROGRAM_ID,
   USDG_DEVNET_MINT,
@@ -264,7 +264,7 @@ export async function createMaryJaneApp(options: { local?: boolean } = {}) {
     });
   });
 
-  const solana = new Connection(SOLANA_RPC_URL, "confirmed");
+  const solana = new Connection(SOLANA_RPC_URL, "confirmed");\n  registerFortyFourMiladyRoutes(app, solana);
   const marketIndexer = new MarketIndexer(
     solana,
     MILADY_MARKET_PROGRAM_ID,
