@@ -36,6 +36,12 @@
     },
     "api/market-action.ts": {
       "maxDuration": 30
+    },
+    "api/forty-four-milady.ts": {
+      "maxDuration": 60
+    },
+    "api/order-cancel.ts": {
+      "maxDuration": 30
     }
   },
   "routes": [
@@ -60,10 +66,6 @@
       "dest": "/api/cloudinary-signature"
     },
     {
-      "src": "/api/order-cancel",
-      "dest": "/api/index?path=order-cancel"
-    },
-    {
       "src": "/api/native-market-state",
       "dest": "/api/native-market-state"
     },
@@ -86,6 +88,14 @@
     {
       "src": "/api/marketlint-analyze",
       "dest": "/api/marketlint-analyze"
+    },
+    {
+      "src": "/api/order-cancel",
+      "dest": "/api/order-cancel"
+    },
+    {
+      "src": "/api/v1/44-milady/(?<action>.*)",
+      "dest": "/api/forty-four-milady?action=$action"
     },
     {
       "src": "/api/(?<path>.*)",
