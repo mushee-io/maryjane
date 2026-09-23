@@ -43,6 +43,11 @@ async function rpcAccount(address:PublicKey){
 function accountRaw(account:any){
   return dataBuffer(account);
 }
+function readU128Le(raw:Buffer,offset:number){
+  const lo=raw.readBigUInt64LE(offset);
+  const hi=raw.readBigUInt64LE(offset+8);
+  return lo+(hi<<64n);
+}
 function decodeMiladyCredit(raw:Buffer){
   if(raw.length<76)return null;
   let offset=40;
@@ -118,6 +123,7 @@ async function miladyState(walletText?:string){
   const poolData=poolAccount?accountRaw(poolAccount):Buffer.alloc(0);
   const totalSuppliedRaw=poolData.length>=237?poolData.readBigUInt64LE(104):0n;
   const totalBorrowedRaw=poolData.length>=237?poolData.readBigUInt64LE(112):0n;
+  const supplyIndexE18=poolData.length>=237?readU128Le(poolData,184):1_000_000_000_000_000_000n;
   const reserveFactorBps=poolData.length>=237?poolData.readUInt16LE(208):0;
   const borrowAprBps=poolData.length>=237?poolData.readUInt32LE(224):0;
   const supplyAprBps=poolData.length>=237?poolData.readUInt32LE(228):0;
@@ -170,7 +176,13 @@ async function miladyState(walletText?:string){
   ]);
 
   const decoded=creditAccount?decodeMiladyCredit(accountRaw(creditAccount)):null;
-  const supplied=supplierAccount&&accountRaw(supplierAccount).length>=80?accountRaw(supplierAccount).readBigUInt64LE(72):0n;
+  const supplierRaw=supplierAccount?accountRaw(supplierAccount):Buffer.alloc(0);
+  const supplied=supplierRaw.length>=113?supplierRaw.readBigUInt64LE(72):0n;
+  const supplierIndexSnapshot=supplierRaw.length>=113?readU128Le(supplierRaw,80):0n;
+  const supplierClaim=supplied>0n&&supplierIndexSnapshot>0n
+    ? supplied*supplyIndexE18/supplierIndexSnapshot
+    : supplied;
+  const supplierYield=supplierClaim>supplied?supplierClaim-supplied:0n;
   const debt=Number(decoded?.debt||0n)/1_000_000;
   const deposited=Number(vaultSolx)/1_000_000;
   let collateralValue=Number(decoded?.collateralValue||0n)/1_000_000;
@@ -193,6 +205,8 @@ async function miladyState(walletText?:string){
       creditExists:Boolean(creditAccount),
       supplier:supplier.toBase58(),
       suppliedUsdg:Number(supplied)/1_000_000,
+      supplierClaimUsdg:Number(supplierClaim)/1_000_000,
+      accruedYieldUsdg:Number(supplierYield)/1_000_000,
     },
     credit:{
       debt,
