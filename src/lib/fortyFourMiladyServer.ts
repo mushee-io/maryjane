@@ -13,8 +13,6 @@ import {
   createAssociatedTokenAccountIdempotentInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { HermesClient } from "@pythnetwork/hermes-client";
-import { PythSolanaReceiver } from "@pythnetwork/pyth-solana-receiver";
 
 const PROGRAM_ID = new PublicKey("BS3vTdhrkK5zHchx92PFGeodckt1dLzf7i9uJyEsmZst");
 const PROTOCOL = new PublicKey("ACszf63tCaLrk11goAU4FLsZyuXq1xznbHsS4SMmSvWc");
@@ -62,7 +60,7 @@ function decodeMarket(pubkey: PublicKey, data: Buffer) {
     liquidationBonusBps: data.readUInt16LE(117),
     maxConfidenceBps: data.readUInt16LE(119),
     maxPriceAgeSecs: data.readUInt32LE(121),
-    enabled: Boolean(data.readUInt8(141)),
+    enabled: Boolean(data.readUInt8(149)),
   };
 }
 function decodeCredit(data: Buffer | null) {
@@ -113,13 +111,31 @@ async function findSolxMarket(connection: Connection) {
 async function currentSolPrice() {
   const apiKey = process.env.PYTH_API_KEY?.trim();
   if (!apiKey) return { price: null as number | null, configured: false, updateData: null as string[] | null };
-  const hermes = new HermesClient("https://pyth.dourolabs.app/hermes", { accessToken: apiKey });
-  const response = await hermes.getLatestPriceUpdates([SOL_FEED_ID], { encoding: "base64" });
-  const parsed = response.parsed?.find((item: any) => ("0x" + String(item.id).replace(/^0x/, "")).toLowerCase() === SOL_FEED_ID)
-    ?? response.parsed?.[0];
-  if (!parsed?.price || !response?.binary?.data?.length) throw new Error("Pyth SOL/USD response is incomplete");
+
+  const url = new URL("https://pyth.dourolabs.app/hermes/v2/updates/price/latest");
+  url.searchParams.append("ids[]", SOL_FEED_ID);
+  url.searchParams.set("encoding", "base64");
+  url.searchParams.set("parsed", "true");
+
+  const response = await fetch(url, {
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      accept: "application/json",
+    },
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Pyth SOL/USD request failed (${response.status}): ${detail.slice(0, 180)}`);
+  }
+
+  const body: any = await response.json();
+  const parsed = body.parsed?.find((item: any) =>
+    ("0x" + String(item.id).replace(/^0x/, "")).toLowerCase() === SOL_FEED_ID
+  ) ?? body.parsed?.[0];
+  if (!parsed?.price || !body?.binary?.data?.length) throw new Error("Pyth SOL/USD response is incomplete");
   const price = Number(parsed.price.price) * 10 ** Number(parsed.price.expo);
-  return { price, configured: true, updateData: response.binary.data };
+  return { price, configured: true, updateData: body.binary.data as string[] };
 }
 function deriveWalletState(wallet: PublicKey, solxMint: PublicKey, solxMarket: PublicKey) {
   const [credit] = PublicKey.findProgramAddressSync([Buffer.from("credit"), wallet.toBuffer()], PROGRAM_ID);
@@ -399,6 +415,7 @@ export function registerFortyFourMiladyRoutes(app: express.Express, connection: 
         signTransaction: async <T>(tx: T) => tx,
         signAllTransactions: async <T>(txs: T[]) => txs,
       } as any;
+      const { PythSolanaReceiver } = await import("@pythnetwork/pyth-solana-receiver");
       const receiver = new PythSolanaReceiver({ connection, wallet: readonlyWallet });
       const builder = receiver.newTransactionBuilder({ closeUpdateAccounts: true });
       await builder.addPostPriceUpdates(pyth.updateData);
