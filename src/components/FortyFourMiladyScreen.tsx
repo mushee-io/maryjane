@@ -155,6 +155,15 @@ type MiladyState = {
   lendingPool: string;
   liquidityVault: string;
   poolUsdg: number;
+  pool?: {
+    availableUsdg: number;
+    totalSuppliedUsdg: number;
+    totalBorrowedUsdg: number;
+    utilizationPct: number;
+    borrowAprPct: number;
+    supplyAprPct: number;
+    reserveFactorPct: number;
+  };
   solx: {
     market: string;
     mint: string;
@@ -184,6 +193,13 @@ type MiladyState = {
     liquidationCapacity: number;
     healthFactor: number | null;
   };
+};
+
+type TxHistoryItem = {
+  signature: string;
+  label: string;
+  amount?: string;
+  timestamp: number;
 };
 
 function provider() {
@@ -258,6 +274,55 @@ export function FortyFourMiladyScreen() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [lastSignature, setLastSignature] = useState("");
+  const [txHistory, setTxHistory] = useState<TxHistoryItem[]>([]);
+
+  const historyKey = (address: string) => `44milady:history:${address}`;
+
+  const saveHistory = (
+    entries: TxHistoryItem[],
+    address = wallet,
+  ) => {
+    if (!address) return;
+    const next = [...entries, ...txHistory]
+      .filter(
+        (item, index, all) =>
+          all.findIndex((other) => other.signature === item.signature) === index,
+      )
+      .slice(0, 12);
+    setTxHistory(next);
+    try {
+      localStorage.setItem(historyKey(address), JSON.stringify(next));
+    } catch {}
+  };
+
+  const actionLabel = (action: string) => ({
+    initializeCredit: "Credit account initialized",
+    claimUsdg: "Test USDG claimed",
+    claimSolx: "Test SOLx claimed",
+    supply: "USDG supplied",
+    withdrawSupply: "USDG supply withdrawn",
+    deposit: "SOLx deposited",
+    repay: "USDG repaid",
+    repayMax: "Debt fully repaid",
+    withdrawCollateral: "SOLx withdrawn",
+  }[action] || action);
+
+  const successMessage = (
+    action: string,
+    amount: string | undefined,
+    next: MiladyState,
+  ) => {
+    if (action === "initializeCredit") return "Credit account initialized successfully.";
+    if (action === "claimSolx") return `Test SOLx claimed. Wallet balance: ${qty(next.solx.walletBalance)} SOLx.`;
+    if (action === "claimUsdg") return `Test USDG claimed. Wallet balance: ${qty(next.wallet?.usdg, 2)} USDG.`;
+    if (action === "deposit") return `Deposited ${amount} SOLx. Collateral value: ${money(next.credit?.collateralValue)}.`;
+    if (action === "supply") return `Supplied ${amount} USDG. Your pool position: ${qty(next.wallet?.suppliedUsdg, 2)} USDG.`;
+    if (action === "withdrawSupply") return `Withdrew ${amount} USDG from supply. Remaining supplied: ${qty(next.wallet?.suppliedUsdg, 2)} USDG.`;
+    if (action === "repay") return `Repaid ${amount} USDG. Remaining debt: ${qty(next.credit?.debt, 2)} USDG.`;
+    if (action === "repayMax") return `Debt repaid. Remaining debt: ${qty(next.credit?.debt, 2)} USDG.`;
+    if (action === "withdrawCollateral") return `Withdrew ${amount} SOLx. Remaining collateral: ${qty(next.solx.deposited)} SOLx.`;
+    return `${actionLabel(action)} on Solana Devnet.`;
+  };
 
   const loadState = async (walletAddress = wallet) => {
     const query = new URLSearchParams({ miladyState: "1" });
@@ -595,9 +660,17 @@ export function FortyFourMiladyScreen() {
       }
 
       const signature = await sendInstructions(instructions);
+      const next = await loadState(wallet);
       setLastSignature(signature);
-      setMessage(`${action} confirmed on Solana Devnet`);
-      await loadState(wallet);
+      setMessage(successMessage(action, amount, next));
+      saveHistory([
+        {
+          signature,
+          label: actionLabel(action),
+          amount,
+          timestamp: Date.now(),
+        },
+      ]);
     } catch (e: any) {
       setError(friendlyTransactionError(e));
     } finally {
@@ -771,11 +844,25 @@ export function FortyFourMiladyScreen() {
         throw new Error("Pyth borrow transaction did not return a signature");
       }
 
+      const next = await loadState(wallet);
       setLastSignature(finalSignature);
       setMessage(
-        `Borrowed ${borrowAmount} USDG against live Pyth SOL/USD collateral`,
+        `Borrowed ${borrowAmount} USDG. Debt: ${qty(next.credit?.debt, 2)} USDG · Health factor: ${next.credit?.healthFactor == null ? "—" : next.credit.healthFactor.toFixed(2) + "×"}.`,
       );
-      await loadState(wallet);
+      saveHistory(
+        signatures.map((signature: string, index: number) => ({
+          signature,
+          label:
+            index === signatures.length - 1
+              ? "Borrow USDG"
+              : "Pyth SOL/USD update",
+          amount:
+            index === signatures.length - 1
+              ? `${borrowAmount} USDG`
+              : undefined,
+          timestamp: Date.now(),
+        })),
+      );
     } catch (e: any) {
       setError(friendlyTransactionError(e));
     } finally {
@@ -794,7 +881,18 @@ export function FortyFourMiladyScreen() {
   }, []);
 
   useEffect(() => {
-    if (!wallet) return;
+    if (!wallet) {
+      setTxHistory([]);
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(historyKey(wallet));
+      const parsed = raw ? JSON.parse(raw) : [];
+      setTxHistory(Array.isArray(parsed) ? parsed.slice(0, 12) : []);
+    } catch {
+      setTxHistory([]);
+    }
+
     const id = window.setInterval(() => {
       loadState(wallet).catch(() => undefined);
     }, 15_000);
@@ -815,6 +913,17 @@ export function FortyFourMiladyScreen() {
   const canCreditTransact = Boolean(canWalletTransact && walletState?.creditExists);
   const canBorrow = Boolean(canCreditTransact && state?.oracle.configured && state?.oracle.price != null && (solx?.deposited || 0) > 0);
   const canWithdrawCollateral = Boolean(canCreditTransact && (credit?.debt || 0) === 0 && (solx?.deposited || 0) > 0);
+  const safeMaxBorrow = Math.max(
+    0,
+    Math.min(
+      credit?.availableToBorrow || 0,
+      state?.pool?.availableUsdg ?? state?.poolUsdg ?? 0,
+    ) * 0.95,
+  );
+  const setSafeMaxBorrow = () => {
+    const value = Math.floor(safeMaxBorrow * 1_000_000) / 1_000_000;
+    setBorrowAmount(value > 0 ? String(value) : "0");
+  };
 
   const statCards = [
     ["Collateral value", money(credit?.collateralValue), Landmark],
