@@ -1,0 +1,23 @@
+name: 7070 Production Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/components/SeventySeventyScreen.tsx"
+      - "src/main.tsx"
+      - "api/discovery-feed.ts"
+      - "scripts/seventy-seventy-smoke.mjs"
+      - ".github/workflows/seventy-seventy.yml"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify production 7070
+        run: node scripts/seventy-seventy-smoke.mjs
