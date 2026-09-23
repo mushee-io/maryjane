@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { PublicKey } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 const PROGRAM_ID="HriJWSipKzjya2ScJ8f2AyVwrkbugLtmVELwvb2w7vRL";
 const RPC_URL=process.env.SOLANA_RPC_URL||"https://api.devnet.solana.com";
@@ -12,6 +14,176 @@ const METADATA_HOSTS=new Set([
 ]);
 const KNOWN=["B76aB9GWZPtFqwuyTPjB33Gys1UgCQXw27mdyPKEMyeF"];
 const DISC=createHash("sha256").update("account:Market").digest().subarray(0,8);
+
+const MILADY_PROGRAM_ID=new PublicKey("BS3vTdhrkK5zHchx92PFGeodckt1dLzf7i9uJyEsmZst");
+const MILADY_PROTOCOL=new PublicKey("ACszf63tCaLrk11goAU4FLsZyuXq1xznbHsS4SMmSvWc");
+const MILADY_USDG=new PublicKey("H9fWLuVzqjWjkFjsZ8hSYUb3fGGofa4XHtwCSxQbP9PS");
+const MILADY_POOL=new PublicKey("Gkxt6cQjhrqD6CoXLC3TabNxPB1fDYfru1xsTPD1rsru");
+const MILADY_LIQUIDITY_VAULT=new PublicKey("77SvAEarM7aXgvN2TV8Hw4Nd4Dy4oQ3Brv9TM2y9HUPN");
+
+function miladyCredit(owner:PublicKey){
+  return PublicKey.findProgramAddressSync([Buffer.from("credit"),owner.toBuffer()],MILADY_PROGRAM_ID)[0];
+}
+function miladySupplier(owner:PublicKey){
+  return PublicKey.findProgramAddressSync([Buffer.from("supplier"),MILADY_POOL.toBuffer(),owner.toBuffer()],MILADY_PROGRAM_ID)[0];
+}
+function miladyVault(credit:PublicKey,market:PublicKey){
+  return PublicKey.findProgramAddressSync([Buffer.from("vault"),credit.toBuffer(),market.toBuffer()],MILADY_PROGRAM_ID)[0];
+}
+async function rpcAmount(address:PublicKey){
+  try{
+    const result=await rpc("getTokenAccountBalance",[address.toBase58(),{"commitment":"confirmed"}]);
+    return BigInt(result?.value?.amount||"0");
+  }catch{return 0n;}
+}
+async function rpcAccount(address:PublicKey){
+  const result=await rpc("getAccountInfo",[address.toBase58(),{"commitment":"confirmed","encoding":"base64"}]).catch(()=>null);
+  return result?.value||null;
+}
+function accountRaw(account:any){
+  return dataBuffer(account);
+}
+function decodeMiladyCredit(raw:Buffer){
+  if(raw.length<76)return null;
+  let offset=40;
+  const debt=raw.readBigUInt64LE(offset);
+  offset=72;
+  const count=raw.readUInt32LE(offset);
+  offset+=4+count*40;
+  if(offset+32>raw.length)return{debt,collateralValue:0n,borrowLimit:0n,liquidationCapacity:0n,health:0n};
+  const collateralValue=raw.readBigUInt64LE(offset);offset+=8;
+  const borrowLimit=raw.readBigUInt64LE(offset);offset+=8;
+  const liquidationCapacity=raw.readBigUInt64LE(offset);offset+=8;
+  const health=raw.readBigUInt64LE(offset);
+  return{debt,collateralValue,borrowLimit,liquidationCapacity,health};
+}
+async function pythSolPayload(){
+  const apiKey=String(process.env.PYTH_API_KEY||"").trim();
+  if(!apiKey)return{configured:false,price:null,updateData:null,error:"PYTH_API_KEY is not configured"};
+
+  const feedId="0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d";
+  const url=new URL("https://pyth.dourolabs.app/hermes/v2/updates/price/latest");
+  url.searchParams.append("ids[]",feedId);
+  url.searchParams.set("encoding","base64");
+  url.searchParams.set("parsed","true");
+
+  const response=await fetch(url,{
+    headers:{authorization:`Bearer ${apiKey}`,accept:"application/json"},
+    signal:AbortSignal.timeout(12000),
+  });
+  const text=await response.text();
+  if(!response.ok)return{configured:true,price:null,updateData:null,error:`Pyth request failed (${response.status}): ${text.slice(0,180)}`};
+
+  const body=JSON.parse(text);
+  const parsed=body.parsed?.find((item:any)=>("0x"+String(item.id||"").replace(/^0x/,"")).toLowerCase()===feedId)??body.parsed?.[0];
+  if(!parsed?.price||!body?.binary?.data?.length)return{configured:true,price:null,updateData:null,error:"Pyth SOL/USD response is incomplete"};
+  return{
+    configured:true,
+    feedId,
+    price:Number(parsed.price.price)*10**Number(parsed.price.expo),
+    updateData:body.binary.data,
+    publishTime:Number(parsed.price.publish_time||0),
+    error:"",
+  };
+}
+async function miladyState(walletText?:string){
+  const rows:any[]=await rpc("getProgramAccounts",[
+    MILADY_PROGRAM_ID.toBase58(),
+    {commitment:"confirmed",encoding:"base64"}
+  ])||[];
+
+  let solx:any=null;
+  for(const row of rows){
+    const raw=dataBuffer(row.account);
+    if(raw.length<150)continue;
+    const symbol=raw.subarray(72,80).toString("utf8").replace(/\0+$/g,"");
+    if(symbol!=="SOLx")continue;
+    solx={
+      market:new PublicKey(String(row.pubkey)),
+      mint:new PublicKey(raw.subarray(40,72)),
+      ltvBps:raw.readUInt16LE(113),
+      liquidationThresholdBps:raw.readUInt16LE(115),
+    };
+    break;
+  }
+  if(!solx)throw new Error("SOLx market not found on 44 Milady Devnet");
+
+  const [programAccount,poolRaw,pyth]=await Promise.all([
+    rpcAccount(MILADY_PROGRAM_ID),
+    rpcAmount(MILADY_LIQUIDITY_VAULT),
+    pythSolPayload().catch((error:any)=>({configured:Boolean(process.env.PYTH_API_KEY),price:null,updateData:null,error:error?.message||String(error)})),
+  ]);
+
+  const base:any={
+    network:"devnet",
+    programId:MILADY_PROGRAM_ID.toBase58(),
+    programLive:Boolean(programAccount?.executable),
+    protocol:MILADY_PROTOCOL.toBase58(),
+    usdgMint:MILADY_USDG.toBase58(),
+    lendingPool:MILADY_POOL.toBase58(),
+    liquidityVault:MILADY_LIQUIDITY_VAULT.toBase58(),
+    poolUsdg:Number(poolRaw)/1_000_000,
+    solx:{
+      market:solx.market.toBase58(),
+      mint:solx.mint.toBase58(),
+      ltvBps:solx.ltvBps,
+      liquidationThresholdBps:solx.liquidationThresholdBps,
+    },
+    oracle:{price:pyth.price,configured:pyth.configured,error:pyth.error||""},
+  };
+
+  if(!walletText)return base;
+  const owner=new PublicKey(walletText);
+  const credit=miladyCredit(owner);
+  const supplier=miladySupplier(owner);
+  const vault=miladyVault(credit,solx.market);
+  const usdgAta=getAssociatedTokenAddressSync(MILADY_USDG,owner);
+  const solxAta=getAssociatedTokenAddressSync(solx.mint,owner);
+
+  const [creditAccount,supplierAccount,walletUsdg,walletSolx,vaultSolx,solBalance]=await Promise.all([
+    rpcAccount(credit),
+    rpcAccount(supplier),
+    rpcAmount(usdgAta),
+    rpcAmount(solxAta),
+    rpcAmount(vault),
+    rpc("getBalance",[owner.toBase58(),{"commitment":"confirmed"}]).catch(()=>({value:0})),
+  ]);
+
+  const decoded=creditAccount?decodeMiladyCredit(accountRaw(creditAccount)):null;
+  const supplied=supplierAccount&&accountRaw(supplierAccount).length>=80?accountRaw(supplierAccount).readBigUInt64LE(72):0n;
+  const debt=Number(decoded?.debt||0n)/1_000_000;
+  const deposited=Number(vaultSolx)/1_000_000;
+  let collateralValue=Number(decoded?.collateralValue||0n)/1_000_000;
+  let borrowLimit=Number(decoded?.borrowLimit||0n)/1_000_000;
+  let liquidationCapacity=Number(decoded?.liquidationCapacity||0n)/1_000_000;
+  if(pyth.price!=null&&deposited>0){
+    collateralValue=deposited*pyth.price;
+    borrowLimit=collateralValue*(solx.ltvBps/10_000);
+    liquidationCapacity=collateralValue*(solx.liquidationThresholdBps/10_000);
+  }
+
+  return{
+    ...base,
+    solx:{...base.solx,walletBalance:Number(walletSolx)/1_000_000,deposited},
+    wallet:{
+      address:owner.toBase58(),
+      sol:Number(solBalance?.value||0)/1e9,
+      usdg:Number(walletUsdg)/1_000_000,
+      credit:credit.toBase58(),
+      creditExists:Boolean(creditAccount),
+      supplier:supplier.toBase58(),
+      suppliedUsdg:Number(supplied)/1_000_000,
+    },
+    credit:{
+      debt,
+      collateralValue,
+      borrowLimit,
+      availableToBorrow:Math.max(0,borrowLimit-debt),
+      liquidationCapacity,
+      healthFactor:debt>0?liquidationCapacity/debt:null,
+    },
+  };
+}
 
 const META:Record<string,any>={
   "B76aB9GWZPtFqwuyTPjB33Gys1UgCQXw27mdyPKEMyeF":{
@@ -400,6 +572,17 @@ async function externalMarkets(limit:number){
 
 export default async function handler(req:any,res:any){
   res.setHeader("Content-Type","application/json; charset=utf-8");
+
+  if(String(req.query?.miladyState||"")==="1"){
+    res.setHeader("Cache-Control","no-store");
+    if(req.method!=="GET")return res.status(405).json({error:"Method not allowed"});
+    try{
+      const wallet=String(req.query?.wallet||"").trim()||undefined;
+      return res.status(200).json(await miladyState(wallet));
+    }catch(error:any){
+      return res.status(500).json({error:error?.message||String(error),stage:"44-milady-state"});
+    }
+  }
 
   if(String(req.query?.pythSol||"")==="1"){
     res.setHeader("Cache-Control","no-store");
