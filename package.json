@@ -16,7 +16,7 @@
     "test:marketlint-function": "tsx scripts/marketlint-function-smoke.ts",
     "test:prepare-create-function": "tsx scripts/prepare-create-function-smoke.ts",
     "test:solana-runtime": "node scripts/solana-runtime-smoke.mjs",
-    "postinstall": "node scripts/verify-solana-deps.mjs",
+    "postinstall": "node scripts/fix-pyth-node.mjs && node scripts/verify-solana-deps.mjs",
     "test:discovery-function": "tsx scripts/discovery-function-smoke.ts",
     "test:production-discovery": "node scripts/production-discovery-smoke.mjs",
     "demo:seed": "tsx scripts/seed-demo-markets.ts",
@@ -35,7 +35,9 @@
     "ws": "^8.18.3",
     "rpc-websockets": "9.3.2",
     "uuid": "8.3.2",
-    "bs58": "^6.0.0"
+    "bs58": "^6.0.0",
+    "@pythnetwork/hermes-client": "3.1.0",
+    "@pythnetwork/pyth-solana-receiver": "0.16.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
