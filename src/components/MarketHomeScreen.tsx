@@ -216,6 +216,7 @@ export function MarketHomeScreen() {
             <a href="/beta" className="rounded-full px-4 py-2 text-sm text-white/50 hover:text-white">Beta</a>
             <a href="/analytics" className="rounded-full px-4 py-2 text-sm text-white/50 hover:text-white">Analytics</a>
             <a href="/44-milady" className="rounded-full px-4 py-2 text-sm font-semibold text-[#caff75] hover:bg-[#b7ff3c]/10">44 Milady</a>
+            <a href="/7070" className="rounded-full px-4 py-2 text-sm font-semibold text-[#caff75] hover:bg-[#b7ff3c]/10">7070</a>
           </nav>
 
           <div className="ml-auto hidden w-[310px] items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.035] px-3 md:flex">
