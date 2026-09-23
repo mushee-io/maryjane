@@ -308,19 +308,21 @@ async function portfolio(connection:Connection,wallet:PublicKey){
     const l=ledgers.get(market.address)||{yes:sideState(),no:sideState()};
     const yesAvg=l.yes.qty>0n?Number(l.yes.cost*10000n/l.yes.qty):0;
     const noAvg=l.no.qty>0n?Number(l.no.cost*10000n/l.no.qty):0;
-    const knownYes=y.amount<l.yes.qty?y.amount:l.yes.qty;
-    const knownNo=n.amount<l.no.qty?n.amount:l.no.qty;
-    const unknownYes=y.amount-knownYes;
-    const unknownNo=n.amount-knownNo;
+    const yAmount=BigInt(y.amount);
+    const nAmount=BigInt(n.amount);
+    const knownYes=yAmount<l.yes.qty?yAmount:l.yes.qty;
+    const knownNo=nAmount<l.no.qty?nAmount:l.no.qty;
+    const unknownYes=yAmount-knownYes;
+    const unknownNo=nAmount-knownNo;
     const yesKnownCost=yesAvg?knownYes*BigInt(yesAvg)/10000n:0n;
     const noKnownCost=noAvg?knownNo*BigInt(noAvg)/10000n:0n;
     const yesUnknownCost=unknownYes*BigInt(yesPriceBps)/10000n;
     const noUnknownCost=unknownNo*BigInt(10000-yesPriceBps)/10000n;
     const yesCost=yesKnownCost+yesUnknownCost;
     const noCost=noKnownCost+noUnknownCost;
-    const currentValue=y.amount*BigInt(yesPriceBps)/10000n+n.amount*BigInt(10000-yesPriceBps)/10000n;
+    const currentValue=yAmount*BigInt(yesPriceBps)/10000n+nAmount*BigInt(10000-yesPriceBps)/10000n;
     const unrealized=currentValue-yesCost-noCost;
-    const costBasisEstimated=y.amount!==l.yes.qty||n.amount!==l.no.qty;
+    const costBasisEstimated=yAmount!==l.yes.qty||nAmount!==l.no.qty;
     let resolution:any=null;
     try{
       const [pda]=PublicKey.findProgramAddressSync([Buffer.from("resolution"),new PublicKey(market.address).toBuffer()],PROGRAM_ID);
