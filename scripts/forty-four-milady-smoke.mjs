@@ -30,7 +30,7 @@ await waitFor(
 );
 
 const pyth=await waitFor(
-  "/api/pyth-sol",
+  "/api/discovery-feed?pythSol=1",
   (response,text)=>{
     if(response.status!==200 && response.status!==503 && response.status!==502) return false;
     try{
