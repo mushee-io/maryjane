@@ -1,0 +1,32 @@
+name: Mary Jane Arcium Confidential
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "solana/arcium-confidential/**"
+      - ".github/workflows/arcium-confidential.yml"
+  pull_request:
+    paths:
+      - "solana/arcium-confidential/**"
+      - ".github/workflows/arcium-confidential.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Arcium toolchain
+        uses: arcium-hq/setup-arcium@main
+        with:
+          runner-arch-os: x86_64_linux
+          arcium-version: "0.13.2"
+          anchor-version: "1.0.2"
+          solana-cli-version: "3.1.10"
+          node-version: "24.10.0"
+
+      - name: Build confidential program and circuits
+        working-directory: solana/arcium-confidential
+        run: arcium build
