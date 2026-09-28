@@ -5,15 +5,48 @@ on:
     branches: [main]
     paths:
       - "solana/arcium-confidential/**"
+      - "src/lib/confidentialOrders.ts"
+      - "src/shims/arciumFs.ts"
+      - "src/shims/arciumNodeCrypto.ts"
+      - "scripts/fix-arcium-browser.mjs"
+      - "vite.config.ts"
+      - "package.json"
       - ".github/workflows/arcium-confidential.yml"
   pull_request:
     paths:
       - "solana/arcium-confidential/**"
+      - "src/lib/confidentialOrders.ts"
+      - "src/shims/arciumFs.ts"
+      - "src/shims/arciumNodeCrypto.ts"
+      - "scripts/fix-arcium-browser.mjs"
+      - "vite.config.ts"
+      - "package.json"
       - ".github/workflows/arcium-confidential.yml"
   workflow_dispatch:
+    inputs:
+      deploy_devnet:
+        description: "Deploy Mary Jane confidential MXE/program to Arcium Devnet"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
-  build:
+  browser-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install app dependencies
+        run: npm install
+
+      - name: Verify browser-safe Arcium bundle
+        run: npm run build
+
+  confidential-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,3 +63,36 @@ jobs:
       - name: Build confidential program and circuits
         working-directory: solana/arcium-confidential
         run: arcium build
+
+  deploy-devnet:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_devnet }}
+    needs: [browser-build, confidential-build]
+    runs-on: ubuntu-latest
+    environment: arcium-devnet
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Arcium toolchain
+        uses: arcium-hq/setup-arcium@v0.10.3
+        with:
+          runner-arch-os: x86_64_linux
+          arcium-version: "0.13.2"
+          anchor-version: "1.0.2"
+          solana-cli-version: "3.1.10"
+          node-version: "24.10.0"
+
+      - name: Restore deployer keypair
+        env:
+          ARCIUM_DEPLOYER_KEYPAIR_B64: ${{ secrets.ARCIUM_DEPLOYER_KEYPAIR_B64 }}
+        run: |
+          test -n "$ARCIUM_DEPLOYER_KEYPAIR_B64"
+          mkdir -p "$HOME/.config/solana"
+          printf '%s' "$ARCIUM_DEPLOYER_KEYPAIR_B64" | base64 --decode > "$HOME/.config/solana/id.json"
+          chmod 600 "$HOME/.config/solana/id.json"
+
+      - name: Deploy Mary Jane confidential MXE/program
+        working-directory: solana/arcium-confidential
+        env:
+          ARCIUM_DEVNET_RPC_URL: ${{ secrets.ARCIUM_DEVNET_RPC_URL }}
+          ARCIUM_DEPLOYER_KEYPAIR: /home/runner/.config/solana/id.json
+        run: bash scripts/deploy-devnet.sh
