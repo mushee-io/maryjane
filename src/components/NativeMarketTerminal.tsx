@@ -365,6 +365,16 @@ export default function NativeMarketTerminal({
     return () => window.clearInterval(timer);
   }, [address, wallet, state?.market.collateralMint, state?.market.yesMint, state?.market.noMint]);
 
+  useEffect(() => {
+    if (!confidentialRuntime.enabled || !wallet || !address) {
+      setConfidentialState(null);
+      return;
+    }
+    void loadConfidential();
+    const timer = window.setInterval(() => void loadConfidential(), 12_000);
+    return () => window.clearInterval(timer);
+  }, [address, wallet, confidentialRuntime.enabled]);
+
   const yesOutcome = market.outcomes.find((outcome) => outcome.id === "yes") || market.outcomes.find((outcome) => outcome.label === "YES") || market.outcomes[0];
   const noOutcome = market.outcomes.find((outcome) => outcome.id === "no") || market.outcomes.find((outcome) => outcome.label === "NO") || market.outcomes[1];
   const yesLabel = yesOutcome?.label || "YES";
