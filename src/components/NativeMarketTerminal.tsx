@@ -839,7 +839,44 @@ export default function NativeMarketTerminal({
 
         <aside className="xl:sticky xl:top-24 xl:h-fit">
           <div className="rounded-3xl border border-white/[.09] bg-[#0b0b0b] p-5 shadow-2xl">
-            <div className="flex items-center justify-between"><div className="text-lg font-semibold">Trade</div><div className="text-xs text-white/25">Limit order</div></div>
+            <div className="flex items-center justify-between"><div className="text-lg font-semibold">Trade</div><div className="text-xs text-white/25">{tradePrivacy === "CONFIDENTIAL" ? "Arcium beta" : "Limit order"}</div></div>
+
+            {confidentialRuntime.enabled && (
+              <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl border border-white/[.07] bg-black/25 p-1">
+                <button
+                  onClick={() => { setTradePrivacy("PUBLIC"); setConfidentialEnvelope(null); }}
+                  className={`rounded-lg px-3 py-2 text-xs font-semibold ${tradePrivacy === "PUBLIC" ? "bg-white text-black" : "text-white/35"}`}
+                >
+                  Public
+                </button>
+                <button
+                  onClick={() => setTradePrivacy("CONFIDENTIAL")}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold ${tradePrivacy === "CONFIDENTIAL" ? "bg-[#b7ff3c] text-black" : "text-white/35"}`}
+                >
+                  <LockKeyhole className="h-3.5 w-3.5" />
+                  Confidential
+                </button>
+              </div>
+            )}
+
+            {tradePrivacy === "CONFIDENTIAL" && (
+              <div className="mt-3 rounded-2xl border border-[#b7ff3c]/20 bg-[#b7ff3c]/[.045] p-4">
+                <div className="flex items-center gap-2 text-xs font-semibold text-[#caff75]">
+                  <ShieldCheck className="h-4 w-4" />
+                  Arcium confidential order intent
+                </div>
+                <div className="mt-2 text-[10px] leading-5 text-white/42">
+                  Side, BUY/SELL direction, limit price and size are encrypted in your browser before submission.
+                  Market address, signer wallet, transaction metadata and aggregate probability snapshots remain public.
+                </div>
+                {!confidentialRuntime.configured && (
+                  <div className="mt-2 rounded-lg border border-amber-300/15 bg-amber-300/[.06] px-3 py-2 text-[10px] leading-4 text-amber-200">
+                    Arcium rail is coded but not deployed/configured yet: {confidentialRuntime.reason}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="mt-4 grid grid-cols-2 gap-2">
               {(["BUY", "SELL"] as const).map((value) => (
                 <button key={value} onClick={() => setKind(value)} className={`rounded-xl py-2.5 text-xs font-semibold ${kind === value ? "bg-white text-black" : "bg-white/[.04] text-white/38"}`}>{value}</button>
@@ -893,6 +930,12 @@ export default function NativeMarketTerminal({
               <div className="flex justify-between text-white/35"><span>USDG balance</span><span className="text-white/70">{wallet ? traderState ? traderState.collateral.uiAmount.toFixed(2) : "Loading…" : "—"}</span></div>
               <div className="flex justify-between text-white/35"><span>{labelFor(side)} balance</span><span className="text-white/70">{wallet ? traderState ? (side === "YES" ? traderState.yes.uiAmount : traderState.no.uiAmount).toFixed(2) : "Loading…" : "—"}</span></div>
               <div className="flex justify-between text-white/35"><span>Network</span><span className="text-white/70">Solana Devnet</span></div>
+              {tradePrivacy === "CONFIDENTIAL" && (
+                <div className="flex justify-between text-white/35">
+                  <span>Privacy scope</span>
+                  <span className="text-[#caff75]">Order intent only (v1)</span>
+                </div>
+              )}
             </div>
 
             <div className="mt-4 rounded-2xl border border-white/[.07] bg-white/[.018] p-4">
@@ -949,18 +992,39 @@ export default function NativeMarketTerminal({
             {notice && <div className="mt-3 rounded-xl border border-white/[.07] bg-white/[.025] p-3 text-xs leading-5 text-white/65">{notice}</div>}
             {error && <div className="mt-3 rounded-xl border border-rose-400/20 bg-rose-400/[.08] p-3 text-xs text-rose-300">{error}</div>}
 
-            <button onClick={() => void placeOrder()} disabled={busy || state?.market.status !== "OPEN" || insufficientBalance} className={`mt-4 w-full rounded-xl py-4 text-sm font-semibold disabled:opacity-35 ${side === "YES" ? "bg-emerald-300 text-black" : "bg-rose-300 text-black"}`}>
-              {busy
-                ? "Confirming on Solana…"
-                : !wallet
-                  ? "Connect wallet to trade"
-                  : insufficientBalance
-                    ? `Need ${requiredForOrder.toFixed(2)} ${kind === "BUY" ? "USDG" : side}`
-                    : `${kind} ${labelFor(side)} @ ${price}¢`}
-            </button>
+            {tradePrivacy === "PUBLIC" ? (
+              <button onClick={() => void placeOrder()} disabled={busy || state?.market.status !== "OPEN" || insufficientBalance} className={`mt-4 w-full rounded-xl py-4 text-sm font-semibold disabled:opacity-35 ${side === "YES" ? "bg-emerald-300 text-black" : "bg-rose-300 text-black"}`}>
+                {busy
+                  ? "Confirming on Solana…"
+                  : !wallet
+                    ? "Connect wallet to trade"
+                    : insufficientBalance
+                      ? `Need ${requiredForOrder.toFixed(2)} ${kind === "BUY" ? "USDG" : side}`
+                      : `${kind} ${labelFor(side)} @ ${price}¢`}
+              </button>
+            ) : (
+              <button
+                onClick={() => void prepareConfidentialOrder()}
+                disabled={busy || state?.market.status !== "OPEN" || !confidentialRuntime.configured}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#b7ff3c] py-4 text-sm font-semibold text-black disabled:opacity-35"
+              >
+                <LockKeyhole className="h-4 w-4" />
+                {busy ? "Encrypting with Arcium…" : !wallet ? "Connect wallet first" : confidentialRuntime.configured ? "Encrypt confidential order" : "Arcium deployment required"}
+              </button>
+            )}
+
+            {tradePrivacy === "CONFIDENTIAL" && confidentialEnvelope && (
+              <div className="mt-3 rounded-xl border border-emerald-300/15 bg-emerald-300/[.05] p-3 text-[10px] leading-5 text-white/45">
+                <div className="font-semibold text-emerald-200">Encrypted envelope prepared</div>
+                <div className="mt-1">Computation: <span className="font-mono text-white/65">{short(confidentialEnvelope.computationOffset, 8, 6)}</span></div>
+                <div>Plaintext side / direction / price / size are not stored in this envelope.</div>
+              </div>
+            )}
 
             <p className="mt-4 text-[10px] leading-4 text-white/20">
-              No fake liquidity. Prices come from real resting orders and matched fills on the Mary Jane Devnet program.
+              {tradePrivacy === "PUBLIC"
+                ? "No fake liquidity. Prices come from real resting orders and matched fills on the Mary Jane Devnet program."
+                : "Confidential v1 protects order intent only. Existing SPL balances and settlement are public until confidential collateral + settlement are implemented."}
             </p>
           </div>
         </aside>
