@@ -8,8 +8,11 @@ skip-lint = false
 [programs.localnet]
 maryjane_confidential = "DGcYT9EVrrwMGEnUcYiPUhrfzvGBjNFZ7t619BWWPn99"
 
+[programs.devnet]
+maryjane_confidential = "DGcYT9EVrrwMGEnUcYiPUhrfzvGBjNFZ7t619BWWPn99"
+
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [hooks]
