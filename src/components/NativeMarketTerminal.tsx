@@ -1,6 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowUpRight, BarChart3, Trash2, Wallet } from "lucide-react";
+import { ArrowUpRight, BarChart3, LockKeyhole, ShieldCheck, Trash2, Wallet } from "lucide-react";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
+import {
+  confidentialRuntimeStatus,
+  encryptConfidentialOrder,
+  type ConfidentialOrderEnvelope,
+} from "../lib/confidentialOrders";
 
 type Market = {
   title: string;
@@ -233,6 +238,9 @@ export default function NativeMarketTerminal({
   const [resolutionSource, setResolutionSource] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [tradePrivacy, setTradePrivacy] = useState<"PUBLIC" | "CONFIDENTIAL">("PUBLIC");
+  const [confidentialEnvelope, setConfidentialEnvelope] = useState<ConfidentialOrderEnvelope | null>(null);
+  const confidentialRuntime = confidentialRuntimeStatus();
 
   const address = market.nativeAddress || "";
   const load = async () => {
@@ -376,6 +384,62 @@ export default function NativeMarketTerminal({
     } catch (err: any) {
       const message = err?.message || String(err || "");
       setNotice(message === "Unexpected error" ? "Wallet rejected the transaction. Check Devnet SOL balance and retry." : message || "Unable to place order");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const prepareConfidentialOrder = async () => {
+    if (!market.nativeAddress) return;
+    if (!wallet) { await onConnect(); return; }
+
+    const px = Number(price);
+    const qty = Number(shares);
+    if (!Number.isFinite(px) || px <= 0 || px >= 100) {
+      setNotice("Price must be between 0.01¢ and 99.99¢.");
+      return;
+    }
+    if (!Number.isFinite(qty) || qty <= 0) {
+      setNotice("Enter a positive share amount.");
+      return;
+    }
+    if (!confidentialRuntime.configured) {
+      setNotice(confidentialRuntime.reason || "Arcium confidential markets are not configured yet.");
+      return;
+    }
+
+    setBusy(true);
+    setNotice("");
+    setConfidentialEnvelope(null);
+    try {
+      const envelope = await encryptConfidentialOrder({
+        wallet,
+        market: market.nativeAddress,
+        side,
+        kind,
+        priceBps: Math.round(px * 100),
+        sharesBaseUnits: String(Math.round(qty * 1e6)),
+      });
+
+      setConfidentialEnvelope(envelope);
+      try {
+        const historyKey = `maryjane:confidential-intents:${wallet}`;
+        const previous = JSON.parse(localStorage.getItem(historyKey) || "[]");
+        const next = [{
+          market: envelope.market,
+          computationOffset: envelope.computationOffset,
+          createdAt: Date.now(),
+          status: "encrypted-awaiting-arcium-queue",
+        }, ...(Array.isArray(previous) ? previous : [])].slice(0, 12);
+        localStorage.setItem(historyKey, JSON.stringify(next));
+      } catch {}
+
+      setNotice(
+        `Encrypted locally for Arcium · computation ${short(envelope.computationOffset, 6, 4)}. ` +
+        "No plaintext side, price or size was sent to Mary Jane. The confidential Arcium program must be deployed/queued before this becomes a live private order.",
+      );
+    } catch (err: any) {
+      setNotice(err?.message || "Unable to encrypt confidential order");
     } finally {
       setBusy(false);
     }
