@@ -76,6 +76,18 @@ type NativeState = {
   recentTrades: Trade[];
   updatedAt: number;
 };
+type ConfidentialState = {
+  enabled?: boolean;
+  configured?: boolean;
+  status: "missing" | "initializing" | "ready";
+  publicMarket?: string;
+  confidentialMarket?: string;
+  programId?: string;
+  clusterOffset?: number;
+  orderCount?: string;
+  publicYesBps?: number;
+  lastSnapshotTs?: string;
+};
 
 function provider() { return (window as any).solana; }
 async function directWalletBalances(
@@ -240,6 +252,7 @@ export default function NativeMarketTerminal({
   const [notice, setNotice] = useState("");
   const [tradePrivacy, setTradePrivacy] = useState<"PUBLIC" | "CONFIDENTIAL">("PUBLIC");
   const [confidentialEnvelope, setConfidentialEnvelope] = useState<ConfidentialOrderEnvelope | null>(null);
+  const [confidentialState, setConfidentialState] = useState<ConfidentialState | null>(null);
   const confidentialRuntime = confidentialRuntimeStatus();
 
   const address = market.nativeAddress || "";
