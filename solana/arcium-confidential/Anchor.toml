@@ -1,0 +1,15 @@
+[toolchain]
+package_manager = "npm"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+maryjane_confidential = "DGcYT9EVrrwMGEnUcYiPUhrfzvGBjNFZ7t619BWWPn99"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[hooks]
