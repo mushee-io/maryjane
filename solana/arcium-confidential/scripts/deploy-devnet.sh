@@ -53,8 +53,6 @@ for rel in ["Anchor.toml","programs/maryjane_confidential/src/lib.rs"]:
     import re
     if rel=="Anchor.toml":
         text=re.sub(r'(maryjane_confidential\s*=\s*")[^"]+(")', rf'\g<1>{pid}\2', text)
-        if "[programs.devnet]" not in text:
-            text=text.replace("[programs.localnet]", "[programs.localnet]\nmaryjane_confidential = \"" + pid + "\"\n\n[programs.devnet]", 1)
     else:
         text=re.sub(r'declare_id!\("[^"]+"\);', f'declare_id!("{pid}");', text)
     p.write_text(text)
