@@ -8,6 +8,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "."),
+      "crypto": path.resolve(__dirname, "src/shims/arciumNodeCrypto.ts"),
+      "node:crypto": path.resolve(__dirname, "src/shims/arciumNodeCrypto.ts"),
+      "fs": path.resolve(__dirname, "src/shims/arciumFs.ts"),
+      "node:fs": path.resolve(__dirname, "src/shims/arciumFs.ts"),
     },
   },
 });
