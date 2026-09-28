@@ -152,7 +152,7 @@ pub mod maryjane_confidential {
             ctx.accounts,
             computation_offset,
             args,
-            vec![SubmitPrivateOrderCallback::callback_ix(
+            vec![ApplyPrivateOrderCallback::callback_ix(
                 computation_offset,
                 &ctx.accounts.mxe_account,
                 &[CallbackAccount {
@@ -176,8 +176,8 @@ pub mod maryjane_confidential {
     }
 
     #[arcium_callback(encrypted_ix = "apply_private_order")]
-    pub fn submit_private_order_callback(
-        ctx: Context<SubmitPrivateOrderCallback>,
+    pub fn apply_private_order_callback(
+        ctx: Context<ApplyPrivateOrderCallback>,
         output: SignedComputationOutputs<ApplyPrivateOrderOutput>,
     ) -> Result<()> {
         let state = match output.verify_output(
@@ -227,7 +227,7 @@ pub mod maryjane_confidential {
             ctx.accounts,
             computation_offset,
             args,
-            vec![RefreshPublicSnapshotCallback::callback_ix(
+            vec![RevealAggregateCallback::callback_ix(
                 computation_offset,
                 &ctx.accounts.mxe_account,
                 &[CallbackAccount {
@@ -244,8 +244,8 @@ pub mod maryjane_confidential {
     }
 
     #[arcium_callback(encrypted_ix = "reveal_aggregate")]
-    pub fn refresh_public_snapshot_callback(
-        ctx: Context<RefreshPublicSnapshotCallback>,
+    pub fn reveal_aggregate_callback(
+        ctx: Context<RevealAggregateCallback>,
         output: SignedComputationOutputs<RevealAggregateOutput>,
     ) -> Result<()> {
         let (yes_pressure, no_pressure, order_count) = match output.verify_output(
@@ -409,7 +409,7 @@ pub struct SubmitPrivateOrder<'info> {
 
 #[callback_accounts("apply_private_order")]
 #[derive(Accounts)]
-pub struct SubmitPrivateOrderCallback<'info> {
+pub struct ApplyPrivateOrderCallback<'info> {
     pub arcium_program: Program<'info, Arcium>,
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_APPLY_PRIVATE_ORDER))]
     pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
@@ -468,7 +468,7 @@ pub struct RefreshPublicSnapshot<'info> {
 
 #[callback_accounts("reveal_aggregate")]
 #[derive(Accounts)]
-pub struct RefreshPublicSnapshotCallback<'info> {
+pub struct RevealAggregateCallback<'info> {
     pub arcium_program: Program<'info, Arcium>,
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_REVEAL_AGGREGATE))]
     pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
