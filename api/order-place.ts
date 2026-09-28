@@ -74,7 +74,7 @@ function arciumAccounts(programId:PublicKey,clusterOffset:number,computationOffs
     mempool:getMempoolAccAddress(clusterOffset),
     executingPool:getExecutingPoolAccAddress(clusterOffset),
     computation:getComputationAccAddress(clusterOffset,offsetBn),
-    compDef:getCompDefAccAddress(programId,getCompDefAccOffset(circuitName)),
+    compDef:getCompDefAccAddress(programId,Buffer.from(getCompDefAccOffset(circuitName)).readUInt32LE()),
     cluster:getClusterAccAddress(clusterOffset),
     feePool:getFeePoolAccAddress(),
     clock:getClockAccAddress(),
