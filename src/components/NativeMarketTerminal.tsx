@@ -982,6 +982,22 @@ export default function NativeMarketTerminal({
                     Arcium rail is coded but not deployed/configured yet: {confidentialRuntime.reason}
                   </div>
                 )}
+                {confidentialRuntime.configured && (
+                  <div className="mt-3 grid grid-cols-3 gap-2 border-t border-[#b7ff3c]/10 pt-3 text-[10px]">
+                    <div>
+                      <div className="text-white/25">MXE state</div>
+                      <div className="mt-1 text-white/65">{confidentialState?.status || "checking"}</div>
+                    </div>
+                    <div>
+                      <div className="text-white/25">Private orders</div>
+                      <div className="mt-1 text-white/65">{confidentialState?.orderCount || "0"}</div>
+                    </div>
+                    <div>
+                      <div className="text-white/25">Aggregate YES</div>
+                      <div className="mt-1 text-[#caff75]">{confidentialState?.lastSnapshotTs && BigInt(confidentialState.lastSnapshotTs) > 0n ? `${((confidentialState.publicYesBps || 5000) / 100).toFixed(2)}%` : "—"}</div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1117,13 +1133,13 @@ export default function NativeMarketTerminal({
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#b7ff3c] py-4 text-sm font-semibold text-black disabled:opacity-35"
               >
                 <LockKeyhole className="h-4 w-4" />
-                {busy ? "Encrypting with Arcium…" : !wallet ? "Connect wallet first" : confidentialRuntime.configured ? "Encrypt confidential order" : "Arcium deployment required"}
+                {busy ? "Processing with Arcium…" : !wallet ? "Connect wallet first" : confidentialRuntime.configured ? "Submit confidential order" : "Arcium deployment required"}
               </button>
             )}
 
             {tradePrivacy === "CONFIDENTIAL" && confidentialEnvelope && (
               <div className="mt-3 rounded-xl border border-emerald-300/15 bg-emerald-300/[.05] p-3 text-[10px] leading-5 text-white/45">
-                <div className="font-semibold text-emerald-200">Encrypted envelope prepared</div>
+                <div className="font-semibold text-emerald-200">Encrypted order envelope</div>
                 <div className="mt-1">Computation: <span className="font-mono text-white/65">{short(confidentialEnvelope.computationOffset, 8, 6)}</span></div>
                 <div>Plaintext side / direction / price / size are not stored in this envelope.</div>
               </div>
