@@ -16,7 +16,7 @@
     "test:marketlint-function": "tsx scripts/marketlint-function-smoke.ts",
     "test:prepare-create-function": "tsx scripts/prepare-create-function-smoke.ts",
     "test:solana-runtime": "node scripts/solana-runtime-smoke.mjs",
-    "postinstall": "node scripts/fix-pyth-node.mjs && node scripts/verify-solana-deps.mjs",
+    "postinstall": "node scripts/fix-arcium-browser.mjs && node scripts/fix-pyth-node.mjs && node scripts/verify-solana-deps.mjs",
     "test:discovery-function": "tsx scripts/discovery-function-smoke.ts",
     "test:production-discovery": "node scripts/production-discovery-smoke.mjs",
     "demo:seed": "tsx scripts/seed-demo-markets.ts",
