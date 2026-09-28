@@ -19,3 +19,6 @@ export function writeFileSync(..._args: unknown[]): never {
 export function existsSync(..._args: unknown[]): false {
   return false;
 }
+
+const fs = { readFileSync, writeFileSync, existsSync };
+export default fs;
