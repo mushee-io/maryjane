@@ -478,7 +478,23 @@ export default function NativeMarketTerminal({
     setBusy(true);
     setNotice("");
     setConfidentialEnvelope(null);
+
     try {
+      let live = await confidentialPost("status") as ConfidentialState;
+      setConfidentialState(live);
+
+      if (live.status === "missing") {
+        setNotice("Creating encrypted Arcium state for this Mary Jane market…");
+        const setup = await confidentialPost("prepare");
+        const setupSignature = await signBuiltTransaction(setup.transactionBase64, setup.lastValidBlockHeight);
+        setNotice(`Arcium state queued · ${short(setupSignature)} · waiting for MPC initialization…`);
+        live = await waitForConfidential((value) => value.status === "ready");
+      } else if (live.status === "initializing") {
+        setNotice("Arcium market state is initializing…");
+        live = await waitForConfidential((value) => value.status === "ready");
+      }
+
+      const beforeCount = BigInt(live.orderCount || "0");
       const envelope = await encryptConfidentialOrder({
         wallet,
         market: market.nativeAddress,
@@ -487,8 +503,32 @@ export default function NativeMarketTerminal({
         priceBps: Math.round(px * 100),
         sharesBaseUnits: String(Math.round(qty * 1e6)),
       });
-
       setConfidentialEnvelope(envelope);
+
+      setNotice("Order encrypted locally. Queueing ciphertext to Arcium…");
+      const submit = await confidentialPost("submit", { envelope });
+      const signature = await signBuiltTransaction(submit.transactionBase64, submit.lastValidBlockHeight);
+      setNotice(`Encrypted order queued · ${short(signature)} · waiting for MPC finalization…`);
+
+      live = await waitForConfidential(
+        (value) => BigInt(value.orderCount || "0") > beforeCount,
+      );
+
+      let snapshotNote = "";
+      try {
+        const previousSnapshot = BigInt(live.lastSnapshotTs || "0");
+        setNotice("Private order finalized. Publishing aggregate probability only…");
+        const snapshot = await confidentialPost("snapshot");
+        const snapshotSignature = await signBuiltTransaction(snapshot.transactionBase64, snapshot.lastValidBlockHeight);
+        live = await waitForConfidential(
+          (value) => BigInt(value.lastSnapshotTs || "0") > previousSnapshot,
+        );
+        const aggregate = ((live.publicYesBps || 5000) / 100).toFixed(2);
+        snapshotNote = ` · aggregate YES ${aggregate}% · snapshot ${short(snapshotSignature)}`;
+      } catch (snapshotError: any) {
+        snapshotNote = ` · aggregate refresh pending (${snapshotError?.message || "retry later"})`;
+      }
+
       try {
         const historyKey = `maryjane:confidential-intents:${wallet}`;
         const previous = JSON.parse(localStorage.getItem(historyKey) || "[]");
@@ -496,17 +536,18 @@ export default function NativeMarketTerminal({
           market: envelope.market,
           computationOffset: envelope.computationOffset,
           createdAt: Date.now(),
-          status: "encrypted-awaiting-arcium-queue",
+          status: "finalized",
+          signature,
         }, ...(Array.isArray(previous) ? previous : [])].slice(0, 12);
         localStorage.setItem(historyKey, JSON.stringify(next));
       } catch {}
 
       setNotice(
-        `Encrypted locally for Arcium · computation ${short(envelope.computationOffset, 6, 4)}. ` +
-        "No plaintext side, price or size was sent to Mary Jane. The confidential Arcium program must be deployed/queued before this becomes a live private order.",
+        `Confidential order finalized by Arcium · ${short(signature)}${snapshotNote}. ` +
+        "Side, direction, price and size stayed encrypted; signer wallet and transaction metadata remain public.",
       );
     } catch (err: any) {
-      setNotice(err?.message || "Unable to encrypt confidential order");
+      setNotice(err?.message || "Unable to submit confidential order");
     } finally {
       setBusy(false);
     }
