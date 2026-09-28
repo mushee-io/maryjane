@@ -304,6 +304,50 @@ export default function NativeMarketTerminal({
       window.clearTimeout(timer);
     }
   };
+  const confidentialPost = async (action: string, extra: Record<string, unknown> = {}) => {
+    if (!address || !wallet) throw new Error("Connect a wallet first.");
+    const response = await fetch("/api/order-place", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: "confidential",
+        action,
+        wallet,
+        market: address,
+        ...extra,
+      }),
+    });
+    return jsonOrThrow(response);
+  };
+
+  const loadConfidential = async () => {
+    if (!confidentialRuntime.enabled || !address || !wallet) {
+      setConfidentialState(null);
+      return null;
+    }
+    try {
+      const data = await confidentialPost("status");
+      setConfidentialState(data);
+      return data as ConfidentialState;
+    } catch {
+      setConfidentialState(null);
+      return null;
+    }
+  };
+
+  const waitForConfidential = async (
+    predicate: (value: ConfidentialState) => boolean,
+    timeoutMs = 150_000,
+  ) => {
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+      const data = await confidentialPost("status") as ConfidentialState;
+      setConfidentialState(data);
+      if (predicate(data)) return data;
+      await new Promise((resolve) => window.setTimeout(resolve, 1_750));
+    }
+    throw new Error("Arcium computation is still pending. The queued transaction is safe; refresh in a moment to see the finalized state.");
+  };
 
   useEffect(() => {
     void load();
