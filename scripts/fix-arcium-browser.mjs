@@ -22,7 +22,7 @@ text=text
   .replace(
     /import\s+anchor__default\s*,\s*\{([^}]+)\}\s*from\s*['"]@anchor-lang\/core['"];?/g,
     (_match, named) =>
-      'import * as anchor__default from "@anchor-lang/core";\\n' +
+      'import * as anchor__default from "@anchor-lang/core";\n' +
       'import {' + named + '} from "@anchor-lang/core";'
   );
 
