@@ -4,38 +4,9 @@ import {
   Transaction,
   VersionedTransaction,
 } from "@solana/web3.js";
+import { RescueCipher, getMXEPublicKey, x25519 } from "@arcium-hq/client";
 
 const DEFAULT_RPC = "https://api.devnet.solana.com";
-const ARCIUM_BROWSER_MODULE =
-  "https://esm.sh/@arcium-hq/client@0.13.2?bundle&target=es2022";
-
-type ArciumBrowserClient = {
-  RescueCipher: new (secret: Uint8Array) => {
-    encrypt(values: bigint[], nonce: Uint8Array): Uint8Array[];
-  };
-  x25519: {
-    utils: { randomSecretKey(): Uint8Array };
-    getPublicKey(privateKey: Uint8Array): Uint8Array;
-    getSharedSecret(privateKey: Uint8Array, publicKey: Uint8Array): Uint8Array;
-  };
-  getMXEPublicKey(provider: any, programId: PublicKey): Promise<Uint8Array | null>;
-};
-
-let arciumBrowserClientPromise: Promise<ArciumBrowserClient> | null = null;
-
-async function loadArciumBrowserClient(): Promise<ArciumBrowserClient> {
-  if (!arciumBrowserClientPromise) {
-    arciumBrowserClientPromise = import(
-      /* @vite-ignore */ ARCIUM_BROWSER_MODULE
-    ).then((mod: any) => {
-      if (!mod?.RescueCipher || !mod?.x25519 || !mod?.getMXEPublicKey) {
-        throw new Error("Arcium browser module did not expose the required encryption API.");
-      }
-      return mod as ArciumBrowserClient;
-    });
-  }
-  return arciumBrowserClientPromise;
-}
 
 export type ConfidentialOrderInput = {
   wallet: string;
@@ -177,11 +148,10 @@ async function getMxeKeyWithRetry(
   programId: PublicKey,
   retries = 12,
 ) {
-  const arcium = await loadArciumBrowserClient();
   let last: unknown = null;
   for (let attempt = 0; attempt < retries; attempt += 1) {
     try {
-      const key = await arcium.getMXEPublicKey(provider, programId);
+      const key = await getMXEPublicKey(provider, programId);
       if (key) return key;
     } catch (error) {
       last = error;
@@ -231,13 +201,12 @@ export async function encryptConfidentialOrder(
   };
 
   const programId = new PublicKey(runtime.programId);
-  const arcium = await loadArciumBrowserClient();
   const mxePublicKey = await getMxeKeyWithRetry(provider, programId);
 
-  const clientPrivateKey = arcium.x25519.utils.randomSecretKey();
-  const clientPublicKey = arcium.x25519.getPublicKey(clientPrivateKey);
-  const sharedSecret = arcium.x25519.getSharedSecret(clientPrivateKey, mxePublicKey);
-  const cipher = new arcium.RescueCipher(sharedSecret);
+  const clientPrivateKey = x25519.utils.randomSecretKey();
+  const clientPublicKey = x25519.getPublicKey(clientPrivateKey);
+  const sharedSecret = x25519.getSharedSecret(clientPrivateKey, mxePublicKey);
+  const cipher = new RescueCipher(sharedSecret);
 
   const nonce = randomBytes(16);
   const computationOffsetBytes = randomBytes(8);
