@@ -4,72 +4,82 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-RPC_URL="${SOLANA_RPC_URL:-https://api.devnet.solana.com}"
-WALLET="${ANCHOR_WALLET:-$HOME/.config/solana/id.json}"
-ARCIUM_CLUSTER_OFFSET="${ARCIUM_CLUSTER_OFFSET:-456}"
+DEPLOYER_KEYPAIR="${ARCIUM_DEPLOYER_KEYPAIR:-$HOME/.config/solana/id.json}"
+RPC_URL="${ARCIUM_DEVNET_RPC_URL:-}"
 
 if ! command -v arcium >/dev/null 2>&1; then
-  echo "Arcium CLI is required. Install it with arcup first."
+  echo "Arcium CLI is missing."
+  echo "Install it in WSL/Linux with:"
+  echo "  curl --proto '=https' --tlsv1.2 -sSfL https://install.arcium.com/ | bash"
   exit 1
 fi
-if ! command -v anchor >/dev/null 2>&1; then
-  echo "Anchor CLI is required."
-  exit 1
-fi
+
 if ! command -v solana >/dev/null 2>&1; then
-  echo "Solana CLI is required."
-  exit 1
-fi
-if [ ! -f "$WALLET" ]; then
-  echo "Wallet not found: $WALLET"
+  echo "Solana CLI is missing."
   exit 1
 fi
 
-echo "[1/7] Solana devnet"
-solana config set --url "$RPC_URL" --keypair "$WALLET" >/dev/null
-solana balance
+if [[ -z "$RPC_URL" ]]; then
+  echo "Set ARCIUM_DEVNET_RPC_URL to a reliable Solana Devnet RPC URL."
+  echo "Example:"
+  echo "  export ARCIUM_DEVNET_RPC_URL='https://...'"
+  exit 1
+fi
 
-echo "[2/7] Build Arcium program + circuits"
-arcium build
+if [[ ! -f "$DEPLOYER_KEYPAIR" ]]; then
+  echo "Deployer keypair not found: $DEPLOYER_KEYPAIR"
+  exit 1
+fi
 
-echo "[3/7] Sync generated program key into source/Anchor.toml"
-anchor keys sync
-arcium build
+PROGRAM_KEYPAIR="target/deploy/maryjane_confidential-keypair.json"
+mkdir -p target/deploy
 
-PROGRAM_KEYPAIR="$ROOT/target/deploy/maryjane_confidential-keypair.json"
+if [[ ! -f "$PROGRAM_KEYPAIR" ]]; then
+  solana-keygen new --no-bip39-passphrase --silent -o "$PROGRAM_KEYPAIR"
+fi
+
 PROGRAM_ID="$(solana address -k "$PROGRAM_KEYPAIR")"
-echo "Program ID: $PROGRAM_ID"
+echo "Confidential program ID: $PROGRAM_ID"
 
-echo "[4/7] Deploy confidential program"
-anchor deploy --provider.cluster devnet --provider.wallet "$WALLET"
+# Keep source IDs aligned with the deployment keypair without ever committing
+# the secret program keypair.
+python3 - "$PROGRAM_ID" <<'PY'
+from pathlib import Path
+import sys
+pid=sys.argv[1]
+for rel in ["Anchor.toml","programs/maryjane_confidential/src/lib.rs"]:
+    p=Path(rel)
+    text=p.read_text()
+    import re
+    if rel=="Anchor.toml":
+        text=re.sub(r'(maryjane_confidential\s*=\s*")[^"]+(")', rf'\g<1>{pid}\2', text)
+        if "[programs.devnet]" not in text:
+            text=text.replace("[programs.localnet]", "[programs.localnet]\nmaryjane_confidential = \"" + pid + "\"\n\n[programs.devnet]", 1)
+    else:
+        text=re.sub(r'declare_id!\("[^"]+"\);', f'declare_id!("{pid}");', text)
+    p.write_text(text)
+PY
 
-echo "[5/7] Initialize Arcium MXE (cluster offset $ARCIUM_CLUSTER_OFFSET)"
-set +e
-arcium mxe-info "$PROGRAM_ID" -u "$RPC_URL" >/tmp/maryjane-mxe-info.txt 2>&1
-MXE_INFO_CODE=$?
-set -e
-if [ "$MXE_INFO_CODE" -ne 0 ] || ! grep -qi "active" /tmp/maryjane-mxe-info.txt; then
-  arcium init-mxe \
-    -k "$WALLET" \
-    -p "$PROGRAM_ID" \
-    -f "$ARCIUM_CLUSTER_OFFSET" \
-    -r 4 \
-    -u "$RPC_URL"
-else
-  echo "MXE already active."
-fi
+echo "Building Arcium circuits + program..."
+arcium build
 
-echo "[6/7] Install JS deployment helpers + register circuits"
-npm install
-ANCHOR_PROVIDER_URL="$RPC_URL" ANCHOR_WALLET="$WALLET" npm run init-comp-defs
+echo "Deployer SOL balance:"
+solana balance -k "$DEPLOYER_KEYPAIR" --url "$RPC_URL"
 
-echo "[7/7] Verify MXE"
-arcium mxe-info "$PROGRAM_ID" -u "$RPC_URL"
+echo "Deploying MXE to Arcium Devnet cluster 456..."
+arcium deploy \
+  --cluster-offset 456 \
+  --recovery-set-size 4 \
+  --keypair-path "$DEPLOYER_KEYPAIR" \
+  --program-keypair "$PROGRAM_KEYPAIR" \
+  --rpc-url "$RPC_URL"
 
 echo
-echo "Mary Jane confidential rail deployed."
-echo "Add these to Vercel:"
-echo "VITE_CONFIDENTIAL_MARKETS=true"
-echo "VITE_ARCIUM_PROGRAM_ID=$PROGRAM_ID"
-echo "VITE_ARCIUM_CLUSTER_OFFSET=$ARCIUM_CLUSTER_OFFSET"
-echo "VITE_SOLANA_RPC_URL=$RPC_URL"
+echo "DEPLOYMENT COMPLETE"
+echo "PROGRAM_ID=$PROGRAM_ID"
+echo "CLUSTER_OFFSET=456"
+echo
+echo "Next: commit the synced public program ID files, initialize computation definitions, and set:"
+echo "  VITE_CONFIDENTIAL_MARKETS=true"
+echo "  VITE_ARCIUM_PROGRAM_ID=$PROGRAM_ID"
+echo "  VITE_ARCIUM_CLUSTER_OFFSET=456"
