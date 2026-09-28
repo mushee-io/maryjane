@@ -1,5 +1,5 @@
 [package]
-name = "maryjane-confidential-encrypted-ixs"
+name = "encrypted-ixs"
 version = "0.1.0"
 edition = "2021"
 
