@@ -59,12 +59,19 @@ function confidentialConfig(){
     clusterOffset:Number(clusterText),
   };
 }
-function confidentialStateNonce(raw:Buffer){
+function decodeConfidentialState(raw:Buffer){
   // discriminator(8) + bump(1) + public_market(32) + authority(32)
-  if(raw.length<89)return 0n;
+  if(raw.length<203){
+    return{stateNonce:0n,publicYesBps:5000,orderCount:0n,lastSnapshotTs:0n};
+  }
   const lo=raw.readBigUInt64LE(73);
   const hi=raw.readBigUInt64LE(81);
-  return lo+(hi<<64n);
+  return{
+    stateNonce:lo+(hi<<64n),
+    publicYesBps:raw.readUInt16LE(185),
+    orderCount:raw.readBigUInt64LE(187),
+    lastSnapshotTs:raw.readBigInt64LE(195),
+  };
 }
 function arciumAccounts(programId:PublicKey,clusterOffset:number,computationOffset:bigint,circuitName:string){
   const offsetBn=new BN(computationOffset.toString());
@@ -105,7 +112,8 @@ async function handleConfidential(req:any,res:any){
     cfg.programId,
   );
   const stateInfo=await connection.getAccountInfo(confidentialMarket,"confirmed");
-  const stateNonce=stateInfo?confidentialStateNonce(Buffer.from(stateInfo.data)):0n;
+  const decodedState=stateInfo?decodeConfidentialState(Buffer.from(stateInfo.data)):decodeConfidentialState(Buffer.alloc(0));
+  const stateNonce=decodedState.stateNonce;
   const action=String(req.body?.action||"status").toLowerCase();
 
   if(action==="status"){
@@ -117,6 +125,9 @@ async function handleConfidential(req:any,res:any){
       confidentialMarket:confidentialMarket.toBase58(),
       programId:cfg.programId.toBase58(),
       clusterOffset:cfg.clusterOffset,
+      orderCount:decodedState.orderCount.toString(),
+      publicYesBps:decodedState.publicYesBps,
+      lastSnapshotTs:decodedState.lastSnapshotTs.toString(),
     });
   }
 
@@ -215,6 +226,47 @@ async function handleConfidential(req:any,res:any){
         encrypted:["side","direction","limit price","order size"],
         public:["market","signing wallet","transaction metadata","computation existence"],
       },
+    });
+  }
+
+  if(action==="snapshot"){
+    if(!stateInfo||stateNonce===0n){
+      return res.status(409).json({
+        error:"Confidential market state is not ready yet",
+        status:!stateInfo?"missing":"initializing",
+        stage:"confidential-state",
+      });
+    }
+    const computationOffset=BigInt("0x"+randomBytes(8).toString("hex"));
+    const a=arciumAccounts(cfg.programId,cfg.clusterOffset,computationOffset,"reveal_aggregate");
+    const ix=new TransactionInstruction({
+      programId:cfg.programId,
+      keys:[
+        {pubkey:wallet,isSigner:true,isWritable:true},
+        {pubkey:confidentialMarket,isSigner:false,isWritable:true},
+        {pubkey:a.signPda,isSigner:false,isWritable:true},
+        {pubkey:a.mxe,isSigner:false,isWritable:false},
+        {pubkey:a.mempool,isSigner:false,isWritable:true},
+        {pubkey:a.executingPool,isSigner:false,isWritable:true},
+        {pubkey:a.computation,isSigner:false,isWritable:true},
+        {pubkey:a.compDef,isSigner:false,isWritable:false},
+        {pubkey:a.cluster,isSigner:false,isWritable:true},
+        {pubkey:a.feePool,isSigner:false,isWritable:true},
+        {pubkey:a.clock,isSigner:false,isWritable:true},
+        {pubkey:SystemProgram.programId,isSigner:false,isWritable:false},
+        {pubkey:a.arciumProgram,isSigner:false,isWritable:false},
+      ],
+      data:Buffer.concat([
+        disc("refresh_public_snapshot"),
+        u64(computationOffset),
+      ]),
+    });
+    return res.status(200).json({
+      ...(await serializeUnsigned(connection,wallet,ix)),
+      status:"snapshot-transaction",
+      computationOffset:computationOffset.toString(),
+      confidentialMarket:confidentialMarket.toBase58(),
+      previousSnapshotTs:decodedState.lastSnapshotTs.toString(),
     });
   }
 
